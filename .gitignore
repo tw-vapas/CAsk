@@ -1,0 +1,18 @@
+# Private and sensitive credentials
+.env
+*.env
+config.env
+*.key
+
+# Editor and temporary files
+*.save
+*~
+*.swp
+*.bak
+.vscode/
+.idea/
+
+# Operating system / shell
+.DS_Store
+*.log
+scratch/
