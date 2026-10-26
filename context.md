@@ -74,9 +74,17 @@ Tài liệu này lưu trữ toàn bộ kiến trúc, nguyên nhân lỗi và gi�
    - **Giải pháp triệt để:** Dùng `rofi -dmenu -p "Analyzing..." -theme-str "$THEME_LOADING" </dev/null &`.
    - Trong `THEME_LOADING`, cấu trúc widget là `mainbox { width: 600px; children: [ inputbar ]; }` và `inputbar { children: [ prompt ]; }`. `prompt` mang chữ `"Analyzing..."` căn lề trái (`horizontal-align: 0.0; vertical-align: 0.5;`), dùng cùng font `Inter Display 14` với thanh input.
    - Kết quả: Khi chuyển cảnh, chính thanh input vừa gõ biến đổi tại chỗ thành thanh loading với kích thước và vị trí trùng khít 100%.
-3. **Cửa sổ Response: Khắc phục cắt chữ ở đáy & góc:**
-   - **Nguyên nhân cắt chữ:** Khi `message` và `textbox` có padding bằng 0 trong `mainbox`, thuật toán tính chiều cao của Rofi bị hụt chiều cao dòng cuối cùng (khiến dòng chữ cuối bị cắt ngang phân nửa).
-   - **Giải pháp:** Mở rộng `width: 850px;`, đặt `mainbox { padding: 24px 28px; border-radius: 24px; }` và `textbox { padding: 12px 16px; }`. Khoảng đệm phân tầng này giúp Rofi tính toán chính xác 100% chiều cao của khối văn bản Pango, dòng cuối cùng luôn nguyên vẹn và 4 góc bo viền có khoảng cách an toàn so với nội dung chữ.
+3. **Cửa sổ Response: Khắc phục triệt để lỗi chiều cao và khoảng cách padding 2 bên:**
+   - **Hiện tượng lỗi:**
+     - Chiều cao không co giãn đủ theo nội dung dài khiến dòng cuối cùng bị cắt mất chữ.
+     - Text nằm sát corner bên trái trong khi bên phải thừa một khoảng trống rất lớn.
+   - **Nguyên nhân cốt lõi:**
+     1. *Mất cân đối lề phải:* Chiều rộng `mainbox` đặt quá lớn (`850px`), trong khi text căn trái (`horizontal-align: 0.0`) và câu dịch thông thường chỉ rộng 400-500px, dẫn đến góc trái cách 44px còn góc phải trống tới 350px.
+     2. *Cắt cụt dòng cuối:* Pango Layout Engine trong Rofi tính toán bounding box không tính đủ descent glyph của dòng cuối cùng (các ký tự có đuôi như g, y, p, q hoặc dòng cuối bị clip đứt ngay baseline).
+   - **Giải pháp triệt để:**
+     - Giảm chiều rộng về kích thước vàng: `width: 760px;`, bo góc `border-radius: 20px;`.
+     - Đồng nhất padding duy nhất tại `mainbox { padding: 24px 32px; }` và đặt `message, textbox { padding: 0px; margin: 0px; }`.
+     - Tự động bổ sung ký tự xuống dòng đệm `\n` vào cuối biến hiển thị (`"$TRANSLATION"$'\n'`), giúp Pango cấp phát trọn vẹn 100% không gian hiển thị cho toàn bộ nội dung từ 3 dòng đến hơn 25 dòng mà không bao giờ bị cắt chữ.
 
 ---
 

@@ -107,16 +107,39 @@ THEME_LOADING="
   }
 "
 
-# 3. Theme cho bảng kết quả (Result) - Fullscreen backdrop mờ, click ngoài để đóng, wrap chữ tự động
+# 3. Theme cho bảng kết quả (Result) - Fullscreen backdrop mờ, click ngoài để đóng, auto-fit chiều cao
 THEME_RESULT="
   * { background-color: transparent; text-color: #ffffff; font: \"Inter 13\"; }
-  window { fullscreen: true; background-color: rgba(10, 10, 10, 0.45); children: [ dummy-top, h-box, dummy-bottom ]; }
+  window {
+    fullscreen: true;
+    background-color: rgba(10, 10, 10, 0.45);
+    children: [ dummy-top, h-box, dummy-bottom ];
+  }
   dummy-top, dummy-bottom { expand: true; }
   h-box { orientation: horizontal; children: [ dummy-left, mainbox, dummy-right ]; expand: false; }
   dummy-left, dummy-right { expand: true; }
-  mainbox { width: 850px; max-height: 85%; expand: false; children: [ message ]; background-color: rgba(28, 28, 30, 0.95); border: 1px; border-color: rgba(255, 255, 255, 0.18); border-radius: 24px; padding: 24px 28px; }
-  message { padding: 0px; border: 0px; }
-  textbox { text-color: #f3f4f6; padding: 12px 16px; wrap: true; font: \"Inter 13\"; }
+  mainbox {
+    width: 760px;
+    expand: false;
+    children: [ message ];
+    background-color: rgba(28, 28, 30, 0.95);
+    border: 1px;
+    border-color: rgba(255, 255, 255, 0.18);
+    border-radius: 20px;
+    padding: 24px 32px;
+  }
+  message {
+    padding: 0px;
+    margin: 0px;
+    border: 0px;
+  }
+  textbox {
+    text-color: #f3f4f6;
+    padding: 0px;
+    margin: 0px;
+    wrap: true;
+    font: \"Inter 13\";
+  }
 "
 
 # Cờ hỗ trợ xử lý chuột trên Wayland:
@@ -140,7 +163,7 @@ if [ -z "$GROQ_API_KEY" ] && [ -z "$GEMINI_API_KEY" ]; then
 Vui lòng cấu hình GROQ_API_KEY hoặc GEMINI_API_KEY vào:
 $CONFIG_FILE
 (Tham khảo mẫu cấu hình tại .env.example)"
-    rofi -dmenu -mesg "$NO_KEY_MSG" -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
+    rofi -dmenu -mesg "$NO_KEY_MSG"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
     exit 1
 fi
 
@@ -159,33 +182,33 @@ LOADING_PID=$!
 # ==============================================================================
 # BƯỚC 3: GỌI API (CÁCH B: ƯU TIÊN GROQ ~0.6S -> FALLBACK GEMINI DỰ PHÒNG)
 # ==============================================================================
-SYSTEM_PROMPT="Bạn là một biên dịch viên thông thạo.
+SYSTEM_PROMPT='Bạn là một biên dịch viên thông thạo.
 Nếu input là en thì dịch qua vi, nếu input là vi thì dịch qua en
 
-Hãy trình bày theo đúng định dạng sau, bản dịch phải dễ hiểu
+Hãy trình bày theo đúng định dạng sau, bản dịch phải hợp lý và dễ hiểu
 
 Nếu là en to vithì áp dụng format A với B
 Nếu là vi to en thì áp dụng format C với D
 
 Format A (Input là từ/cụm từ):
-• Input: {Từ gốc en} - {Phiên âm IPA}
+"• Input: {Từ gốc en} - {Phiên âm IPA}
 • Meaning: {Nghĩa en}
-• Translation: {Bản dịch vi}
+• Translation: {Bản dịch vi}"
 
 Format B (Input là câu):
-• Input: {Câu gốc en}
+"• Input: {Câu gốc en}
 • Translation: {Bản dịch vi}
 • Keywords:
-{tab}• {từ vựng en}: {bản dịch từ vựng vi}
+{tab}• {từ vựng en}: {bản dịch từ vựng vi}"
 
 Formar C (Input là từ/cụm từ):
-• Từ gốc: {Từ gốc vi}
+"• Từ gốc: {Từ gốc vi}
 • Tiếng Anh: 
-{tab}• {Các từ tương ứng trong tiếng Anh}: {Bản dịch vi}
+{tab}• {Các từ tương ứng trong tiếng Anh}: {Bản dịch vi}"
 
 Format D (Input là câu)
-• Câu gốc: {Câu gốc vi}
-• Bản dịch: {Bản dịch en}"
+"• Câu gốc: {Câu gốc vi}
+• Bản dịch: {Bản dịch en}"'
 
 TRANSLATION=""
 ERROR_MSG=""
@@ -253,7 +276,7 @@ if [ -n "$TRANSLATION" ]; then
     fi
 
     # Hiển thị kết quả bằng dmenu, container fit nội dung, đóng bằng Enter/Esc hoặc click ngoài
-    rofi -dmenu -mesg "$TRANSLATION" -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
+    rofi -dmenu -mesg "$TRANSLATION"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
 else
     if [ -z "$ERROR_MSG" ]; then
         ERROR_MSG="Không nhận được phản hồi từ AI API (kết nối timeout hoặc mạng không ổn định)."
@@ -262,5 +285,5 @@ else
     ERROR_DISPLAY="❌ Lỗi dịch thuật:
 
 $ERROR_MSG"
-    rofi -dmenu -mesg "$ERROR_DISPLAY" -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
+    rofi -dmenu -mesg "$ERROR_DISPLAY"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
 fi
