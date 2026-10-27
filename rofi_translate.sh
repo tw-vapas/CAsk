@@ -139,8 +139,37 @@ THEME_RESULT="
     margin: 0px;
     wrap: true;
     font: \"Inter 13\";
+    vertical-align: 0.0;
   }
 "
+
+# Hàm định dạng ngắt dòng tự động (Soft-wrap với Newline buffer)
+# Giúp Rofi tính toán chính xác 100% chiều cao của hộp thoại kết quả,
+# khắc phục triệt để lỗi text bị dồn lên góc trên/trái và tràn ra ngoài card.
+format_display_text() {
+    local text="$1"
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "
+import sys, textwrap
+text = sys.stdin.read()
+lines = []
+for line in text.splitlines():
+    if not line.strip():
+        lines.append('')
+        continue
+    indent_len = len(line) - len(line.lstrip(' \t'))
+    prefix = line[:indent_len]
+    stripped = line[indent_len:]
+    sub_indent = prefix + ('  ' if stripped.startswith('•') else '')
+    lines.extend(textwrap.wrap(line, width=68, subsequent_indent=sub_indent))
+print('\n'.join(lines))
+" <<< "$text"
+    elif command -v fold >/dev/null 2>&1; then
+        echo "$text" | fold -s -w 68
+    else
+        echo "$text"
+    fi
+}
 
 # Cờ hỗ trợ xử lý chuột trên Wayland:
 # - Click vào vùng nền mờ bên ngoài card -> kb-cancel (thoát)
@@ -163,7 +192,8 @@ if [ -z "$GROQ_API_KEY" ] && [ -z "$GEMINI_API_KEY" ]; then
 Vui lòng cấu hình GROQ_API_KEY hoặc GEMINI_API_KEY vào:
 $CONFIG_FILE
 (Tham khảo mẫu cấu hình tại .env.example)"
-    rofi -dmenu -mesg "$NO_KEY_MSG"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
+    DISPLAY_TEXT=$(format_display_text "$NO_KEY_MSG")
+    rofi -dmenu -mesg "$DISPLAY_TEXT"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
     exit 1
 fi
 
@@ -269,15 +299,16 @@ wait $LOADING_PID 2>/dev/null
 # BƯỚC 4: HIỂN THỊ KẾT QUẢ (FIT VỚI NỘI DUNG, ENTER / ESC / CLICK OUT ĐỂ ĐÓNG)
 # ==============================================================================
 if [ -n "$TRANSLATION" ]; then
-    # Tự động sao chép kết quả vào clipboard trong nền
+    # Tự động sao chép kết quả vào clipboard trong nền (giữ nguyên văn bản gốc sạch)
     if command -v wl-copy >/dev/null 2>&1; then
         echo -n "$TRANSLATION" | wl-copy &
     elif command -v xclip >/dev/null 2>&1; then
         echo -n "$TRANSLATION" | xclip -selection clipboard &
     fi
 
-    # Hiển thị kết quả bằng dmenu, container fit nội dung, đóng bằng Enter/Esc hoặc click ngoài
-    rofi -dmenu -mesg "$TRANSLATION"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
+    # Định dạng ngắt dòng hiển thị để Rofi tính chuẩn 100% bounding box
+    DISPLAY_TEXT=$(format_display_text "$TRANSLATION")
+    rofi -dmenu -mesg "$DISPLAY_TEXT"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
 else
     if [ -z "$ERROR_MSG" ]; then
         ERROR_MSG="Không nhận được phản hồi từ AI API (kết nối timeout hoặc mạng không ổn định)."
@@ -286,5 +317,6 @@ else
     ERROR_DISPLAY="❌ Lỗi dịch thuật:
 
 $ERROR_MSG"
-    rofi -dmenu -mesg "$ERROR_DISPLAY"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
+    DISPLAY_TEXT=$(format_display_text "$ERROR_DISPLAY")
+    rofi -dmenu -mesg "$DISPLAY_TEXT"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
 fi

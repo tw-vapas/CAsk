@@ -69,18 +69,16 @@ Tài liệu này lưu trữ toàn bộ kiến trúc, cơ chế bảo mật, nguy
 
 ---
 
-### 📌 Vấn đề 3: Lỗi chiều cao Response Box không co giãn theo chữ (cắt cụt dòng cuối) và đệm góc không đều
+### 📌 Vấn đề 3: Lỗi Response Box không co giãn theo chữ (text bị đẩy lên góc top/left, cắt cụt nội dung)
 - **Hiện tượng lỗi:**
-  - Khi nội dung dịch dài (>12 dòng), dòng cuối cùng luôn bị cắt ngang nửa chữ hoặc biến mất.
-  - Văn bản bị dồn sát vào góc bo bên trái, trong khi bên phải thừa một khoảng đen trống trải rất lớn.
-- **Nguyên nhân kỹ thuật:**
-  1. *Lệch lề phải:* Chiều rộng `mainbox` đặt quá rộng (`850px`), trong khi văn bản căn trái và các câu dịch thông thường chỉ rộng 450-550px.
-  2. *Cắt cụt chữ dòng cuối:* Pango Layout Engine trong Rofi khi đo kích thước bounding box của văn bản nhiều dòng (`pango_layout_get_pixel_size`) không tính đủ phần *descent* của font glyphs (các chữ có đuôi như `g, y, p, q`). Rofi cắt clip bề mặt ngay tại baseline của dòng cuối cùng.
-  3. *Lồng ghép padding:* Khai báo padding phân tán ở cả `mainbox` và `textbox` làm sai lệch chiều cao thực tế được cấp phát.
+  - Khi nội dung dịch dài hoặc có các câu dài, response text bị đẩy trồi lên góc trên và chạm sát mép trái, đồng thời các dòng phía dưới bị cắt cụt thay vì hộp thoại mở rộng tự nhiên theo chiều dài văn bản.
+- **Nguyên nhân kỹ thuật cốt lõi:**
+  1. *Lỗi tính toán kích thước trong Rofi C layout (`box.c` & `textbox.c`):* Khi `window` đặt `fullscreen: true`, hàm `box_get_desired_height` trong mã nguồn C của Rofi truyền chiều rộng toàn màn hình (`nw = width - padding`, xấp xỉ 1856px) xuống các widget con mà không xét thuộc tính `width: 760px` của `mainbox`. Hàm `textbox_get_desired_height` dùng Pango để wrap thử ở chiều rộng 1856px. Vì thế, một đoạn văn dài 200 ký tự chỉ được tính chiều cao tương đương 1 dòng, nhưng khi vẽ ra thực tế ở chiều rộng 760px thì nó chiếm tới 3-4 dòng! Do đó, `mainbox` chỉ được cấp phát một chiều cao rất thấp.
+  2. *Lỗi căn giữa mặc định (`vertical-align: 0.5`):* Khi khối văn bản thực tế cao gấp đôi hay gấp ba chiều cao được cấp phát, `textbox` mặc định căn giữa nội dung theo chiều dọc. Kết quả là nửa trên văn bản bị đẩy vọt lên trên viền card (chạm mép trên/trái của màn hình) và nửa dưới bị cắt cụt hoàn toàn.
 - **Giải pháp triệt để:**
-  - Cân bằng chiều rộng về kích thước vàng: `width: 760px;`, bo góc `border-radius: 20px;`.
-  - Gom toàn bộ padding về một cấp duy nhất: `mainbox { padding: 24px 32px; }`, đồng thời đặt `message, textbox { padding: 0px; margin: 0px; }`.
-  - **Kỹ thuật Newline Buffer:** Tự động nối ký tự xuống dòng đệm `\n` vào cuối nội dung hiển thị (`"$TRANSLATION"$'\n'`). Ký tự này mở rộng bounding box của Pango, đảm bảo dòng cuối cùng và toàn bộ các ký tự có đuôi hiển thị trọn vẹn 100% từ 3 dòng đến hơn 25 dòng.
+  - **Khóa căn đỉnh:** Đặt `textbox { vertical-align: 0.0; }` để văn bản luôn bắt đầu từ đỉnh lề trên, loại bỏ hoàn toàn việc trồi ngược lên góc trên.
+  - **Hàm Soft-wrap tự động (`format_display_text`):* Tự động ngắt các dòng dài ở mức ~68 ký tự kèm thụt lề thông minh (`subsequent_indent`) cho các bullet `•`. Việc chuyển các dòng wrap thành ký tự xuống dòng `\n` thực tế giúp hàm `pango_layout_get_line_count` của Rofi nhận biết chính xác 100% số dòng hiển thị, từ đó cấp phát chiều cao mở rộng vừa khít cho toàn bộ nội dung từ 3 dòng đến hơn 30 dòng.
+  - **Bảo toàn Clipboard:** Hàm ngắt dòng chỉ áp dụng cho hiển thị trên giao diện; chuỗi nguyên bản (không bị ngắt dòng nhân tạo) vẫn được gửi trọn vẹn vào clipboard (`wl-copy`/`xclip`).
 
 ---
 
