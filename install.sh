@@ -1,23 +1,25 @@
 #!/bin/bash
 
 # ==============================================================================
-# Installer for Rofi AI Translator
+# Installer for Ctrans (Convenient Translation)
 # ==============================================================================
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN_TARGET="$HOME/.local/bin/rofi-translate"
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rofi-translate"
+BIN_TARGET="$HOME/.local/bin/ctrans"
+BIN_TARGET_ALIAS="$HOME/.local/bin/Ctrans"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ctrans"
 CONFIG_FILE="$CONFIG_DIR/config.env"
+PROMPT_TARGET="$CONFIG_DIR/prompt.txt"
 DESKTOP_DIR="$HOME/.local/share/applications"
-DESKTOP_FILE="$DESKTOP_DIR/rofi-translate.desktop"
+DESKTOP_FILE="$DESKTOP_DIR/ctrans.desktop"
 
-echo "✨ Installing Rofi AI Translator..."
+echo "✨ Installing Ctrans (Convenient Translation)..."
 
 # 1. Check dependencies
 echo "🔍 Checking dependencies..."
-for cmd in rofi curl jq wl-copy; do
+for cmd in rofi curl jq; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
         echo "⚠️ Warning: '$cmd' is not installed. Please install it using your package manager (e.g. sudo dnf install $cmd)"
     else
@@ -25,9 +27,10 @@ for cmd in rofi curl jq wl-copy; do
     fi
 done
 
-# 2. Setup configuration directory and file
+# 2. Setup configuration directory and files
 echo "📁 Setting up configuration..."
 mkdir -p "$CONFIG_DIR"
+
 if [ ! -f "$CONFIG_FILE" ]; then
     cp "$SCRIPT_DIR/.env.example" "$CONFIG_FILE"
     chmod 600 "$CONFIG_FILE"
@@ -37,18 +40,27 @@ else
     echo "  ✓ Existing configuration found at $CONFIG_FILE"
 fi
 
-# 3. Create symlink in ~/.local/bin
-mkdir -p "$HOME/.local/bin"
-chmod +x "$SCRIPT_DIR/rofi_translate.sh"
-ln -sf "$SCRIPT_DIR/rofi_translate.sh" "$BIN_TARGET"
-echo "  ✓ Linked binary to $BIN_TARGET"
+if [ ! -f "$PROMPT_TARGET" ]; then
+    cp "$SCRIPT_DIR/prompt.txt" "$PROMPT_TARGET"
+    echo "  ✓ Created customizable prompt at $PROMPT_TARGET"
+else
+    echo "  ✓ Existing prompt found at $PROMPT_TARGET"
+fi
 
-# 4. Create Desktop Entry for shortcut binding
+# 3. Create symlinks in ~/.local/bin
+mkdir -p "$HOME/.local/bin"
+chmod +x "$SCRIPT_DIR/Ctrans.sh"
+ln -sf "$SCRIPT_DIR/Ctrans.sh" "$BIN_TARGET"
+ln -sf "$SCRIPT_DIR/Ctrans.sh" "$BIN_TARGET_ALIAS"
+echo "  ✓ Linked binaries: $BIN_TARGET and $BIN_TARGET_ALIAS"
+
+# 4. Create Desktop Entry for global shortcut binding
 mkdir -p "$DESKTOP_DIR"
 cat << EOF > "$DESKTOP_FILE"
 [Desktop Entry]
-Name=Rofi AI Translate
-Comment=Quick AI Translator with Rofi and Gemini
+Name=Ctrans
+GenericName=Convenient Translation
+Comment=Quick AI Translator with Rofi and Groq/Gemini Hybrid
 Exec=$BIN_TARGET
 Icon=accessories-dictionary
 Terminal=false
@@ -59,7 +71,7 @@ EOF
 chmod +x "$DESKTOP_FILE"
 echo "  ✓ Created desktop entry at $DESKTOP_FILE"
 
-# 5. Optional KWin fade effect
+# 5. Optional KWin fade effect for KDE Plasma
 if command -v kwriteconfig6 >/dev/null 2>&1 && [ "$XDG_CURRENT_DESKTOP" = "KDE" ]; then
     echo "🎨 Configuring KDE KWin window effects (Fade instead of Scale)..."
     kwriteconfig6 --file kwinrc --group Plugins --key scaleEnabled false 2>/dev/null || true
@@ -73,4 +85,4 @@ fi
 
 echo ""
 echo "🎉 Installation complete!"
-echo "You can now run 'rofi-translate' from your terminal or bind it to a keyboard shortcut."
+echo "You can now run 'ctrans' (or 'Ctrans') from terminal or bind it to a keyboard shortcut."

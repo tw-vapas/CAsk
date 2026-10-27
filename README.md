@@ -1,4 +1,4 @@
-# 🌐 Rofi AI Translator
+# 🌐 Ctrans (Convenient Translation)
 
 [![Linux](https://img.shields.io/badge/OS-Linux%20%2F%20Wayland-blue?logo=linux&logoColor=white)](#)
 [![Rofi](https://img.shields.io/badge/UI-Rofi%202.0-purple)](#)
@@ -6,21 +6,21 @@
 [![Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-orange?logo=google&logoColor=white)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A minimalist, ultra-fast, and aesthetic **Glassmorphism Quick Translator** built with **Rofi** and powered by **Groq Cloud API** (`llama-3.3-70b-versatile`) with seamless fallback to **Google Gemini API** (`gemini-3.5-flash-lite`).
+A minimalist, ultra-fast, and aesthetic **Glassmorphism Quick Translator** built on top of **Rofi** and powered by **Groq Cloud API** (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) with seamless fallback to **Google Gemini API** (`gemini-3.5-flash-lite`).
 
-Specially engineered for **Wayland compositors** (KDE Plasma, Hyprland, Sway) with native-like click-to-dismiss behavior, smooth fade transitions, and auto-clipboard integration.
+Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway) with native layer-shell exclusive keyboard focus, click-outside-to-dismiss behavior, and decoupled prompt customization.
 
 ---
 
 ## ✨ Features
 
-- ⚡ **Ultra-Fast Translation:** Powered by **Groq Cloud API** (`llama-3.3-70b-versatile`) with sub-second response (~0.6s), with automatic fallback to **Google Gemini API** (`gemini-3.5-flash-lite`).
-- 🎨 **Minimal Glassmorphism UI:** Translucent frosted dark background with crisp typography (`Inter`).
-- 🔄 **Seamless Continuity:** Transition between the search bar and the loading indicator without awkward resizing or layout shifting.
-- 📐 **Fit-to-Content Layout:** The translation box dynamically wraps its height to fit the text content perfectly with zero dead space.
-- 🖱️ **Wayland Click-to-Dismiss:** Overcomes Wayland's security isolation by using a full-surface interactive backdrop—clicking outside immediately closes the window.
-- 📋 **Auto Clipboard Sync:** The translated result is automatically placed into your system clipboard via `wl-copy`.
-- 🪟 **Smooth Fade Transitions:** Configured to eliminate jarring shrink/scale window animations on KDE Plasma.
+- ⚡ **Ultra-Fast Hybrid Backend:** Primary requests via **Groq Cloud API** (~0.6s sub-second response) with automatic failover to **Google Gemini API**.
+- 🎨 **Minimal Glassmorphism UI:** Translucent frosted dark background (`rgba(28, 28, 30, 0.95)`) with crisp typography (`Inter Display`).
+- 🔄 **Seamless Continuity:** Transition between the search bar and the loading state (`Analyzing...`) at the exact same coordinates without jarring layout shifting.
+- 📐 **Dynamic Fit-to-Content:** Intelligent soft-wrapping with auto-expansion for translation cards from 3 lines to 30+ lines with zero clipping.
+- 📝 **Decoupled System Prompt:** System prompts live in a dedicated `prompt.txt` file—customize your translation formats and rules without touching a single line of script code!
+- ✂️ **Smart Input Limiter:** Enforces a clean 500-character limit, automatically truncating overlength pasted text to prevent API payload overflow.
+- 🖱️ **Wayland Click-to-Dismiss:** Fullscreen backdrop on response mode allowing you to dismiss the card with <kbd>Enter</kbd>, <kbd>Esc</kbd>, or by **clicking anywhere outside the card**.
 
 ---
 
@@ -31,13 +31,12 @@ Ensure the following packages are installed on your Linux system:
 | Dependency | Package Name (Fedora) | Package Name (Arch / Ubuntu) | Purpose |
 |------------|----------------------|------------------------------|---------|
 | `rofi` | `rofi` | `rofi` / `rofi-wayland` | UI modal rendering |
-| `curl` | `curl` | `curl` | API requests |
-| `jq` | `jq` | `jq` | JSON parsing |
-| `wl-copy` | `wl-clipboard` | `wl-clipboard` | Wayland clipboard integration |
+| `curl` | `curl` | `curl` | Fast IPv4 API requests |
+| `jq` | `jq` | `jq` | JSON payload serialization |
 
 On Fedora:
 ```bash
-sudo dnf install rofi curl jq wl-clipboard
+sudo dnf install rofi curl jq
 ```
 
 ---
@@ -46,8 +45,8 @@ sudo dnf install rofi curl jq wl-clipboard
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/rofi-translate.git ~/.local/bin/rofi_translate
-cd ~/.local/bin/rofi_translate
+git clone https://github.com/your-username/rofi_translate.git ~/.local/bin/ctrans_project
+cd ~/.local/bin/ctrans_project
 ```
 
 ### 2. Run the Installer
@@ -55,57 +54,80 @@ cd ~/.local/bin/rofi_translate
 chmod +x install.sh
 ./install.sh
 ```
+This script will:
+- Check all dependencies.
+- Create configuration folder at `~/.config/ctrans/`.
+- Copy template configuration (`config.env`) and default system prompt (`prompt.txt`).
+- Symlink the executable to `~/.local/bin/ctrans` and `~/.local/bin/Ctrans`.
+- Register a desktop entry `ctrans.desktop` for system-wide shortcut binding.
 
 ### 3. Add your API Keys
 Get your API keys:
 - **Groq API Key (Recommended for ~0.6s speed):** Free at [console.groq.com](https://console.groq.com/keys)
 - **Gemini API Key (Fallback):** Free at [Google AI Studio](https://aistudio.google.com/)
 
-Edit your configuration file:
+Edit your configuration:
 ```bash
-nano ~/.config/rofi-translate/config.env
+nano ~/.config/ctrans/config.env
 ```
 Paste your keys:
 ```bash
-# Groq API Key (Siêu tốc ~0.6s)
+# Groq API Key (Fast ~0.6s)
 GROQ_API_KEY="your_groq_api_key_here"
-GROQ_MODEL="llama-3.3-70b-versatile"
+GROQ_MODEL="openai/gpt-oss-120b"
 
-# Gemini API Key (Fallback dự phòng)
+# Gemini API Key (Fallback)
 GEMINI_API_KEY="your_gemini_api_key_here"
 GEMINI_MODEL="gemini-3.5-flash-lite"
 ```
 
-### 4. Run Rofi Translate
-Run it directly from terminal:
+### 4. Run Ctrans
+Run it directly from your terminal:
 ```bash
-rofi-translate
+ctrans
 ```
-Or bind `rofi-translate` (or `~/.local/bin/rofi-translate`) to a global shortcut in your Desktop Environment (e.g. `Meta + T` or `Ctrl + Alt + T`).
+Or bind `ctrans` (or `~/.local/bin/ctrans`) to a global shortcut in your Desktop Environment settings (e.g. `Meta + T` or `Ctrl + Alt + T`).
+
+---
+
+## 📝 Customizing the System Prompt
+
+You can customize how the AI translates without touching the source code:
+
+1. Open the prompt file:
+   ```bash
+   nano ~/.config/ctrans/prompt.txt
+   ```
+2. Modify the rules, language directions, or format presets (e.g., adding slang definitions, formal vs casual tone, or specialized jargon).
+3. Save the file. Ctrans will immediately load your custom prompt on the next execution!
 
 ---
 
 ## 🎮 Workflow & Shortcuts
 
-1. **Open Search Bar:** Type the word or phrase to translate (English ↔ Vietnamese) and hit <kbd>Enter</kbd>.
-2. **Loading State:** A seamless indicator displays `✨ AI đang phân tích và dịch...`.
-3. **Result Dialog:** Displays the main translation, key vocabulary notes, and contextual examples.
+1. **Open Search Bar:** Type or paste (<kbd>Ctrl</kbd> + <kbd>V</kbd>) the word or sentence to translate and hit <kbd>Enter</kbd>.
+2. **Loading State:** `Analyzing...` appears seamlessly in place of the input bar.
+3. **Result Dialog:** Displays the formatted translation card, evaluation, and keyword notes.
 4. **Closing the Dialog:**
    - Press <kbd>Enter</kbd>
    - Press <kbd>Esc</kbd>
    - **Click anywhere outside the card** on the dimmed screen backdrop.
 
-The translated text is automatically copied to your clipboard so you can immediately paste (<kbd>Ctrl</kbd> + <kbd>V</kbd>) it into any application.
-
 ---
 
-## ⚙️ Configuration & Customization
+## 📁 Project Structure
 
-All settings can be customized in `~/.config/rofi-translate/config.env` or directly in `rofi_translate.sh`:
-
-- **Model selection:** Change `GEMINI_MODEL="gemini-3.5-flash-lite"` to any other available model (e.g., `gemini-3.8-flash`).
-- **Translation prompt:** Customize `SYSTEM_PROMPT` inside `rofi_translate.sh` to adjust target languages, tone, or formatting.
-- **Font & Sizing:** Change the font (`Inter`, `JetBrains Mono`, etc.) inside the `.rasi` themes in `rofi_translate.sh`.
+```
+rofi_translate/ (Ctrans)
+├── .env.example         # Template configuration (Groq + Gemini)
+├── .gitignore           # Excludes sensitive keys, logs, and context.md
+├── prompt.txt           # Default decoupled AI System Prompt
+├── Ctrans.sh            # Main execution script
+├── install.sh           # Automated installer & desktop integration
+├── LICENSE              # MIT Open Source License
+├── README.md            # User guide and documentation
+└── context.md           # Internal architectural decisions (gitignored)
+```
 
 ---
 

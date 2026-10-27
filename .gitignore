@@ -16,3 +16,6 @@ config.env
 .DS_Store
 *.log
 scratch/
+
+# Internal documentation / Knowledge base
+context.md

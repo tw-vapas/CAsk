@@ -1,21 +1,24 @@
 #!/bin/bash
 
 # ==============================================================================
-# ROFI AI TRANSLATOR (Wayland / Fedora / KDE Compatible)
-# Glassmorphism Quick Translator powered by Google Gemini API
+# CTRANS - Convenient Translation (Wayland / Fedora / KDE Compatible)
+# Glassmorphism Quick Translator powered by Groq Cloud & Google Gemini Hybrid
 # ==============================================================================
 
 set -o pipefail
 
-# Thư mục và file cấu hình
+# Config directory and file
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rofi-translate"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ctrans"
+if [ ! -d "$CONFIG_DIR" ] && [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/rofi-translate" ]; then
+    CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rofi-translate"
+fi
 CONFIG_FILE="$CONFIG_DIR/config.env"
 
-# Tải cấu hình theo thứ tự ưu tiên:
-# 1. ~/.config/rofi-translate/config.env
-# 2. config.env nằm cùng thư mục script
-# 3. .env nằm cùng thư mục script
+# Configuration load order:
+# 1. ~/.config/ctrans/config.env (or ~/.config/rofi-translate/config.env)
+# 2. config.env in script directory
+# 3. .env in script directory
 if [ -f "$CONFIG_FILE" ]; then
     # shellcheck source=/dev/null
     source "$CONFIG_FILE"
@@ -27,17 +30,23 @@ elif [ -f "$SCRIPT_DIR/.env" ]; then
     source "$SCRIPT_DIR/.env"
 fi
 
-# Cấu hình API - Cách B: Ưu tiên Groq siêu tốc, fallback qua Gemini
+# Decoupled system prompt file
+PROMPT_FILE="$CONFIG_DIR/prompt.txt"
+if [ ! -f "$PROMPT_FILE" ]; then
+    PROMPT_FILE="$SCRIPT_DIR/prompt.txt"
+fi
+
+# API configuration: Groq primary, Gemini fallback
 GROQ_API_KEY="${GROQ_API_KEY:-}"
 GROQ_MODEL="${GROQ_MODEL:-openai/gpt-oss-120b}"
 GEMINI_API_KEY="${GEMINI_API_KEY:-}"
 GEMINI_MODEL="${GEMINI_MODEL:-gemini-3.5-flash-lite}"
 
 # ==============================================================================
-# GIAO DIỆN THEME GLASSMORPHISM (Centering & Fit-to-content)
+# GLASSMORPHISM THEMES (Center & Fit-to-content)
 # ==============================================================================
 
-# 1. Theme cho ô nhập liệu (Input) - Cửa sổ nổi 600px căn giữa, không che nền phía sau
+# 1. Input theme: 600px floating window, non-blocking
 THEME_INPUT="
   * { background-color: transparent; text-color: #ffffff; font: \"Inter Display 14\"; }
   window {
@@ -72,7 +81,7 @@ THEME_INPUT="
   }
 "
 
-# 2. Theme cho hộp thoại Loading - Đồng nhất 100% kích thước & vị trí với Input bar, không che nền
+# 2. Loading theme: Matches input bar geometry, non-blocking
 THEME_LOADING="
   * { background-color: transparent; text-color: #ffffff; font: \"Inter Display 14\"; }
   window {
@@ -107,7 +116,7 @@ THEME_LOADING="
   }
 "
 
-# 3. Theme cho bảng kết quả (Result) - Fullscreen backdrop mờ, click ngoài để đóng, auto-fit chiều cao
+# 3. Result theme: Fullscreen backdrop, click-outside to dismiss, auto-fit height
 THEME_RESULT="
   * { background-color: transparent; text-color: #ffffff; font: \"Inter 13\"; }
   window {
@@ -143,9 +152,7 @@ THEME_RESULT="
   }
 "
 
-# Hàm định dạng ngắt dòng tự động (Soft-wrap với Newline buffer)
-# Giúp Rofi tính toán chính xác 100% chiều cao của hộp thoại kết quả,
-# khắc phục triệt để lỗi text bị dồn lên góc trên/trái và tràn ra ngoài card.
+# Auto soft-wrap formatter to ensure accurate Rofi height calculation
 format_display_text() {
     local text="$1"
     if command -v python3 >/dev/null 2>&1; then
@@ -161,18 +168,17 @@ for line in text.splitlines():
     prefix = line[:indent_len]
     stripped = line[indent_len:]
     sub_indent = prefix + ('  ' if stripped.startswith('•') else '')
-    lines.extend(textwrap.wrap(line, width=68, subsequent_indent=sub_indent))
+    lines.extend(textwrap.wrap(line, width=78, subsequent_indent=sub_indent))
 print('\n'.join(lines))
 " <<< "$text"
     elif command -v fold >/dev/null 2>&1; then
-        echo "$text" | fold -s -w 68
+        echo "$text" | fold -s -w 78
     else
         echo "$text"
     fi
 }
 
-# Cờ hỗ trợ xử lý chuột trên Wayland:
-# - Click vào vùng nền mờ bên ngoài card -> kb-cancel (thoát)
+# Wayland mouse flags: click backdrop outside card to cancel/close
 ROFI_MOUSE_FLAGS=(
   -hover-select
   -me-select-entry ''
@@ -180,71 +186,52 @@ ROFI_MOUSE_FLAGS=(
   -kb-cancel 'Escape,MousePrimary'
 )
 
-# Đảm bảo dọn dẹp tiến trình Loading khi script thoát đột ngột
+# Clean up loading process on exit
 trap 'kill $LOADING_PID 2>/dev/null; exit 0' INT TERM EXIT
 
 # ==============================================================================
-# KIỂM TRA CẤU HÌNH API KEY
+# API KEY VALIDATION
 # ==============================================================================
 if [ -z "$GROQ_API_KEY" ] && [ -z "$GEMINI_API_KEY" ]; then
-    NO_KEY_MSG="⚠️ Chưa cấu hình API Key!
+    NO_KEY_MSG="⚠️ API Key not configured!
 
-Vui lòng cấu hình GROQ_API_KEY hoặc GEMINI_API_KEY vào:
+Please configure GROQ_API_KEY or GEMINI_API_KEY in:
 $CONFIG_FILE
-(Tham khảo mẫu cấu hình tại .env.example)"
+(See .env.example for template)"
     DISPLAY_TEXT=$(format_display_text "$NO_KEY_MSG")
     rofi -dmenu -mesg "$DISPLAY_TEXT"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
     exit 1
 fi
 
 # ==============================================================================
-# BƯỚC 1: LẤY INPUT TỪ NGƯỜI DÙNG (CỬA SỔ NỔI, TƯƠNG TÁC ĐƯỢC VỚI NỀN)
+# STEP 1: USER INPUT
 # ==============================================================================
 INPUT=$(rofi -dmenu -theme-str "$THEME_INPUT" -kb-cancel 'Escape')
 if [ -z "$INPUT" ]; then exit 0; fi
 
+# Limit input to 500 characters
+INPUT="${INPUT:0:500}"
+
 # ==============================================================================
-# BƯỚC 2: HIỂN THỊ LOADING BOX (CỬA SỔ NỔI, TƯƠNG TÁC ĐƯỢC VỚI NỀN)
+# STEP 2: LOADING INDICATOR
 # ==============================================================================
 rofi -dmenu -p "Analyzing..." -theme-str "$THEME_LOADING" </dev/null &
 LOADING_PID=$!
 
 # ==============================================================================
-# BƯỚC 3: GỌI API (CÁCH B: ƯU TIÊN GROQ ~0.6S -> FALLBACK GEMINI DỰ PHÒNG)
+# STEP 3: API REQUEST (Groq Primary -> Gemini Fallback)
 # ==============================================================================
-SYSTEM_PROMPT='Bạn là một biên dịch viên thông thạo.
-Nếu input là en thì dịch qua vi, nếu input là vi thì dịch qua en
-
-Hãy trình bày theo đúng định dạng sau, bản dịch phải hợp lý và dễ hiểu
-
-Nếu là en to vi thì áp dụng format A với B
-Nếu là vi to en thì áp dụng format C với D
-
-Format A (Input là từ/cụm từ):
-"• Input: {Từ gốc en} - {Phiên âm IPA}
-• Meaning: {Nghĩa en}
-• Translation: {Bản dịch vi}"
-
-Format B (Input là câu):
-"• Input: {Câu gốc en}
-• Evaluation: {Đánh giá độ chính xác về ngữ pháp và ngữ nghĩa của câu}
-• Translation: {Bản dịch vi}
-• Keywords:
-{tab}• {từ vựng en}: {bản dịch từ vựng vi}"
-
-Formar C (Input là từ/cụm từ):
-"• Từ gốc: {Từ gốc vi}
-• Tiếng Anh: 
-{tab}• {Các từ tương ứng trong tiếng Anh}: {Bản dịch vi}"
-
-Format D (Input là câu)
-"• Câu gốc: {Câu gốc vi}
-• Bản dịch: {Bản dịch en}"'
+# Load system prompt from file
+if [ -f "$PROMPT_FILE" ]; then
+    SYSTEM_PROMPT=$(cat "$PROMPT_FILE")
+else
+    SYSTEM_PROMPT="You are a fluent translator. If the input is English, translate to Vietnamese; if Vietnamese, translate to English."
+fi
 
 TRANSLATION=""
 ERROR_MSG=""
 
-# 3.1. Ưu tiên 1: Groq API (Tốc độ cực nhanh ~0.5s - 0.8s)
+# 3.1. Primary: Groq API (~0.5s - 0.8s)
 if [ -n "$GROQ_API_KEY" ]; then
     GROQ_PAYLOAD=$(jq -n \
       --arg model "$GROQ_MODEL" \
@@ -254,7 +241,7 @@ if [ -n "$GROQ_API_KEY" ]; then
         model: $model,
         messages: [
           {role: "system", content: $sys},
-          {role: "user", content: ("Nội dung cần dịch: " + $input)}
+          {role: "user", content: ("Translate: " + $input)}
         ],
         temperature: 0.2,
         max_tokens: 1000
@@ -271,12 +258,12 @@ if [ -n "$GROQ_API_KEY" ]; then
     fi
 fi
 
-# 3.2. Ưu tiên 2: Fallback sang Google Gemini API nếu Groq thất bại hoặc chưa cấu hình
+# 3.2. Fallback: Google Gemini API
 if [ -z "$TRANSLATION" ] && [ -n "$GEMINI_API_KEY" ]; then
     GEMINI_PAYLOAD=$(jq -n \
       --arg prompt "$SYSTEM_PROMPT" \
       --arg input "$INPUT" \
-      '{contents: [{parts: [{text: ($prompt + "\n\nNội dung cần dịch: " + $input)}]}]}')
+      '{contents: [{parts: [{text: ($prompt + "\n\nTranslate: " + $input)}]}]}')
 
     GEMINI_RESPONSE=$(curl -4 -s --connect-timeout 8 --max-time 45 -X POST "https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=$GEMINI_API_KEY" \
       -H 'Content-Type: application/json' \
@@ -291,30 +278,23 @@ if [ -z "$TRANSLATION" ] && [ -n "$GEMINI_API_KEY" ]; then
     fi
 fi
 
-# Tắt cửa sổ Loading ngay khi hoàn tất
+# Stop loading indicator
 kill $LOADING_PID 2>/dev/null
 wait $LOADING_PID 2>/dev/null
 
 # ==============================================================================
-# BƯỚC 4: HIỂN THỊ KẾT QUẢ (FIT VỚI NỘI DUNG, ENTER / ESC / CLICK OUT ĐỂ ĐÓNG)
+# STEP 4: DISPLAY RESULT
 # ==============================================================================
 if [ -n "$TRANSLATION" ]; then
-    # Tự động sao chép kết quả vào clipboard trong nền (giữ nguyên văn bản gốc sạch)
-    if command -v wl-copy >/dev/null 2>&1; then
-        echo -n "$TRANSLATION" | wl-copy &
-    elif command -v xclip >/dev/null 2>&1; then
-        echo -n "$TRANSLATION" | xclip -selection clipboard &
-    fi
-
-    # Định dạng ngắt dòng hiển thị để Rofi tính chuẩn 100% bounding box
+    # Format soft-wrap for accurate Rofi height calculation
     DISPLAY_TEXT=$(format_display_text "$TRANSLATION")
     rofi -dmenu -mesg "$DISPLAY_TEXT"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
 else
     if [ -z "$ERROR_MSG" ]; then
-        ERROR_MSG="Không nhận được phản hồi từ AI API (kết nối timeout hoặc mạng không ổn định)."
+        ERROR_MSG="No response received from AI API (timeout or unstable network)."
     fi
 
-    ERROR_DISPLAY="❌ Lỗi dịch thuật:
+    ERROR_DISPLAY="❌ Translation Error:
 
 $ERROR_MSG"
     DISPLAY_TEXT=$(format_display_text "$ERROR_DISPLAY")
