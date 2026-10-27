@@ -17,5 +17,7 @@ config.env
 *.log
 scratch/
 
-# Internal documentation / Knowledge base
+# Internal documentation / Knowledge base / Agent instructions
 context.md
+AGENTS.md
+agent.md
