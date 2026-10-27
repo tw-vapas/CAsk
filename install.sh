@@ -11,7 +11,7 @@ BIN_TARGET="$HOME/.local/bin/ctrans"
 BIN_TARGET_ALIAS="$HOME/.local/bin/Ctrans"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ctrans"
 CONFIG_FILE="$CONFIG_DIR/config.env"
-PROMPT_TARGET="$CONFIG_DIR/prompt.txt"
+PROMPT_TARGET="$CONFIG_DIR/prompt.md"
 DESKTOP_DIR="$HOME/.local/share/applications"
 DESKTOP_FILE="$DESKTOP_DIR/ctrans.desktop"
 
@@ -40,11 +40,12 @@ else
     echo "  ✓ Existing configuration found at $CONFIG_FILE"
 fi
 
-if [ ! -f "$PROMPT_TARGET" ]; then
-    cp "$SCRIPT_DIR/prompt.txt" "$PROMPT_TARGET"
-    echo "  ✓ Created customizable prompt at $PROMPT_TARGET"
-else
-    echo "  ✓ Existing prompt found at $PROMPT_TARGET"
+if [ -f "$SCRIPT_DIR/prompt.md" ]; then
+    ln -sf "$SCRIPT_DIR/prompt.md" "$PROMPT_TARGET"
+    echo "  ✓ Linked customizable prompt at $PROMPT_TARGET"
+elif [ -f "$SCRIPT_DIR/prompt.txt" ]; then
+    ln -sf "$SCRIPT_DIR/prompt.txt" "$PROMPT_TARGET"
+    echo "  ✓ Linked customizable prompt at $PROMPT_TARGET"
 fi
 
 # 3. Create symlinks in ~/.local/bin

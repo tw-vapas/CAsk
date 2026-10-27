@@ -31,9 +31,22 @@ elif [ -f "$SCRIPT_DIR/.env" ]; then
 fi
 
 # Decoupled system prompt file
-PROMPT_FILE="$CONFIG_DIR/prompt.txt"
-if [ ! -f "$PROMPT_FILE" ]; then
-    PROMPT_FILE="$SCRIPT_DIR/prompt.txt"
+# Custom prompt file path can be defined via PROMPT_FILE in config.env.
+# Priority:
+# 1. $PROMPT_FILE (if already defined in config)
+# 2. prompt.md in script directory (local repository development)
+# 3. prompt.md in config directory
+# 4. prompt.txt fallback (backwards compatibility)
+if [ -z "$PROMPT_FILE" ] || [ ! -f "$PROMPT_FILE" ]; then
+    if [ -f "$SCRIPT_DIR/prompt.md" ]; then
+        PROMPT_FILE="$SCRIPT_DIR/prompt.md"
+    elif [ -f "$CONFIG_DIR/prompt.md" ]; then
+        PROMPT_FILE="$CONFIG_DIR/prompt.md"
+    elif [ -f "$SCRIPT_DIR/prompt.txt" ]; then
+        PROMPT_FILE="$SCRIPT_DIR/prompt.txt"
+    elif [ -f "$CONFIG_DIR/prompt.txt" ]; then
+        PROMPT_FILE="$CONFIG_DIR/prompt.txt"
+    fi
 fi
 
 # API configuration: Groq primary, Gemini fallback

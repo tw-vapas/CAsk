@@ -18,7 +18,7 @@ Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway) 
 - 🎨 **Minimal Glassmorphism UI:** Translucent frosted dark background (`rgba(28, 28, 30, 0.95)`) with crisp typography (`Inter Display`).
 - 🔄 **Seamless Continuity:** Transition between the search bar and the loading state (`Analyzing...`) at the exact same coordinates without jarring layout shifting.
 - 📐 **Dynamic Fit-to-Content:** Intelligent soft-wrapping with auto-expansion for translation cards from 3 lines to 30+ lines with zero clipping.
-- 📝 **Decoupled System Prompt:** System prompts live in a dedicated `prompt.txt` file—customize your translation formats and rules without touching a single line of script code!
+- 📝 **Decoupled System Prompt:** System prompts live in a dedicated `prompt.md` file—customize your translation formats and rules without touching a single line of script code!
 - ✂️ **Smart Input Limiter:** Enforces a clean 500-character limit, automatically truncating overlength pasted text to prevent API payload overflow.
 - 🖱️ **Wayland Click-to-Dismiss:** Fullscreen backdrop on response mode allowing you to dismiss the card with <kbd>Enter</kbd>, <kbd>Esc</kbd>, or by **clicking anywhere outside the card**.
 
@@ -57,7 +57,7 @@ chmod +x install.sh
 This script will:
 - Check all dependencies.
 - Create configuration folder at `~/.config/ctrans/`.
-- Copy template configuration (`config.env`) and default system prompt (`prompt.txt`).
+- Copy template configuration (`config.env`) and link default system prompt (`prompt.md`).
 - Symlink the executable to `~/.local/bin/ctrans` and `~/.local/bin/Ctrans`.
 - Register a desktop entry `ctrans.desktop` for system-wide shortcut binding.
 
@@ -96,7 +96,7 @@ You can customize how the AI translates without touching the source code:
 
 1. Open the prompt file:
    ```bash
-   nano ~/.config/ctrans/prompt.txt
+   nano ~/.config/ctrans/prompt.md
    ```
 2. Modify the rules, language directions, or format presets (e.g., adding slang definitions, formal vs casual tone, or specialized jargon).
 3. Save the file. Ctrans will immediately load your custom prompt on the next execution!
@@ -121,7 +121,7 @@ You can customize how the AI translates without touching the source code:
 rofi_translate/ (Ctrans)
 ├── .env.example         # Template configuration (Groq + Gemini)
 ├── .gitignore           # Excludes sensitive keys, logs, and context.md
-├── prompt.txt           # Default decoupled AI System Prompt
+├── prompt.md            # Default decoupled AI System Prompt
 ├── Ctrans.sh            # Main execution script
 ├── install.sh           # Automated installer & desktop integration
 ├── LICENSE              # MIT Open Source License
