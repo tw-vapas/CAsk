@@ -187,7 +187,7 @@ Nếu input là en thì dịch qua vi, nếu input là vi thì dịch qua en
 
 Hãy trình bày theo đúng định dạng sau, bản dịch phải hợp lý và dễ hiểu
 
-Nếu là en to vithì áp dụng format A với B
+Nếu là en to vi thì áp dụng format A với B
 Nếu là vi to en thì áp dụng format C với D
 
 Format A (Input là từ/cụm từ):
@@ -197,6 +197,7 @@ Format A (Input là từ/cụm từ):
 
 Format B (Input là câu):
 "• Input: {Câu gốc en}
+• Evaluation: {Đánh giá độ chính xác về ngữ pháp và ngữ nghĩa của câu}
 • Translation: {Bản dịch vi}
 • Keywords:
 {tab}• {từ vựng en}: {bản dịch từ vựng vi}"
