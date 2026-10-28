@@ -1,44 +1,47 @@
 # 🌐 Ctrans (Convenient Translation & Quick AI Assistant)
 
 [![Linux](https://img.shields.io/badge/OS-Linux%20%2F%20Wayland-blue?logo=linux&logoColor=white)](#)
-[![Rofi](https://img.shields.io/badge/UI-Rofi%202.0-purple)](#)
+[![Qt6](https://img.shields.io/badge/UI-PyQt6%20%2F%20Qt6-41cd52?logo=qt&logoColor=white)](#)
 [![Groq](https://img.shields.io/badge/AI-Groq%20Cloud-f55036?logo=groq&logoColor=white)](#)
 [![Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-orange?logo=google&logoColor=white)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A minimalist, ultra-fast, and aesthetic **Glassmorphism Quick Translator & Universal AI Assistant** built on top of **Rofi** and powered by **Groq Cloud API** (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) with seamless fallback to **Google Gemini API** (`gemini-3.5-flash-lite`).
+A minimalist, ultra-fast, and aesthetic **Glassmorphism Quick Translator & Universal AI Assistant** built with **native PyQt6 (Qt6)** and powered by **Groq Cloud API** (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) with automatic failover to **Google Gemini API** (`gemini-3.5-flash-lite`).
 
-Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway) with native layer-shell exclusive keyboard focus, click-outside-to-dismiss behavior, decoupled prompt customization, and a deterministic Bash slash-command router.
+Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, GNOME) with a seamless single-window Raycast/Spotlight experience, native Markdown rendering, command autocomplete, click-outside-to-dismiss, and backward-compatible Rofi fallback.
 
 ---
 
 ## ✨ Features
 
 - ⚡ **Ultra-Fast Hybrid Backend:** Primary requests via **Groq Cloud API** (~0.6s sub-second response) with automatic failover to **Google Gemini API**.
-- 🚀 **Modular Slash Command Router:** 0ms deterministic Bash regex router supporting `/ask <topic>`, `/eva <sentence>`, and custom user commands.
-- 💡 **Built-in `/help` Command:** Type `/help` or `/` alone to view dynamically discovered commands with extracted 1-line descriptions.
-- 🎨 **Minimal Glassmorphism UI:** Translucent frosted dark background (`rgba(28, 28, 30, 0.95)`) with crisp typography (`Inter Display`).
-- 🔄 **Seamless Continuity & Dynamic Feedback:** Search bar transforms seamlessly into tailored loading labels (`Asking AI [/ask]...`, `Evaluating [/eva]...`, `Analyzing...`) at identical coordinates.
-- 📐 **Dynamic Fit-to-Content:** Intelligent soft-wrapping with auto-expansion for response cards from 3 lines to 30+ lines with zero clipping.
-- 📝 **Decoupled Markdown Prompts:** System prompts live in standalone markdown files (`prompt.md` and `commands/*.md`)—customize formats and add new personas without writing code.
-- ✂️ **Smart Input Limiter:** Enforces a clean 500-character limit, automatically truncating overlength pasted text to prevent API payload overflow.
-- 🖱️ **Wayland Click-to-Dismiss:** Fullscreen backdrop on response mode allowing you to dismiss cards with <kbd>Enter</kbd>, <kbd>Esc</kbd>, or by **clicking anywhere outside the card**.
+- 🪟 **Single-Window Fluid HUD:** Frameless, frosted dark HUD (`rgba(28, 28, 30, 0.95)`). Smoothly transitions from Input to Loading and expands to Result with zero window churn or visual flicker.
+- 📜 **Native CommonMark Rendering:** Renders headers, bold/italics, bullet points, blockquotes, and code blocks using Qt6's native Markdown engine.
+- ↕️ **Smooth Mouse-Wheel Scrolling:** Responsive scrolling with custom glassmorphic slim scrollbars for long explanations.
+- ⌨️ **Slash Command Autocomplete:** Type `/` to instantly open an interactive dropdown of all registered commands (`/help`, `/ask`, `/eva`).
+- 📋 **1-Click Clipboard Copy:** Instant copy button on every response card with visual `"✓ Copied!"` feedback.
+- 🖱️ **Wayland Click-to-Dismiss:** Closes automatically on <kbd>Enter</kbd>, <kbd>Esc</kbd>, or when clicking anywhere outside the HUD window.
+- 🚀 **Modular Command Prompts:** Standalone prompt files (`commands/*.md`)—create new assistant personas without writing application code.
+- 💻 **Headless CLI Mode:** Run queries directly in the terminal via `ctrans --cli [query]` for scripting or shell pipelines.
+- 🛡️ **Backward Compatibility:** Seamlessly falls back to the legacy Rofi/Bash script (`Ctrans.sh`) if PyQt6 is not installed.
 
 ---
 
 ## 🛠️ Prerequisites
 
-Ensure the following packages are installed on your Linux system:
-
 | Dependency | Package Name (Fedora) | Package Name (Arch / Ubuntu) | Purpose |
 |------------|----------------------|------------------------------|---------|
-| `rofi` | `rofi` | `rofi` / `rofi-wayland` | UI modal rendering |
-| `curl` | `curl` | `curl` | Fast IPv4 API requests |
-| `jq` | `jq` | `jq` | JSON payload serialization |
+| `python3` | `python3` | `python3` | Core runtime |
+| `python3-pyqt6` | `python3-pyqt6` / `pip install PyQt6` | `python-pyqt6` / `python3-pyqt6` | Native Qt6 Glassmorphic HUD |
+| `rofi` *(Optional)* | `rofi` | `rofi` / `rofi-wayland` | Fallback legacy UI |
+| `curl` *(Optional)* | `curl` | `curl` | Fallback legacy network client |
+| `jq` *(Optional)* | `jq` | `jq` | Fallback legacy JSON processing |
 
-On Fedora:
+### Quick Install (Fedora):
 ```bash
-sudo dnf install rofi curl jq
+sudo dnf install python3-pyqt6
+# Or via pip:
+pip install PyQt6
 ```
 
 ---
@@ -47,7 +50,7 @@ sudo dnf install rofi curl jq
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/rofi_translate.git ~/.local/bin/ctrans_project
+git clone https://github.com/your-username/Ctrans.git ~/.local/bin/ctrans_project
 cd ~/.local/bin/ctrans_project
 ```
 
@@ -57,12 +60,12 @@ chmod +x install.sh
 ./install.sh
 ```
 This script will:
-- Check all required dependencies.
-- Create configuration folder at `~/.config/ctrans/` and `~/.config/ctrans/commands/`.
+- Verify Python 3 and PyQt6.
+- Set up configuration directory at `~/.config/ctrans/` and `~/.config/ctrans/commands/`.
 - Copy template configuration (`config.env`) and link default system prompt (`prompt.md`).
 - Symlink default modular commands (`ask.md`, `eva.md`).
-- Symlink the executable to `~/.local/bin/ctrans` and `~/.local/bin/Ctrans`.
-- Register a desktop entry `ctrans.desktop` for system-wide shortcut binding.
+- Symlink `ctrans.py` to `~/.local/bin/ctrans` and `~/.local/bin/Ctrans`.
+- Register `ctrans.desktop` for system-wide shortcut binding.
 
 ### 3. Add your API Keys
 Get your API keys:
@@ -89,7 +92,7 @@ Run it directly from your terminal:
 ```bash
 ctrans
 ```
-Or bind `ctrans` (or `~/.local/bin/ctrans`) to a global shortcut in your Desktop Environment settings (e.g. `Meta + T` or `Ctrl + Alt + T`).
+Or bind `ctrans` to a global keyboard shortcut in KDE Plasma / GNOME / Hyprland (e.g. `Meta + T` or `Ctrl + Alt + T`).
 
 ---
 
@@ -102,30 +105,26 @@ Or bind `ctrans` (or `~/.local/bin/ctrans`) to a global shortcut in your Desktop
 | `/ask <topic>` | **Bilingual Explainer** | Clear, structured concept explanation in English followed by Vietnamese. |
 | `/eva <sentence>` | **Language Coach** | Grammar critique in Vietnamese and 3 native English rephrasing suggestions. |
 
-### Closing Cards:
-- Press <kbd>Enter</kbd>
-- Press <kbd>Esc</kbd>
-- **Click anywhere outside the card** on the dimmed screen backdrop.
-
 ---
 
 ## 🧩 Adding Custom Slash Commands
 
-You can create new slash commands without touching `Ctrans.sh`:
+You can create custom slash commands without touching any application code:
 
 1. Create a markdown file inside `~/.config/ctrans/commands/`:
    ```bash
    nano ~/.config/ctrans/commands/summary.md
    ```
-2. Define the header description on the first line, followed by the system instructions:
+2. Define the header description on the first line, followed by the system prompt:
    ```markdown
-   # /summary - Summarize articles or notes into 3 concise bullet points
+   # /summary <text> - Summarize text into 3 concise bullet points
+   <!-- Example: /summary Quantum entanglement is... -->
 
    You are an expert executive summarizer.
    When given text, distill the core insights into exactly 3 high-impact bullet points.
    ```
 3. Save the file. Your new command is immediately available:
-   - Type `/` or `/help` to see `/summary` listed automatically.
+   - Type `/` to see `/summary` in the autocomplete list.
    - Run `/summary <paste article>` to execute!
 
 ---
@@ -134,19 +133,27 @@ You can create new slash commands without touching `Ctrans.sh`:
 
 ```
 ctrans/
-├── .env.example         # Template configuration (Groq + Gemini)
-├── .gitignore           # Excludes sensitive keys, logs, and context.md
-├── AGENTS.md            # Agent rules & commit guidelines (gitignored)
-├── config.env           # Active credentials file (gitignored, chmod 600)
-├── context.md           # Technical knowledge base & architecture (gitignored)
-├── Ctrans.sh            # Main execution script (Groq/Gemini hybrid + Bash router)
-├── install.sh           # Automated installer & desktop integration
-├── LICENSE              # MIT Open Source License
-├── prompt.md            # Default system prompt (used when no slash command is given)
-├── commands/            # Directory containing modular slash command prompts
-│   ├── ask.md           # /ask command: bilingual concept explanation
-│   └── eva.md           # /eva command: sentence evaluation and phrasing critique
-└── README.md            # User guide and documentation
+├── ctrans.py                  # Main executable entrypoint (PyQt6 HUD / CLI)
+├── core/                      # Application core engine
+│   ├── config.py              # Configuration loader (config.env / .env)
+│   ├── router.py              # Slash command parser & deterministic router
+│   ├── command_loader.py      # Scans commands/*.md and metadata
+│   └── api_client.py          # Asynchronous Groq / Gemini hybrid client
+├── ui/                        # PyQt6 Glassmorphism user interface
+│   ├── app.py                 # QApplication lifecycle & font setup
+│   ├── main_window.py         # Frameless single-window container & state machine
+│   ├── input_bar.py           # QLineEdit with slash command autocomplete
+│   ├── result_view.py         # QTextBrowser with CommonMark & 1-click copy
+│   ├── loading_indicator.py   # Subtle animated request indicator
+│   └── styles.qss             # Translucent Glassmorphism QSS stylesheet
+├── commands/                  # Modular command prompt templates
+│   ├── GUIDE.md               # Command authoring specifications
+│   ├── ask.md                 # /ask bilingual explanation prompt
+│   └── eva.md                 # /eva grammar and phrasing critique prompt
+├── prompt.md                  # Default translation system prompt
+├── install.sh                 # System installer & desktop entry setup
+├── Ctrans.sh                  # Legacy Bash/Rofi fallback script
+└── README.md                  # Documentation
 ```
 
 ---
