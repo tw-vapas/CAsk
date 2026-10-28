@@ -11,6 +11,9 @@ config.env
 *.bak
 .vscode/
 .idea/
+__pycache__/
+*.pyc
+*.pyo
 
 # Operating system / shell
 .DS_Store
