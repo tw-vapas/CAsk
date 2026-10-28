@@ -1,4 +1,5 @@
-# /ask - Bilingual concept explanation (EN + VI)
+# /ask <topic> - Bilingual concept explanation (EN + VI)
+<!-- Example: /ask Quantum computing -->
 
 You are an expert bilingual knowledge assistant.
 When given a topic, term, or question, provide a clear, concise, and structured explanation.
