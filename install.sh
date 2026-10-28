@@ -2,6 +2,7 @@
 
 # ==============================================================================
 # Installer for Ctrans (Convenient Translation & Quick AI Assistant)
+# Native PyQt6 Glassmorphism HUD Architecture
 # ==============================================================================
 
 set -e
@@ -28,28 +29,21 @@ echo "✨ Installing Ctrans (Convenient Translation & Quick AI Assistant)..."
 # 1. Check Python & PyQt6 dependencies
 echo "🔍 Checking dependencies..."
 if ! command -v python3 >/dev/null 2>&1; then
-    echo "⚠️ Warning: 'python3' is not installed. Please install it with: sudo dnf install python3"
+    echo "❌ Error: 'python3' is not installed. Please install it using your system package manager (e.g. sudo dnf install python3)."
+    exit 1
 else
     echo "  ✓ python3 found"
 fi
 
 if python3 -c "import PyQt6" >/dev/null 2>&1; then
-    echo "  ✓ PyQt6 found (Native Qt6 Glassmorphism HUD enabled)"
+    echo "  ✓ PyQt6 found"
 else
-    echo "  ℹ️ Note: PyQt6 is not yet installed for Python."
-    echo "     To enable the single-window Qt6 HUD, install it via:"
-    echo "       sudo dnf install python3-pyqt6   (or: pip install PyQt6)"
-    echo "     (Ctrans will automatically use the legacy Rofi mode until PyQt6 is installed)."
+    echo "⚠️ Warning: PyQt6 is not yet installed for Python."
+    echo "   Please install it before running the GUI HUD:"
+    echo "     sudo dnf install python3-pyqt6   (Fedora)"
+    echo "     sudo apt install python3-pyqt6   (Ubuntu/Debian)"
+    echo "     pip install PyQt6                (User install)"
 fi
-
-# Check legacy fallback dependencies
-for cmd in rofi curl jq; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-        echo "  ℹ️ Note: '$cmd' is not installed (required for legacy Rofi fallback)."
-    else
-        echo "  ✓ $cmd found"
-    fi
-done
 
 # 2. Setup configuration directory and files
 echo "📁 Setting up configuration..."
@@ -88,13 +82,15 @@ fi
 # 3. Create symlinks in ~/.local/bin
 mkdir -p "$HOME/.local/bin"
 chmod +x "$SCRIPT_DIR/ctrans.py"
-chmod +x "$SCRIPT_DIR/Ctrans.sh"
+
+# Clean up legacy link if present
+if [ -L "$BIN_TARGET_LEGACY" ] || [ -f "$BIN_TARGET_LEGACY" ]; then
+    rm -f "$BIN_TARGET_LEGACY"
+fi
 
 ln -sf "$SCRIPT_DIR/ctrans.py" "$BIN_TARGET"
 ln -sf "$SCRIPT_DIR/ctrans.py" "$BIN_TARGET_ALIAS"
-ln -sf "$SCRIPT_DIR/Ctrans.sh" "$BIN_TARGET_LEGACY"
-echo "  ✓ Linked main executable: $BIN_TARGET and $BIN_TARGET_ALIAS"
-echo "  ✓ Linked legacy fallback: $BIN_TARGET_LEGACY"
+echo "  ✓ Linked executable: $BIN_TARGET and $BIN_TARGET_ALIAS"
 
 # 4. Create Desktop Entry for global shortcut binding
 mkdir -p "$DESKTOP_DIR"

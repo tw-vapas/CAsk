@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Ctrans - Convenient Translation & Quick AI Assistant.
 
-Main entry point supporting native PyQt6 Glassmorphism HUD,
-CLI query execution, and seamless fallback to Bash/Rofi mode.
+Main entry point supporting native PyQt6 Glassmorphism HUD
+and headless CLI query execution.
 """
 
 from __future__ import annotations
@@ -108,23 +108,15 @@ def main() -> int:
             initial_input=joined_query,
         )
     except ImportError as e:
-        # Inform user and fall back to legacy Ctrans.sh
-        legacy_script = PROJECT_ROOT / "Ctrans.sh"
-        if legacy_script.is_file():
-            print(
-                "Notice: PyQt6 not detected. Falling back to legacy Rofi interface...\n"
-                "To enable the native Qt6 HUD, install PyQt6:\n"
-                "  sudo dnf install python3-pyqt6  (or pip install PyQt6)\n",
-                file=sys.stderr,
-            )
-            return subprocess.call([str(legacy_script)] + sys.argv[1:])
-        else:
-            print(
-                f"Error: PyQt6 is required but could not be imported: {e}\n"
-                "Please run: sudo dnf install python3-pyqt6  (or pip install PyQt6)",
-                file=sys.stderr,
-            )
-            return 1
+        print(
+            f"Error: PyQt6 is required to run the Ctrans HUD ({e}).\n"
+            "Please install PyQt6 using your system package manager:\n"
+            "  sudo dnf install python3-pyqt6   (Fedora)\n"
+            "  sudo apt install python3-pyqt6   (Ubuntu/Debian)\n"
+            "  pip install PyQt6                (pip user install)\n",
+            file=sys.stderr,
+        )
+        return 1
 
 
 if __name__ == "__main__":
