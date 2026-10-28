@@ -30,6 +30,12 @@ class InputBar(QLineEdit):
         self.setMaxLength(500)
         self.setClearButtonEnabled(True)
 
+        # Set placeholder text color to rgba(255, 255, 255, 0.4)
+        palette = self.palette()
+        from PyQt6.QtGui import QColor
+        palette.setColor(palette.ColorRole.PlaceholderText, QColor(255, 255, 255, 102))
+        self.setPalette(palette)
+
         if catalog:
             self._setup_completer(catalog)
 

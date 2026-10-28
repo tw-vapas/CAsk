@@ -42,8 +42,12 @@ def run_gui(
     app.setApplicationDisplayName("Ctrans Quick AI Assistant")
     app.setApplicationVersion("2.0.0")
 
-    # Set default modern font
-    font = QFont("Inter")
+    # Set default typography: JetBrainsMono Nerd Font with fallbacks
+    font = QFont("JetBrainsMono Nerd Font")
+    if not font.exactMatch():
+        font = QFont("JetBrains Mono")
+    if not font.exactMatch():
+        font = QFont("Inter")
     if not font.exactMatch():
         font = QFont("Sans Serif")
     font.setPointSize(11)

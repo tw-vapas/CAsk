@@ -52,6 +52,10 @@ class MainWindow(QWidget):
             self.input_bar.setText(self.initial_input)
             self._handle_submit(self.initial_input)
 
+    SHADOW_PAD_X = 24
+    SHADOW_PAD_Y_TOP = 18
+    SHADOW_PAD_Y_BOTTOM = 30
+
     def _setup_window_properties(self) -> None:
         """Configure frameless, translucent, always-on-top window flags."""
         self.setWindowFlags(
@@ -61,17 +65,39 @@ class MainWindow(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        self.setProperty("kwin_blur", True)
 
     def _setup_ui(self) -> None:
         """Build layout and state views."""
         root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(10, 10, 10, 10)
+        root_layout.setContentsMargins(
+            self.SHADOW_PAD_X,
+            self.SHADOW_PAD_Y_TOP,
+            self.SHADOW_PAD_X,
+            self.SHADOW_PAD_Y_BOTTOM,
+        )
+        root_layout.setSpacing(0)
 
         # Central container frame with glassmorphism border and background
         self.container = QFrame(self)
         self.container.setObjectName("CentralContainer")
+
+        # Deep floating drop-shadow effect (rgba(0, 0, 0, 0.40))
+        try:
+            from PyQt6.QtGui import QColor
+            from PyQt6.QtWidgets import QGraphicsDropShadowEffect
+
+            shadow = QGraphicsDropShadowEffect(self.container)
+            shadow.setBlurRadius(36)
+            shadow.setOffset(0, 8)
+            shadow.setColor(QColor(0, 0, 0, 102))
+            self.container.setGraphicsEffect(shadow)
+        except Exception:
+            pass
+
         container_layout = QVBoxLayout(self.container)
         container_layout.setContentsMargins(12, 12, 12, 12)
+        container_layout.setSpacing(0)
 
         # Stacked layout for Input, Loading, and Result states
         self.stack = QStackedLayout()
@@ -94,7 +120,7 @@ class MainWindow(QWidget):
 
         root_layout.addWidget(self.container)
 
-        self._switch_state(self.STATE_INPUT, target_width=600, target_height=66)
+        self._switch_state(self.STATE_INPUT, target_width=600, target_height=60)
 
     def _get_target_screen(self):
         """Identify the screen under current mouse pointer."""
@@ -120,7 +146,11 @@ class MainWindow(QWidget):
     def _switch_state(self, state: int, target_width: int, target_height: int) -> None:
         """Transition between UI states and adjust geometry."""
         self.stack.setCurrentIndex(state)
-        self._reposition(target_width, target_height)
+        self.container.setFixedSize(target_width, target_height)
+
+        total_width = target_width + (self.SHADOW_PAD_X * 2)
+        total_height = target_height + self.SHADOW_PAD_Y_TOP + self.SHADOW_PAD_Y_BOTTOM
+        self._reposition(total_width, total_height)
 
         if state == self.STATE_INPUT:
             self.input_bar.setFocus()

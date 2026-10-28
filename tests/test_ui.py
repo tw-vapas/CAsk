@@ -34,8 +34,12 @@ class TestUIComponents(unittest.TestCase):
     def test_stylesheet_loads(self):
         css = load_stylesheet()
         self.assertIn("#CentralContainer", css)
-        self.assertIn("QLineEdit#InputBar", css)
-        self.assertIn("QTextBrowser#ResultText", css)
+        self.assertIn("rgba(28, 28, 30, 0.95)", css)
+        self.assertIn("border-radius: 12px", css)
+        self.assertIn("#89b4fa", css)
+        self.assertIn("#cdd6f4", css)
+        self.assertIn("JetBrainsMono Nerd Font", css)
+        self.assertIn("QScrollBar:vertical", css)
 
     def test_input_bar_autocomplete(self):
         bar = InputBar(catalog=self.catalog)
@@ -73,6 +77,7 @@ class TestUIComponents(unittest.TestCase):
     def test_main_window_state_machine(self):
         window = MainWindow(config=self.config, catalog=self.catalog)
         self.assertEqual(window.stack.currentIndex(), MainWindow.STATE_INPUT)
+        self.assertIsNotNone(window.container.graphicsEffect())
 
         # Submit /help
         window._handle_submit("/help")
