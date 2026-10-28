@@ -43,7 +43,7 @@ class TestUIComponents(unittest.TestCase):
 
     def test_input_bar_autocomplete(self):
         bar = InputBar(catalog=self.catalog)
-        self.assertEqual(bar.placeholderText(), "Type words to translate or /help for commands...")
+        self.assertEqual(bar.placeholderText(), "Ask anything, enter prompt, or /help for commands...")
         completer = bar.completer()
         self.assertIsNotNone(completer)
         model = completer.model()

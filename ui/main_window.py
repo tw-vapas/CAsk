@@ -195,7 +195,7 @@ class MainWindow(QWidget):
         self._switch_state(self.STATE_LOADING, target_width=600, target_height=76)
 
         # Launch background API request
-        badge_name = f"/{route.command}" if route.command else "Translation"
+        badge_name = f"/{route.command}" if route.command else "Assistant"
         self._worker = APIWorker(
             system_prompt=route.system_prompt,
             user_prompt_content=route.user_prompt_content,

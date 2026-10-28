@@ -59,12 +59,9 @@ else
     echo "  ✓ Existing configuration found at $CONFIG_FILE"
 fi
 
-if [ -f "$SCRIPT_DIR/prompt.md" ]; then
-    ln -sf "$SCRIPT_DIR/prompt.md" "$PROMPT_TARGET"
-    echo "  ✓ Linked customizable prompt at $PROMPT_TARGET"
-elif [ -f "$SCRIPT_DIR/prompt.txt" ]; then
-    ln -sf "$SCRIPT_DIR/prompt.txt" "$PROMPT_TARGET"
-    echo "  ✓ Linked customizable prompt at $PROMPT_TARGET"
+# Clean up legacy prompt target if it exists
+if [ -L "$PROMPT_TARGET" ] || [ -f "$PROMPT_TARGET" ]; then
+    rm -f "$PROMPT_TARGET"
 fi
 
 if [ -d "$SCRIPT_DIR/commands" ]; then
@@ -76,7 +73,7 @@ if [ -d "$SCRIPT_DIR/commands" ]; then
         cmd_name="$(basename "$cmd_file")"
         ln -sf "$cmd_file" "$COMMANDS_DIR/$cmd_name"
     done
-    echo "  ✓ Linked modular command prompts in $COMMANDS_DIR"
+    echo "  ✓ Linked default persona (default.md) and command prompts in $COMMANDS_DIR"
 fi
 
 # 3. Create symlinks in ~/.local/bin

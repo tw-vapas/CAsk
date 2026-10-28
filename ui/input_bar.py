@@ -26,7 +26,7 @@ class InputBar(QLineEdit):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("InputBar")
-        self.setPlaceholderText("Type words to translate or /help for commands...")
+        self.setPlaceholderText("Ask anything, enter prompt, or /help for commands...")
         self.setMaxLength(500)
         self.setClearButtonEnabled(True)
 
