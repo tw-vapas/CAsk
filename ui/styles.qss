@@ -1,0 +1,135 @@
+/* Ctrans Glassmorphism Dark QSS Theme */
+
+QWidget {
+    font-family: "Inter", "Inter Display", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #f3f4f6;
+    background: transparent;
+    selection-background-color: #6366f1;
+    selection-color: #ffffff;
+}
+
+#CentralContainer {
+    background-color: rgba(28, 28, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 20px;
+}
+
+/* Input Bar */
+QLineEdit#InputBar {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 14px;
+    padding: 10px 16px;
+    font-size: 14pt;
+    color: #ffffff;
+    selection-background-color: #6366f1;
+}
+
+QLineEdit#InputBar:focus {
+    border: 1px solid rgba(129, 140, 248, 0.65);
+    background-color: rgba(255, 255, 255, 0.11);
+}
+
+/* Completer Popup */
+QListView#CompleterPopup {
+    background-color: rgba(36, 36, 38, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    padding: 6px;
+    color: #e5e7eb;
+    font-size: 12pt;
+    outline: none;
+}
+
+QListView#CompleterPopup::item {
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 2px 0px;
+}
+
+QListView#CompleterPopup::item:selected,
+QListView#CompleterPopup::item:hover {
+    background-color: rgba(99, 102, 241, 0.35);
+    color: #ffffff;
+}
+
+/* Loading Widget */
+#LoadingWidget {
+    background-color: transparent;
+}
+
+#LoadingLabel {
+    color: #818cf8;
+    font-size: 13pt;
+    font-weight: 500;
+}
+
+/* Result View */
+#HeaderBar {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+}
+
+#BadgeLabel {
+    color: #818cf8;
+    font-size: 11pt;
+    font-weight: 600;
+    padding: 2px 8px;
+    background-color: rgba(129, 140, 248, 0.15);
+    border-radius: 6px;
+}
+
+#CopyButton {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #d1d5db;
+    font-size: 11pt;
+    padding: 4px 12px;
+}
+
+#CopyButton:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.30);
+}
+
+#CopyButton:pressed {
+    background-color: rgba(99, 102, 241, 0.50);
+}
+
+QTextBrowser#ResultText {
+    background-color: transparent;
+    border: none;
+    color: #f3f4f6;
+    font-size: 13pt;
+    line-height: 1.6;
+    padding: 4px 2px;
+}
+
+/* Slim Glassmorphic Scrollbar */
+QScrollBar:vertical {
+    border: none;
+    background: transparent;
+    width: 6px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: rgba(255, 255, 255, 0.25);
+    min-height: 24px;
+    border-radius: 3px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: rgba(255, 255, 255, 0.45);
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical,
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+    height: 0px;
+}
