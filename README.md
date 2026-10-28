@@ -1,4 +1,4 @@
-# 🌐 Ctrans (Convenient Translation)
+# 🌐 Ctrans (Convenient Translation & Quick AI Assistant)
 
 [![Linux](https://img.shields.io/badge/OS-Linux%20%2F%20Wayland-blue?logo=linux&logoColor=white)](#)
 [![Rofi](https://img.shields.io/badge/UI-Rofi%202.0-purple)](#)
@@ -6,21 +6,23 @@
 [![Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-orange?logo=google&logoColor=white)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A minimalist, ultra-fast, and aesthetic **Glassmorphism Quick Translator** built on top of **Rofi** and powered by **Groq Cloud API** (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) with seamless fallback to **Google Gemini API** (`gemini-3.5-flash-lite`).
+A minimalist, ultra-fast, and aesthetic **Glassmorphism Quick Translator & Universal AI Assistant** built on top of **Rofi** and powered by **Groq Cloud API** (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) with seamless fallback to **Google Gemini API** (`gemini-3.5-flash-lite`).
 
-Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway) with native layer-shell exclusive keyboard focus, click-outside-to-dismiss behavior, and decoupled prompt customization.
+Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway) with native layer-shell exclusive keyboard focus, click-outside-to-dismiss behavior, decoupled prompt customization, and a deterministic Bash slash-command router.
 
 ---
 
 ## ✨ Features
 
 - ⚡ **Ultra-Fast Hybrid Backend:** Primary requests via **Groq Cloud API** (~0.6s sub-second response) with automatic failover to **Google Gemini API**.
+- 🚀 **Modular Slash Command Router:** 0ms deterministic Bash regex router supporting `/ask <topic>`, `/eva <sentence>`, and custom user commands.
+- 💡 **Built-in `/help` Command:** Type `/help` or `/` alone to view dynamically discovered commands with extracted 1-line descriptions.
 - 🎨 **Minimal Glassmorphism UI:** Translucent frosted dark background (`rgba(28, 28, 30, 0.95)`) with crisp typography (`Inter Display`).
-- 🔄 **Seamless Continuity:** Transition between the search bar and the loading state (`Analyzing...`) at the exact same coordinates without jarring layout shifting.
-- 📐 **Dynamic Fit-to-Content:** Intelligent soft-wrapping with auto-expansion for translation cards from 3 lines to 30+ lines with zero clipping.
-- 📝 **Decoupled System Prompt:** System prompts live in a dedicated `prompt.md` file—customize your translation formats and rules without touching a single line of script code!
+- 🔄 **Seamless Continuity & Dynamic Feedback:** Search bar transforms seamlessly into tailored loading labels (`Asking AI [/ask]...`, `Evaluating [/eva]...`, `Analyzing...`) at identical coordinates.
+- 📐 **Dynamic Fit-to-Content:** Intelligent soft-wrapping with auto-expansion for response cards from 3 lines to 30+ lines with zero clipping.
+- 📝 **Decoupled Markdown Prompts:** System prompts live in standalone markdown files (`prompt.md` and `commands/*.md`)—customize formats and add new personas without writing code.
 - ✂️ **Smart Input Limiter:** Enforces a clean 500-character limit, automatically truncating overlength pasted text to prevent API payload overflow.
-- 🖱️ **Wayland Click-to-Dismiss:** Fullscreen backdrop on response mode allowing you to dismiss the card with <kbd>Enter</kbd>, <kbd>Esc</kbd>, or by **clicking anywhere outside the card**.
+- 🖱️ **Wayland Click-to-Dismiss:** Fullscreen backdrop on response mode allowing you to dismiss cards with <kbd>Enter</kbd>, <kbd>Esc</kbd>, or by **clicking anywhere outside the card**.
 
 ---
 
@@ -55,9 +57,10 @@ chmod +x install.sh
 ./install.sh
 ```
 This script will:
-- Check all dependencies.
-- Create configuration folder at `~/.config/ctrans/`.
+- Check all required dependencies.
+- Create configuration folder at `~/.config/ctrans/` and `~/.config/ctrans/commands/`.
 - Copy template configuration (`config.env`) and link default system prompt (`prompt.md`).
+- Symlink default modular commands (`ask.md`, `eva.md`).
 - Symlink the executable to `~/.local/bin/ctrans` and `~/.local/bin/Ctrans`.
 - Register a desktop entry `ctrans.desktop` for system-wide shortcut binding.
 
@@ -90,43 +93,60 @@ Or bind `ctrans` (or `~/.local/bin/ctrans`) to a global shortcut in your Desktop
 
 ---
 
-## 📝 Customizing the System Prompt
+## 🎮 Workflow & Commands
 
-You can customize how the AI translates without touching the source code:
+| Input | Mode | Description |
+|---|---|---|
+| `<word or sentence>` | **Translator (Default)** | Direct English ↔ Vietnamese translation with IPA, keywords, or definitions. |
+| `/help` or `/` | **Command Help** | Displays the interactive catalog of all available commands. |
+| `/ask <topic>` | **Bilingual Explainer** | Clear, structured concept explanation in English followed by Vietnamese. |
+| `/eva <sentence>` | **Language Coach** | Grammar critique in Vietnamese and 3 native English rephrasing suggestions. |
 
-1. Open the prompt file:
-   ```bash
-   nano ~/.config/ctrans/prompt.md
-   ```
-2. Modify the rules, language directions, or format presets (e.g., adding slang definitions, formal vs casual tone, or specialized jargon).
-3. Save the file. Ctrans will immediately load your custom prompt on the next execution!
+### Closing Cards:
+- Press <kbd>Enter</kbd>
+- Press <kbd>Esc</kbd>
+- **Click anywhere outside the card** on the dimmed screen backdrop.
 
 ---
 
-## 🎮 Workflow & Shortcuts
+## 🧩 Adding Custom Slash Commands
 
-1. **Open Search Bar:** Type or paste (<kbd>Ctrl</kbd> + <kbd>V</kbd>) the word or sentence to translate and hit <kbd>Enter</kbd>.
-2. **Loading State:** `Analyzing...` appears seamlessly in place of the input bar.
-3. **Result Dialog:** Displays the formatted translation card, evaluation, and keyword notes.
-4. **Closing the Dialog:**
-   - Press <kbd>Enter</kbd>
-   - Press <kbd>Esc</kbd>
-   - **Click anywhere outside the card** on the dimmed screen backdrop.
+You can create new slash commands without touching `Ctrans.sh`:
+
+1. Create a markdown file inside `~/.config/ctrans/commands/`:
+   ```bash
+   nano ~/.config/ctrans/commands/summary.md
+   ```
+2. Define the header description on the first line, followed by the system instructions:
+   ```markdown
+   # /summary - Summarize articles or notes into 3 concise bullet points
+
+   You are an expert executive summarizer.
+   When given text, distill the core insights into exactly 3 high-impact bullet points.
+   ```
+3. Save the file. Your new command is immediately available:
+   - Type `/` or `/help` to see `/summary` listed automatically.
+   - Run `/summary <paste article>` to execute!
 
 ---
 
 ## 📁 Project Structure
 
 ```
-rofi_translate/ (Ctrans)
+ctrans/
 ├── .env.example         # Template configuration (Groq + Gemini)
 ├── .gitignore           # Excludes sensitive keys, logs, and context.md
-├── prompt.md            # Default decoupled AI System Prompt
-├── Ctrans.sh            # Main execution script
+├── AGENTS.md            # Agent rules & commit guidelines (gitignored)
+├── config.env           # Active credentials file (gitignored, chmod 600)
+├── context.md           # Technical knowledge base & architecture (gitignored)
+├── Ctrans.sh            # Main execution script (Groq/Gemini hybrid + Bash router)
 ├── install.sh           # Automated installer & desktop integration
 ├── LICENSE              # MIT Open Source License
-├── README.md            # User guide and documentation
-└── context.md           # Internal architectural decisions (gitignored)
+├── prompt.md            # Default system prompt (used when no slash command is given)
+├── commands/            # Directory containing modular slash command prompts
+│   ├── ask.md           # /ask command: bilingual concept explanation
+│   └── eva.md           # /eva command: sentence evaluation and phrasing critique
+└── README.md            # User guide and documentation
 ```
 
 ---
