@@ -1,19 +1,22 @@
 #!/bin/bash
 
 # ==============================================================================
-# CTRANS - Convenient Translation (Wayland / Fedora / KDE Compatible)
-# Glassmorphism Quick Translator powered by Groq Cloud & Google Gemini Hybrid
+# CTRANS - Convenient Translation & Quick AI Assistant
+# Glassmorphism Quick Translator & Universal AI Assistant
+# Powered by Groq Cloud & Google Gemini Hybrid + Modular Slash Command Router
 # ==============================================================================
 
 set -o pipefail
 
-# Config directory and file
+# Config directory and file paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ctrans"
 if [ ! -d "$CONFIG_DIR" ] && [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/rofi-translate" ]; then
     CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rofi-translate"
 fi
 CONFIG_FILE="$CONFIG_DIR/config.env"
+USER_COMMANDS_DIR="$CONFIG_DIR/commands"
+DEFAULT_COMMANDS_DIR="$SCRIPT_DIR/commands"
 
 # Configuration load order:
 # 1. ~/.config/ctrans/config.env (or ~/.config/rofi-translate/config.env)
@@ -30,13 +33,12 @@ elif [ -f "$SCRIPT_DIR/.env" ]; then
     source "$SCRIPT_DIR/.env"
 fi
 
-# Decoupled system prompt file
-# Custom prompt file path can be defined via PROMPT_FILE in config.env.
+# Decoupled system prompt file for default translation mode
 # Priority:
-# 1. $PROMPT_FILE (if already defined in config)
-# 2. prompt.md in script directory (local repository development)
+# 1. $PROMPT_FILE (if explicitly defined in config)
+# 2. prompt.md in script directory
 # 3. prompt.md in config directory
-# 4. prompt.txt fallback (backwards compatibility)
+# 4. prompt.txt fallback
 if [ -z "$PROMPT_FILE" ] || [ ! -f "$PROMPT_FILE" ]; then
     if [ -f "$SCRIPT_DIR/prompt.md" ]; then
         PROMPT_FILE="$SCRIPT_DIR/prompt.md"
@@ -87,7 +89,7 @@ THEME_INPUT="
     padding: 12px 18px;
   }
   entry {
-    placeholder: \"Type your words...\";
+    placeholder: \"Type words to translate or /help for commands...\";
     placeholder-color: rgba(255, 255, 255, 0.35);
     text-color: #ffffff;
     vertical-align: 0.5;
@@ -199,11 +201,157 @@ ROFI_MOUSE_FLAGS=(
   -kb-cancel 'Escape,MousePrimary'
 )
 
-# Clean up loading process on exit
-trap 'kill $LOADING_PID 2>/dev/null; exit 0' INT TERM EXIT
+# Clean up background loading process on exit
+LOADING_PID=""
+trap 'if [ -n "$LOADING_PID" ]; then kill "$LOADING_PID" 2>/dev/null; fi; exit 0' INT TERM EXIT
+
+# Dynamically generate command catalog for /help and error displays
+generate_help_text() {
+    local -A seen_cmds
+    local -a cmd_names
+
+    for dir in "$USER_COMMANDS_DIR" "$DEFAULT_COMMANDS_DIR"; do
+        if [ -d "$dir" ]; then
+            for f in "$dir"/*.md; do
+                [ -f "$f" ] || continue
+                local cmd
+                cmd="$(basename "$f" .md)"
+                if [ -z "${seen_cmds[$cmd]:-}" ]; then
+                    seen_cmds["$cmd"]="$f"
+                    cmd_names+=("$cmd")
+                fi
+            done
+        fi
+    done
+
+    echo "💡 Ctrans Quick AI Assistant - Commands & Help"
+    echo ""
+    echo "Available Commands:"
+    printf "  • /%-18s %s\n" "help" "Show available commands and usage guide"
+
+    for cmd in "${cmd_names[@]}"; do
+        local file="${seen_cmds[$cmd]}"
+        local first_line
+        first_line=$(awk 'NF{print;exit}' "$file" 2>/dev/null)
+        local desc
+        desc=$(echo "$first_line" | sed -E 's/^#[[:space:]]*(Description:[[:space:]]*)?(\/[a-zA-Z0-9_-]+[[:space:]]*[-:][[:space:]]*)?//')
+        [ -z "$desc" ] && desc="Custom command prompt"
+        local arg_hint
+        case "$cmd" in
+            ask) arg_hint="<topic>" ;;
+            eva) arg_hint="<sentence>" ;;
+            *)   arg_hint="<input>" ;;
+        esac
+        printf "  • /%-18s %s\n" "$cmd $arg_hint" "$desc"
+    done
+
+    echo ""
+    echo "Quick Tips:"
+    echo "  • Type any word or sentence without '/' for instant translation (EN ↔ VI)."
+    echo "  • Press Enter, Esc, or click outside this card to dismiss."
+}
 
 # ==============================================================================
-# API KEY VALIDATION
+# STEP 1: USER INPUT
+# ==============================================================================
+INPUT=$(rofi -dmenu -theme-str "$THEME_INPUT" -kb-cancel 'Escape')
+if [ -z "$INPUT" ]; then exit 0; fi
+
+# Limit input to 500 characters
+INPUT="${INPUT:0:500}"
+
+# ==============================================================================
+# STEP 2: PROGRAMMATIC BASH ROUTER
+# ==============================================================================
+COMMAND=""
+PAYLOAD=""
+LOADING_MSG="Analyzing..."
+SYSTEM_PROMPT=""
+
+# 2.1. Built-in /help command or solitary '/'
+if [ "$INPUT" = "/" ] || [ "$INPUT" = "/help" ] || [[ "$INPUT" =~ ^/help([[:space:]].*)?$ ]]; then
+    HELP_TEXT=$(generate_help_text)
+    DISPLAY_TEXT=$(format_display_text "$HELP_TEXT")
+    rofi -dmenu -mesg "$DISPLAY_TEXT"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
+    exit 0
+fi
+
+# 2.2. Match slash command pattern: ^/([a-zA-Z0-9_-]+)[[:space:]]*(.*)$
+if [[ "$INPUT" =~ ^/([a-zA-Z0-9_-]+)[[:space:]]*(.*)$ ]]; then
+    COMMAND="${BASH_REMATCH[1]}"
+    PAYLOAD="${BASH_REMATCH[2]}"
+
+    # Locate modular command file (User config -> Repo defaults)
+    COMMAND_FILE=""
+    if [ -f "$USER_COMMANDS_DIR/${COMMAND}.md" ]; then
+        COMMAND_FILE="$USER_COMMANDS_DIR/${COMMAND}.md"
+    elif [ -f "$DEFAULT_COMMANDS_DIR/${COMMAND}.md" ]; then
+        COMMAND_FILE="$DEFAULT_COMMANDS_DIR/${COMMAND}.md"
+    fi
+
+    # Unknown command entered: show error dialog without consuming API tokens
+    if [ -z "$COMMAND_FILE" ]; then
+        UNKNOWN_ERR="⚠️ Unknown Command: /$COMMAND
+
+$(generate_help_text)"
+        DISPLAY_TEXT=$(format_display_text "$UNKNOWN_ERR")
+        rofi -dmenu -mesg "$DISPLAY_TEXT"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
+        exit 1
+    fi
+
+    # Validate argument payload
+    if [ -z "$PAYLOAD" ]; then
+        case "$COMMAND" in
+            ask)
+                USAGE_HINT="/ask <topic or question>"
+                EXAMPLE_HINT="/ask Quantum computing"
+                ;;
+            eva)
+                USAGE_HINT="/eva <sentence to evaluate>"
+                EXAMPLE_HINT="/eva I am looking forward to hear from you"
+                ;;
+            *)
+                USAGE_HINT="/$COMMAND <input>"
+                EXAMPLE_HINT="/$COMMAND sample query"
+                ;;
+        esac
+        FIRST_LINE=$(awk 'NF{print;exit}' "$COMMAND_FILE" 2>/dev/null)
+        CMD_DESC=$(echo "$FIRST_LINE" | sed -E 's/^#[[:space:]]*(Description:[[:space:]]*)?(\/[a-zA-Z0-9_-]+[[:space:]]*[-:][[:space:]]*)?//')
+
+        MISSING_ARG_MSG="⚠️ Missing argument for /$COMMAND
+
+Usage:
+  $USAGE_HINT
+
+Description:
+  $CMD_DESC
+
+Example:
+  $EXAMPLE_HINT"
+        DISPLAY_TEXT=$(format_display_text "$MISSING_ARG_MSG")
+        rofi -dmenu -mesg "$DISPLAY_TEXT"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
+        exit 1
+    fi
+
+    # Command matched & validated: load prompt and configure dynamic loading label
+    SYSTEM_PROMPT=$(cat "$COMMAND_FILE")
+    case "$COMMAND" in
+        ask) LOADING_MSG="Asking AI [/ask]..." ;;
+        eva) LOADING_MSG="Evaluating [/eva]..." ;;
+        *)   LOADING_MSG="Processing [/$COMMAND]..." ;;
+    esac
+else
+    # 2.3. Default translation mode (No slash command)
+    if [ -f "$PROMPT_FILE" ]; then
+        SYSTEM_PROMPT=$(cat "$PROMPT_FILE")
+    else
+        SYSTEM_PROMPT="You are an expert bilingual translator. If the input is English, translate to Vietnamese; if Vietnamese, translate to English."
+    fi
+    LOADING_MSG="Analyzing..."
+fi
+
+# ==============================================================================
+# API KEY VALIDATION (Executed only when AI request is required)
 # ==============================================================================
 if [ -z "$GROQ_API_KEY" ] && [ -z "$GEMINI_API_KEY" ]; then
     NO_KEY_MSG="⚠️ API Key not configured!
@@ -217,44 +365,35 @@ $CONFIG_FILE
 fi
 
 # ==============================================================================
-# STEP 1: USER INPUT
+# STEP 3: LOADING INDICATOR
 # ==============================================================================
-INPUT=$(rofi -dmenu -theme-str "$THEME_INPUT" -kb-cancel 'Escape')
-if [ -z "$INPUT" ]; then exit 0; fi
-
-# Limit input to 500 characters
-INPUT="${INPUT:0:500}"
-
-# ==============================================================================
-# STEP 2: LOADING INDICATOR
-# ==============================================================================
-rofi -dmenu -p "Analyzing..." -theme-str "$THEME_LOADING" </dev/null &
+rofi -dmenu -p "$LOADING_MSG" -theme-str "$THEME_LOADING" </dev/null &
 LOADING_PID=$!
 
 # ==============================================================================
-# STEP 3: API REQUEST (Groq Primary -> Gemini Fallback)
+# STEP 4: API REQUEST (Groq Primary -> Gemini Fallback)
 # ==============================================================================
-# Load system prompt from file
-if [ -f "$PROMPT_FILE" ]; then
-    SYSTEM_PROMPT=$(cat "$PROMPT_FILE")
+# Prepare user message content based on mode
+if [ -n "$COMMAND" ]; then
+    USER_PROMPT_CONTENT="$PAYLOAD"
 else
-    SYSTEM_PROMPT="You are a fluent translator. If the input is English, translate to Vietnamese; if Vietnamese, translate to English."
+    USER_PROMPT_CONTENT="Translate: $INPUT"
 fi
 
-TRANSLATION=""
+RESPONSE_TEXT=""
 ERROR_MSG=""
 
-# 3.1. Primary: Groq API (~0.5s - 0.8s)
+# 4.1. Primary: Groq API (~0.5s - 0.8s)
 if [ -n "$GROQ_API_KEY" ]; then
     GROQ_PAYLOAD=$(jq -n \
       --arg model "$GROQ_MODEL" \
       --arg sys "$SYSTEM_PROMPT" \
-      --arg input "$INPUT" \
+      --arg input "$USER_PROMPT_CONTENT" \
       '{
         model: $model,
         messages: [
           {role: "system", content: $sys},
-          {role: "user", content: ("Translate: " + $input)}
+          {role: "user", content: $input}
         ],
         temperature: 0.2,
         max_tokens: 1000
@@ -265,25 +404,35 @@ if [ -n "$GROQ_API_KEY" ]; then
       -H "Authorization: Bearer $GROQ_API_KEY" \
       -d "$GROQ_PAYLOAD")
 
-    TRANSLATION=$(echo "$GROQ_RESPONSE" | jq -r '.choices[0].message.content // empty')
-    if [ -z "$TRANSLATION" ]; then
+    RESPONSE_TEXT=$(echo "$GROQ_RESPONSE" | jq -r '.choices[0].message.content // empty')
+    if [ -z "$RESPONSE_TEXT" ]; then
         ERROR_MSG=$(echo "$GROQ_RESPONSE" | jq -r '.error.message // empty')
     fi
 fi
 
-# 3.2. Fallback: Google Gemini API
-if [ -z "$TRANSLATION" ] && [ -n "$GEMINI_API_KEY" ]; then
+# 4.2. Fallback: Google Gemini API
+if [ -z "$RESPONSE_TEXT" ] && [ -n "$GEMINI_API_KEY" ]; then
+    if [ -n "$COMMAND" ]; then
+        GEMINI_TEXT_PAYLOAD="$SYSTEM_PROMPT
+
+User Query:
+$USER_PROMPT_CONTENT"
+    else
+        GEMINI_TEXT_PAYLOAD="$SYSTEM_PROMPT
+
+Translate: $INPUT"
+    fi
+
     GEMINI_PAYLOAD=$(jq -n \
-      --arg prompt "$SYSTEM_PROMPT" \
-      --arg input "$INPUT" \
-      '{contents: [{parts: [{text: ($prompt + "\n\nTranslate: " + $input)}]}]}')
+      --arg fulltext "$GEMINI_TEXT_PAYLOAD" \
+      '{contents: [{parts: [{text: $fulltext}]}]}')
 
     GEMINI_RESPONSE=$(curl -4 -s --connect-timeout 8 --max-time 45 -X POST "https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=$GEMINI_API_KEY" \
       -H 'Content-Type: application/json' \
       -d "$GEMINI_PAYLOAD")
 
-    TRANSLATION=$(echo "$GEMINI_RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
-    if [ -z "$TRANSLATION" ]; then
+    RESPONSE_TEXT=$(echo "$GEMINI_RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
+    if [ -z "$RESPONSE_TEXT" ]; then
         GEMINI_ERR=$(echo "$GEMINI_RESPONSE" | jq -r '.error.message // empty')
         if [ -n "$GEMINI_ERR" ]; then
             ERROR_MSG="$GEMINI_ERR"
@@ -292,22 +441,31 @@ if [ -z "$TRANSLATION" ] && [ -n "$GEMINI_API_KEY" ]; then
 fi
 
 # Stop loading indicator
-kill $LOADING_PID 2>/dev/null
-wait $LOADING_PID 2>/dev/null
+if [ -n "$LOADING_PID" ]; then
+    kill "$LOADING_PID" 2>/dev/null
+    wait "$LOADING_PID" 2>/dev/null
+    LOADING_PID=""
+fi
 
 # ==============================================================================
-# STEP 4: DISPLAY RESULT
+# STEP 5: DISPLAY RESULT
 # ==============================================================================
-if [ -n "$TRANSLATION" ]; then
+if [ -n "$RESPONSE_TEXT" ]; then
     # Format soft-wrap for accurate Rofi height calculation
-    DISPLAY_TEXT=$(format_display_text "$TRANSLATION")
+    DISPLAY_TEXT=$(format_display_text "$RESPONSE_TEXT")
     rofi -dmenu -mesg "$DISPLAY_TEXT"$'\n' -theme-str "$THEME_RESULT" "${ROFI_MOUSE_FLAGS[@]}" </dev/null >/dev/null 2>&1
 else
     if [ -z "$ERROR_MSG" ]; then
         ERROR_MSG="No response received from AI API (timeout or unstable network)."
     fi
 
-    ERROR_DISPLAY="❌ Translation Error:
+    if [ -n "$COMMAND" ]; then
+        ERROR_TITLE="❌ Execution Error [/$COMMAND]"
+    else
+        ERROR_TITLE="❌ Translation Error"
+    fi
+
+    ERROR_DISPLAY="$ERROR_TITLE:
 
 $ERROR_MSG"
     DISPLAY_TEXT=$(format_display_text "$ERROR_DISPLAY")
