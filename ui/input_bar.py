@@ -6,7 +6,7 @@ from typing import Optional
 
 try:
     from PyQt6.QtCore import Qt, pyqtSignal, QStringListModel
-    from PyQt6.QtWidgets import QCompleter, QLineEdit, QListView
+    from PyQt6.QtWidgets import QCompleter, QLineEdit, QListView, QSizePolicy
 except ImportError:
     pass
 
@@ -29,6 +29,7 @@ class InputBar(QLineEdit):
         self.setPlaceholderText("Ask anything, enter prompt, or /help for commands...")
         self.setMaxLength(500)
         self.setClearButtonEnabled(True)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # Set placeholder text color to rgba(255, 255, 255, 0.4)
         palette = self.palette()

@@ -79,6 +79,13 @@ class TestUIComponents(unittest.TestCase):
         self.assertEqual(window.stack.currentIndex(), MainWindow.STATE_INPUT)
         self.assertIsNotNone(window.container.graphicsEffect())
 
+        # Verify zero layout margins on container (no box-in-box)
+        margins = window.container.layout().contentsMargins()
+        self.assertEqual(margins.left(), 0)
+        self.assertEqual(margins.top(), 0)
+        self.assertEqual(margins.right(), 0)
+        self.assertEqual(margins.bottom(), 0)
+
         # Submit /help
         window._handle_submit("/help")
         self.assertEqual(window.stack.currentIndex(), MainWindow.STATE_RESULT)

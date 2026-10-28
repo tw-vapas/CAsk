@@ -96,7 +96,7 @@ class MainWindow(QWidget):
             pass
 
         container_layout = QVBoxLayout(self.container)
-        container_layout.setContentsMargins(12, 12, 12, 12)
+        container_layout.setContentsMargins(0, 0, 0, 0)
         container_layout.setSpacing(0)
 
         # Stacked layout for Input, Loading, and Result states
@@ -120,7 +120,7 @@ class MainWindow(QWidget):
 
         root_layout.addWidget(self.container)
 
-        self._switch_state(self.STATE_INPUT, target_width=600, target_height=60)
+        self._switch_state(self.STATE_INPUT, target_width=600, target_height=50)
 
     def _get_target_screen(self):
         """Identify the screen under current mouse pointer."""

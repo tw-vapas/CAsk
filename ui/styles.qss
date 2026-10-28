@@ -8,27 +8,27 @@ QWidget {
     selection-color: #ffffff;
 }
 
-/* Central Floating Glass Container */
+/* Parent container: fully transparent with zero outer box/border */
 #CentralContainer {
+    background: transparent;
+    border: none;
+}
+
+/* Single Standalone Floating Input Bar */
+QLineEdit#InputBar {
     background-color: rgba(28, 28, 30, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.10);
     border-radius: 12px;
-}
-
-/* Input Bar */
-QLineEdit#InputBar {
-    background-color: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    border-radius: 8px;
-    padding: 10px 14px;
+    padding: 10px 18px;
     font-size: 13pt;
     color: #cdd6f4;
     selection-background-color: rgba(137, 180, 250, 0.35);
+    selection-color: #ffffff;
 }
 
 QLineEdit#InputBar:focus {
     border: 1px solid #89b4fa;
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: rgba(28, 28, 30, 0.95);
 }
 
 /* Completer Popup Dropdown */
@@ -55,15 +55,24 @@ QListView#CompleterPopup::item:hover {
     border: 1px solid rgba(137, 180, 250, 0.35);
 }
 
-/* Loading Widget */
+/* Loading State Capsule */
 #LoadingWidget {
-    background-color: transparent;
+    background-color: rgba(28, 28, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
 }
 
 #LoadingLabel {
     color: #89b4fa;
     font-size: 13pt;
     font-weight: 500;
+}
+
+/* Result View Capsule */
+#ResultViewWidget {
+    background-color: rgba(28, 28, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
 }
 
 /* Result View Header */
