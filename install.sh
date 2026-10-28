@@ -6,7 +6,13 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 BIN_TARGET="$HOME/.local/bin/ctrans"
 BIN_TARGET_ALIAS="$HOME/.local/bin/Ctrans"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ctrans"
@@ -14,6 +20,7 @@ CONFIG_FILE="$CONFIG_DIR/config.env"
 PROMPT_TARGET="$CONFIG_DIR/prompt.md"
 COMMANDS_DIR="$CONFIG_DIR/commands"
 DESKTOP_DIR="$HOME/.local/share/applications"
+
 DESKTOP_FILE="$DESKTOP_DIR/ctrans.desktop"
 
 echo "✨ Installing Ctrans (Convenient Translation)..."
@@ -51,6 +58,9 @@ elif [ -f "$SCRIPT_DIR/prompt.txt" ]; then
 fi
 
 if [ -d "$SCRIPT_DIR/commands" ]; then
+    # Clean up broken/dangling symlinks from deleted or renamed commands
+    find "$COMMANDS_DIR" -xtype l -delete 2>/dev/null || true
+
     for cmd_file in "$SCRIPT_DIR/commands"/*.md; do
         [ -f "$cmd_file" ] || continue
         cmd_name="$(basename "$cmd_file")"
