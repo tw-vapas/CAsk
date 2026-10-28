@@ -223,6 +223,9 @@ generate_help_text() {
                 [ -f "$f" ] || continue
                 local cmd
                 cmd="$(basename "$f" .md)"
+                case "$cmd" in
+                    GUIDE|guide|README|readme) continue ;;
+                esac
                 if [ -z "${seen_cmds[$cmd]:-}" ]; then
                     seen_cmds["$cmd"]="$f"
                     cmd_names+=("$cmd")
@@ -231,7 +234,7 @@ generate_help_text() {
         fi
     done
 
-    echo "💡 Ctrans Quick AI Assistant - Commands and Usage Guide"
+    echo "Ctrans Quick AI Assistant - Commands and Usage Guide"
     echo ""
     echo "Available Commands:"
     printf "  • /%-20s %s\n" "help" "Show available commands and usage guide"
@@ -289,15 +292,20 @@ if [[ "$INPUT" =~ ^/([a-zA-Z0-9_-]+)([[:space:]]+(.*))?$ ]]; then
 
     # Locate modular command file (User config -> Repo defaults)
     COMMAND_FILE=""
-    if [ -f "$USER_COMMANDS_DIR/${COMMAND}.md" ]; then
-        COMMAND_FILE="$USER_COMMANDS_DIR/${COMMAND}.md"
-    elif [ -f "$DEFAULT_COMMANDS_DIR/${COMMAND}.md" ]; then
-        COMMAND_FILE="$DEFAULT_COMMANDS_DIR/${COMMAND}.md"
-    fi
+    case "$COMMAND" in
+        GUIDE|guide|README|readme) ;;
+        *)
+            if [ -f "$USER_COMMANDS_DIR/${COMMAND}.md" ]; then
+                COMMAND_FILE="$USER_COMMANDS_DIR/${COMMAND}.md"
+            elif [ -f "$DEFAULT_COMMANDS_DIR/${COMMAND}.md" ]; then
+                COMMAND_FILE="$DEFAULT_COMMANDS_DIR/${COMMAND}.md"
+            fi
+            ;;
+    esac
 
     # Unknown command entered: show error dialog without consuming API tokens
     if [ -z "$COMMAND_FILE" ]; then
-        UNKNOWN_ERR="⚠️ Unknown Command: /$COMMAND
+        UNKNOWN_ERR="Unknown Command: /$COMMAND
 
 $(generate_help_text)"
         DISPLAY_TEXT=$(format_display_text "$UNKNOWN_ERR")
@@ -320,7 +328,7 @@ $(generate_help_text)"
         EXAMPLE_HINT=$(grep -m 1 -i '^[[:space:]]*<!--[[:space:]]*Example:[[:space:]]*' "$COMMAND_FILE" 2>/dev/null | sed -E 's/^[[:space:]]*<!--[[:space:]]*[Ee]xample:[[:space:]]*//; s/[[:space:]]*-->$//')
         [ -z "$EXAMPLE_HINT" ] && EXAMPLE_HINT="$USAGE_HINT ..."
 
-        MISSING_ARG_MSG="⚠️ Missing argument for /$COMMAND
+        MISSING_ARG_MSG="Missing argument for /$COMMAND
 
 Usage:
   $USAGE_HINT
@@ -337,11 +345,7 @@ Example:
 
     # Command matched & validated: load prompt and configure dynamic loading label
     SYSTEM_PROMPT=$(cat "$COMMAND_FILE")
-    case "$COMMAND" in
-        ask) LOADING_MSG="Asking AI [/ask]..." ;;
-        eva) LOADING_MSG="Evaluating [/eva]..." ;;
-        *)   LOADING_MSG="Processing [/$COMMAND]..." ;;
-    esac
+    LOADING_MSG="processing /${COMMAND}..."
 else
     # 2.3. Default translation mode (No slash command)
     if [ -f "$PROMPT_FILE" ]; then
@@ -356,7 +360,7 @@ fi
 # API KEY VALIDATION (Executed only when AI request is required)
 # ==============================================================================
 if [ -z "$GROQ_API_KEY" ] && [ -z "$GEMINI_API_KEY" ]; then
-    NO_KEY_MSG="⚠️ API Key not configured!
+    NO_KEY_MSG="API Key not configured!
 
 Please configure GROQ_API_KEY or GEMINI_API_KEY in:
 $CONFIG_FILE
@@ -462,9 +466,9 @@ else
     fi
 
     if [ -n "$COMMAND" ]; then
-        ERROR_TITLE="❌ Execution Error [/$COMMAND]"
+        ERROR_TITLE="Execution Error [/$COMMAND]"
     else
-        ERROR_TITLE="❌ Translation Error"
+        ERROR_TITLE="Translation Error"
     fi
 
     ERROR_DISPLAY="$ERROR_TITLE:
