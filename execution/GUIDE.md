@@ -10,16 +10,16 @@ Command files are decoupled markdown files (`.md`) loaded dynamically by the Ctr
 
 ### Directory Resolution
 Commands are resolved in the following priority order:
-1. **User Custom Commands:** `~/.config/ctrans/commands/{command_name}.md`
-2. **Project Default Commands:** `commands/{command_name}.md` (in the repository)
+1. **User Custom Commands:** `~/.config/ctrans/execution/commands/{command_name}.md`
+2. **Project Default Commands:** `execution/commands/{command_name}.md` (in the repository)
 
 ### Naming Rules
 - **Filename:** `{command_name}.md` (e.g., `ask.md`, `eva.md`, `code.md`).
 - **Trigger:** The command is triggered in the input bar via `/{command_name}`.
 - **Allowed characters:** Alphanumeric characters, hyphens, and underscores (`[a-zA-Z0-9_-]+`). Must be lowercase.
-- **Reserved filenames:** `GUIDE.md`, `README.md`, `default.md`.
+- **Reserved filenames:** `GUIDE.md`, `README.md`, `DEFAULT.md`.
   - `GUIDE.md` and `README.md` are documentation files.
-  - `default.md` configures the default assistant prompt executed when no slash command is used. It is excluded from the `/help` catalog and autocomplete. Users can edit `~/.config/ctrans/commands/default.md` to customize the default persona (e.g. translator, coding assistant, or executive summarizer).
+  - `DEFAULT.md` (in `execution/DEFAULT.md`) configures the default assistant prompt executed when no slash command is used. It is excluded from the `/help` catalog and autocomplete. Users can edit `~/.config/ctrans/execution/DEFAULT.md` to customize the default persona (e.g. translator, coding assistant, or executive summarizer).
 
 ---
 

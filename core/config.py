@@ -22,8 +22,10 @@ class Config:
     prompt_file: Optional[Path] = None
     config_dir: Path = Path.home() / ".config" / "ctrans"
     script_dir: Path = Path(__file__).resolve().parent.parent
-    user_commands_dir: Path = Path.home() / ".config" / "ctrans" / "commands"
-    default_commands_dir: Path = Path(__file__).resolve().parent.parent / "commands"
+    user_execution_dir: Path = Path.home() / ".config" / "ctrans" / "execution"
+    user_commands_dir: Path = Path.home() / ".config" / "ctrans" / "execution" / "commands"
+    default_execution_dir: Path = Path(__file__).resolve().parent.parent / "execution"
+    default_commands_dir: Path = Path(__file__).resolve().parent.parent / "execution" / "commands"
 
     @property
     def has_any_api_key(self) -> bool:
@@ -88,8 +90,10 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
         script_dir = Path(__file__).resolve().parent.parent
 
     config_dir = resolve_config_dir()
-    user_commands_dir = config_dir / "commands"
-    default_commands_dir = script_dir / "commands"
+    user_execution_dir = config_dir / "execution"
+    user_commands_dir = user_execution_dir / "commands"
+    default_execution_dir = script_dir / "execution"
+    default_commands_dir = default_execution_dir / "commands"
 
     # Search order:
     # 1. ~/.config/ctrans/config.env (or ~/.config/rofi-translate/config.env)
@@ -119,9 +123,9 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
 
     # Resolve default AI assistant prompt file:
     # 1. $PROMPT_FILE override (if explicitly set in config/env)
-    # 2. User custom default: ~/.config/ctrans/commands/default.md
-    # 3. Repository default: commands/default.md
-    # 4. Fallback legacy candidates: prompt.md / prompt.txt
+    # 2. User custom default: ~/.config/ctrans/execution/DEFAULT.md
+    # 3. Repository default: execution/DEFAULT.md
+    # 4. Fallback legacy candidates: default.md / prompt.md
     explicit_prompt = get_val("PROMPT_FILE", "")
     prompt_file: Optional[Path] = None
     if explicit_prompt:
@@ -131,8 +135,14 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
 
     if prompt_file is None:
         for candidate in [
+            user_execution_dir / "DEFAULT.md",
+            default_execution_dir / "DEFAULT.md",
+            user_execution_dir / "default.md",
+            default_execution_dir / "default.md",
+            user_commands_dir / "DEFAULT.md",
             user_commands_dir / "default.md",
-            default_commands_dir / "default.md",
+            config_dir / "commands" / "default.md",
+            script_dir / "commands" / "default.md",
             script_dir / "prompt.md",
             config_dir / "prompt.md",
             script_dir / "prompt.txt",
@@ -150,6 +160,8 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
         prompt_file=prompt_file,
         config_dir=config_dir,
         script_dir=script_dir,
+        user_execution_dir=user_execution_dir,
         user_commands_dir=user_commands_dir,
+        default_execution_dir=default_execution_dir,
         default_commands_dir=default_commands_dir,
     )

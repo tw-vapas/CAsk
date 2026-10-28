@@ -20,7 +20,8 @@ BIN_TARGET_LEGACY="$HOME/.local/bin/ctrans-legacy"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ctrans"
 CONFIG_FILE="$CONFIG_DIR/config.env"
 PROMPT_TARGET="$CONFIG_DIR/prompt.md"
-COMMANDS_DIR="$CONFIG_DIR/commands"
+EXECUTION_DIR="$CONFIG_DIR/execution"
+COMMANDS_DIR="$EXECUTION_DIR/commands"
 DESKTOP_DIR="$HOME/.local/share/applications"
 DESKTOP_FILE="$DESKTOP_DIR/ctrans.desktop"
 
@@ -48,6 +49,7 @@ fi
 # 2. Setup configuration directory and files
 echo "📁 Setting up configuration..."
 mkdir -p "$CONFIG_DIR"
+mkdir -p "$EXECUTION_DIR"
 mkdir -p "$COMMANDS_DIR"
 
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -64,16 +66,24 @@ if [ -L "$PROMPT_TARGET" ] || [ -f "$PROMPT_TARGET" ]; then
     rm -f "$PROMPT_TARGET"
 fi
 
-if [ -d "$SCRIPT_DIR/commands" ]; then
-    # Clean up broken/dangling symlinks from deleted or renamed commands
+# Link execution templates: DEFAULT.md and GUIDE.md
+if [ -f "$SCRIPT_DIR/execution/DEFAULT.md" ]; then
+    ln -sf "$SCRIPT_DIR/execution/DEFAULT.md" "$EXECUTION_DIR/DEFAULT.md"
+fi
+if [ -f "$SCRIPT_DIR/execution/GUIDE.md" ]; then
+    ln -sf "$SCRIPT_DIR/execution/GUIDE.md" "$EXECUTION_DIR/GUIDE.md"
+fi
+
+# Link modular command prompts inside execution/commands
+if [ -d "$SCRIPT_DIR/execution/commands" ]; then
     find "$COMMANDS_DIR" -xtype l -delete 2>/dev/null || true
 
-    for cmd_file in "$SCRIPT_DIR/commands"/*.md; do
+    for cmd_file in "$SCRIPT_DIR/execution/commands"/*.md; do
         [ -f "$cmd_file" ] || continue
         cmd_name="$(basename "$cmd_file")"
         ln -sf "$cmd_file" "$COMMANDS_DIR/$cmd_name"
     done
-    echo "  ✓ Linked default persona (default.md) and command prompts in $COMMANDS_DIR"
+    echo "  ✓ Linked default persona (DEFAULT.md) and command prompts in $COMMANDS_DIR"
 fi
 
 # 3. Create symlinks in ~/.local/bin
