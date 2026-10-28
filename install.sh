@@ -12,6 +12,7 @@ BIN_TARGET_ALIAS="$HOME/.local/bin/Ctrans"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ctrans"
 CONFIG_FILE="$CONFIG_DIR/config.env"
 PROMPT_TARGET="$CONFIG_DIR/prompt.md"
+COMMANDS_DIR="$CONFIG_DIR/commands"
 DESKTOP_DIR="$HOME/.local/share/applications"
 DESKTOP_FILE="$DESKTOP_DIR/ctrans.desktop"
 
@@ -30,6 +31,7 @@ done
 # 2. Setup configuration directory and files
 echo "📁 Setting up configuration..."
 mkdir -p "$CONFIG_DIR"
+mkdir -p "$COMMANDS_DIR"
 
 if [ ! -f "$CONFIG_FILE" ]; then
     cp "$SCRIPT_DIR/.env.example" "$CONFIG_FILE"
@@ -46,6 +48,15 @@ if [ -f "$SCRIPT_DIR/prompt.md" ]; then
 elif [ -f "$SCRIPT_DIR/prompt.txt" ]; then
     ln -sf "$SCRIPT_DIR/prompt.txt" "$PROMPT_TARGET"
     echo "  ✓ Linked customizable prompt at $PROMPT_TARGET"
+fi
+
+if [ -d "$SCRIPT_DIR/commands" ]; then
+    for cmd_file in "$SCRIPT_DIR/commands"/*.md; do
+        [ -f "$cmd_file" ] || continue
+        cmd_name="$(basename "$cmd_file")"
+        ln -sf "$cmd_file" "$COMMANDS_DIR/$cmd_name"
+    done
+    echo "  ✓ Linked modular command prompts in $COMMANDS_DIR"
 fi
 
 # 3. Create symlinks in ~/.local/bin
