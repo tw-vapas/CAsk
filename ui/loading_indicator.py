@@ -4,17 +4,18 @@ from __future__ import annotations
 
 try:
     from PyQt6.QtCore import Qt, QTimer
-    from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
+    from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QWidget
 except ImportError:
     pass
 
 
-class LoadingIndicator(QWidget):
+class LoadingIndicator(QFrame):
     """Subtle animated loading state indicator."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("LoadingWidget")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         self._base_text = "Analyzing..."
         self._dot_count = 0

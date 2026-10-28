@@ -6,6 +6,7 @@ try:
     from PyQt6.QtCore import Qt, QTimer, pyqtSignal
     from PyQt6.QtGui import QGuiApplication
     from PyQt6.QtWidgets import (
+        QFrame,
         QHBoxLayout,
         QLabel,
         QPushButton,
@@ -17,7 +18,7 @@ except ImportError:
     pass
 
 
-class ResultView(QWidget):
+class ResultView(QFrame):
     """Rich text / Markdown viewer with 1-click clipboard copy."""
 
     dismiss_requested = pyqtSignal()
@@ -25,6 +26,7 @@ class ResultView(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("ResultViewWidget")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         self._raw_content = ""
 

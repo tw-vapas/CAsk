@@ -17,7 +17,7 @@ QWidget {
 /* Single Standalone Floating Input Bar */
 QLineEdit#InputBar {
     background-color: rgba(28, 28, 30, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 12px;
     padding: 10px 18px;
     font-size: 13pt;
@@ -27,14 +27,14 @@ QLineEdit#InputBar {
 }
 
 QLineEdit#InputBar:focus {
-    border: 1px solid #89b4fa;
+    border: 1px solid rgba(255, 255, 255, 0.45);
     background-color: rgba(28, 28, 30, 0.95);
 }
 
 /* Completer Popup Dropdown */
 QListView#CompleterPopup {
     background-color: rgba(28, 28, 30, 0.98);
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 10px;
     padding: 6px;
     color: #cdd6f4;
@@ -58,7 +58,7 @@ QListView#CompleterPopup::item:hover {
 /* Loading State Capsule */
 #LoadingWidget {
     background-color: rgba(28, 28, 30, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 12px;
 }
 
@@ -71,7 +71,7 @@ QListView#CompleterPopup::item:hover {
 /* Result View Capsule */
 #ResultViewWidget {
     background-color: rgba(28, 28, 30, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 12px;
 }
 

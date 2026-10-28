@@ -53,8 +53,7 @@ class MainWindow(QWidget):
             self._handle_submit(self.initial_input)
 
     SHADOW_PAD_X = 24
-    SHADOW_PAD_Y_TOP = 18
-    SHADOW_PAD_Y_BOTTOM = 30
+    SHADOW_PAD_Y = 24
 
     def _setup_window_properties(self) -> None:
         """Configure frameless, translucent, always-on-top window flags."""
@@ -72,9 +71,9 @@ class MainWindow(QWidget):
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(
             self.SHADOW_PAD_X,
-            self.SHADOW_PAD_Y_TOP,
+            self.SHADOW_PAD_Y,
             self.SHADOW_PAD_X,
-            self.SHADOW_PAD_Y_BOTTOM,
+            self.SHADOW_PAD_Y,
         )
         root_layout.setSpacing(0)
 
@@ -88,8 +87,8 @@ class MainWindow(QWidget):
             from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 
             shadow = QGraphicsDropShadowEffect(self.container)
-            shadow.setBlurRadius(36)
-            shadow.setOffset(0, 8)
+            shadow.setBlurRadius(32)
+            shadow.setOffset(0, 4)
             shadow.setColor(QColor(0, 0, 0, 102))
             self.container.setGraphicsEffect(shadow)
         except Exception:
@@ -131,7 +130,7 @@ class MainWindow(QWidget):
         return screen
 
     def _reposition(self, width: int, height: int) -> None:
-        """Center the HUD on the target monitor."""
+        """Center the HUD horizontally and vertically on the target monitor."""
         screen = self._get_target_screen()
         if not screen:
             self.resize(width, height)
@@ -139,9 +138,11 @@ class MainWindow(QWidget):
 
         screen_geo = screen.availableGeometry()
         x = screen_geo.x() + (screen_geo.width() - width) // 2
-        y = screen_geo.y() + (screen_geo.height() - height) // 3  # Golden ratio / upper third
+        y = screen_geo.y() + (screen_geo.height() - height) // 2
 
         self.setGeometry(x, y, width, height)
+        self.resize(width, height)
+        self.move(x, y)
 
     def _switch_state(self, state: int, target_width: int, target_height: int) -> None:
         """Transition between UI states and adjust geometry."""
@@ -149,7 +150,7 @@ class MainWindow(QWidget):
         self.container.setFixedSize(target_width, target_height)
 
         total_width = target_width + (self.SHADOW_PAD_X * 2)
-        total_height = target_height + self.SHADOW_PAD_Y_TOP + self.SHADOW_PAD_Y_BOTTOM
+        total_height = target_height + (self.SHADOW_PAD_Y * 2)
         self._reposition(total_width, total_height)
 
         if state == self.STATE_INPUT:
@@ -192,7 +193,7 @@ class MainWindow(QWidget):
 
         # Switch to Loading State
         self.loading_widget.set_loading_text(route.loading_label)
-        self._switch_state(self.STATE_LOADING, target_width=600, target_height=76)
+        self._switch_state(self.STATE_LOADING, target_width=600, target_height=54)
 
         # Launch background API request
         badge_name = f"/{route.command}" if route.command else "Assistant"

@@ -55,6 +55,7 @@ class TestUIComponents(unittest.TestCase):
 
     def test_loading_indicator(self):
         indicator = LoadingIndicator()
+        self.assertTrue(indicator.testAttribute(Qt.WidgetAttribute.WA_StyledBackground))
         indicator.set_loading_text("processing /ask...")
         self.assertEqual(indicator.label.text(), "processing /ask...")
         indicator.start()
@@ -64,6 +65,7 @@ class TestUIComponents(unittest.TestCase):
 
     def test_result_view(self):
         view = ResultView()
+        self.assertTrue(view.testAttribute(Qt.WidgetAttribute.WA_StyledBackground))
         test_md = "## Test Title\n\n• Point 1\n• Point 2"
         view.set_content(badge="/ask", content=test_md, is_error=False)
         self.assertEqual(view.badge_label.text(), "/ask")
@@ -86,11 +88,23 @@ class TestUIComponents(unittest.TestCase):
         self.assertEqual(margins.right(), 0)
         self.assertEqual(margins.bottom(), 0)
 
+        # Verify initial input state centering
+        g0 = window.geometry()
+        screen = window._get_target_screen()
+        screen_geo = screen.availableGeometry()
+        self.assertEqual(g0.x() + g0.width() // 2, screen_geo.x() + screen_geo.width() // 2)
+        self.assertEqual(g0.y() + g0.height() // 2, screen_geo.y() + screen_geo.height() // 2)
+
         # Submit /help
         window._handle_submit("/help")
         self.assertEqual(window.stack.currentIndex(), MainWindow.STATE_RESULT)
         self.assertEqual(window.result_view.badge_label.text(), "Help")
         self.assertIn("Available Commands:", window.result_view.text_browser.toPlainText())
+
+        # Verify result state horizontal and vertical centering
+        g2 = window.geometry()
+        self.assertEqual(g2.x() + g2.width() // 2, screen_geo.x() + screen_geo.width() // 2)
+        self.assertEqual(g2.y() + g2.height() // 2, screen_geo.y() + screen_geo.height() // 2)
 
         # Submit missing argument
         window._handle_submit("/ask")
