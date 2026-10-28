@@ -8,7 +8,7 @@
 
 A minimalist, ultra-fast, and aesthetic **Glassmorphism Universal Quick AI Assistant** built with **native PyQt6 (Qt6)** and powered by **Groq Cloud API** (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) with automatic failover to **Google Gemini API** (`gemini-3.5-flash-lite`).
 
-Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, GNOME) with a seamless single-window Raycast/Spotlight experience, native Markdown rendering, command autocomplete, and deep customization. Users can configure both the default assistant behavior (`commands/default.md`) and any number of modular slash commands (`commands/*.md`).
+Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, GNOME) with a seamless single-window Raycast/Spotlight experience, native Markdown rendering, command autocomplete, and deep customization. Users can configure both the default assistant behavior (`execution/DEFAULT.md`) and any number of modular slash commands (`execution/commands/*.md`).
 
 ---
 
@@ -17,8 +17,8 @@ Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, 
 - ⚡ **Ultra-Fast Hybrid Backend:** Primary requests via **Groq Cloud API** (~0.6s sub-second response) with automatic failover to **Google Gemini API**.
 - 🪟 **Single-Window Fluid HUD:** Frameless, frosted dark HUD (`rgba(28, 28, 30, 0.95)`, `border-radius: 12px`, 1px subtle 3D glass border) with a deep floating drop-shadow. Smoothly transitions between states with zero window churn or visual flicker.
 - 🎯 **Fully Customizable Personas:**
-  - **Default Assistant (`commands/default.md`):** Customize the AI behavior when no slash command is used (e.g., translator, concise knowledge assistant, summarizer, or coding helper).
-  - **Modular Slash Commands (`commands/*.md`):** Add new slash commands anytime (`/ask`, `/eva`, `/summary`, etc.) simply by adding a markdown prompt file.
+  - **Default Assistant (`execution/DEFAULT.md`):** Customize the AI behavior when no slash command is used (e.g., translator, concise knowledge assistant, summarizer, or coding helper).
+  - **Modular Slash Commands (`execution/commands/*.md`):** Add new slash commands anytime (`/ask`, `/eva`, `/summary`, etc.) simply by adding a markdown prompt file.
 - 📜 **Native CommonMark Rendering:** Renders headers, bold/italics, bullet points, blockquotes, and syntax-highlighted code blocks using Qt6's native Markdown engine.
 - ↕️ **Smooth Scrolling & Stealth Scrollbar:** Responsive mouse-wheel scrolling with an invisible scrollbar that only appears as a thin translucent strip when hovered.
 - ⌨️ **Slash Command Autocomplete:** Type `/` to instantly open an interactive dropdown of all registered commands (`/help`, `/ask`, `/eva`).
@@ -64,9 +64,9 @@ chmod +x install.sh
 ```
 This script will:
 - Verify Python 3 and PyQt6.
-- Set up configuration directory at `~/.config/ctrans/` and `~/.config/ctrans/commands/`.
+- Set up configuration directory at `~/.config/ctrans/execution/` and `~/.config/ctrans/execution/commands/`.
 - Copy template configuration (`config.env`).
-- Symlink default persona (`commands/default.md`) and modular commands (`ask.md`, `eva.md`).
+- Symlink default persona (`execution/DEFAULT.md`) and modular commands (`ask.md`, `eva.md`).
 - Symlink `ctrans.py` to `~/.local/bin/ctrans` and `~/.local/bin/Ctrans`.
 - Register `ctrans.desktop` for system-wide shortcut binding.
 
@@ -103,7 +103,7 @@ Or bind `ctrans` to a global keyboard shortcut in KDE Plasma / GNOME / Hyprland 
 
 | Input | Mode | Description |
 |---|---|---|
-| `<prompt or text>` | **Default Assistant** | Direct execution with customizable default persona (`commands/default.md`). |
+| `<prompt or text>` | **Default Assistant** | Direct execution with customizable default persona (`execution/DEFAULT.md`). |
 | `/help` or `/` | **Command Help** | Displays the interactive catalog of all available commands. |
 | `/ask <topic>` | **Bilingual Explainer** | Clear, structured concept explanation in English followed by Vietnamese. |
 | `/eva <sentence>` | **Language Coach** | Grammar critique in Vietnamese and 3 native English rephrasing suggestions. |
@@ -116,7 +116,7 @@ You can define how Ctrans behaves when no slash command is entered:
 
 1. Edit your personal default prompt file:
    ```bash
-   nano ~/.config/ctrans/commands/default.md
+   nano ~/.config/ctrans/execution/DEFAULT.md
    ```
 2. Replace it with any desired AI persona (e.g., concise knowledge assistant, translation engine, terminal command helper, or code explainer).
 3. Any plain query typed into Ctrans will now be executed according to your custom default instructions.
@@ -127,9 +127,9 @@ You can define how Ctrans behaves when no slash command is entered:
 
 You can create new slash commands without touching any application code:
 
-1. Create a markdown file inside `~/.config/ctrans/commands/`:
+1. Create a markdown file inside `~/.config/ctrans/execution/commands/`:
    ```bash
-   nano ~/.config/ctrans/commands/summary.md
+   nano ~/.config/ctrans/execution/commands/summary.md
    ```
 2. Define the header description on the first line, followed by the system prompt:
    ```markdown
@@ -181,11 +181,12 @@ ctrans/
 │   ├── result_view.py         # QTextBrowser with CommonMark & 1-click copy
 │   ├── loading_indicator.py   # Subtle animated request indicator
 │   └── styles.qss             # Translucent Glassmorphism QSS stylesheet
-├── commands/                  # Modular command prompt templates & default persona
+├── execution/                 # Prompt definitions & command templates
+│   ├── DEFAULT.md             # Default assistant prompt (used when no slash command is given)
 │   ├── GUIDE.md               # Command authoring specifications
-│   ├── default.md             # Default assistant prompt (used when no slash command is given)
-│   ├── ask.md                 # /ask bilingual explanation prompt
-│   └── eva.md                 # /eva grammar and phrasing critique prompt
+│   └── commands/              # Modular slash command prompts
+│       ├── ask.md             # /ask bilingual explanation prompt
+│       └── eva.md             # /eva grammar and phrasing critique prompt
 ├── tests/                     # Automated test suite
 │   ├── test_core.py           # Core router and loader unit tests
 │   └── test_ui.py             # Headless PyQt6 UI tests
