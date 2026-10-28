@@ -13,7 +13,7 @@ from typing import Optional
 
 from .config import Config
 
-IGNORED_COMMAND_NAMES = {"guide", "readme"}
+IGNORED_COMMAND_NAMES = {"guide", "readme", "default"}
 
 # Regex for line 1 metadata: # /<command> <arg> - <description>
 META_SIG_PATTERN = re.compile(

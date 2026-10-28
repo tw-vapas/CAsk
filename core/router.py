@@ -33,7 +33,8 @@ class RouteType(Enum):
     COMMAND = auto()
     MISSING_ARG = auto()
     UNKNOWN_COMMAND = auto()
-    TRANSLATION = auto()
+    DEFAULT = auto()
+    TRANSLATION = DEFAULT  # Backward compatibility alias
 
 
 @dataclass(frozen=True)
@@ -126,7 +127,7 @@ def route_input(
             user_prompt_content=payload,
         )
 
-    # Fallback to default translation mode
+    # Fallback to customizable default assistant mode (from commands/default.md)
     system_prompt = DEFAULT_TRANSLATION_PROMPT
     if config.prompt_file and config.prompt_file.is_file():
         try:
@@ -137,10 +138,10 @@ def route_input(
             pass
 
     return RouteResult(
-        route_type=RouteType.TRANSLATION,
+        route_type=RouteType.DEFAULT,
         command="",
         payload=text,
         system_prompt=system_prompt,
-        loading_label="Analyzing...",
-        user_prompt_content=f"Translate: {text}",
+        loading_label="Thinking...",
+        user_prompt_content=text,
     )

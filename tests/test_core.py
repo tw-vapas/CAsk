@@ -29,6 +29,7 @@ class TestCoreCommandLoader(unittest.TestCase):
         self.assertIn("eva", names)
         self.assertNotIn("guide", names)
         self.assertNotIn("readme", names)
+        self.assertNotIn("default", names)
 
     def test_ask_command_metadata(self):
         ask = self.catalog.get("ask")
@@ -45,6 +46,7 @@ class TestCoreCommandLoader(unittest.TestCase):
         self.assertIn("• /help", help_text)
         self.assertIn("• /ask <topic>", help_text)
         self.assertIn("• /eva <sentence>", help_text)
+        self.assertNotIn("• /default", help_text)
 
 
 class TestCoreRouter(unittest.TestCase):
@@ -91,20 +93,21 @@ class TestCoreRouter(unittest.TestCase):
         self.assertIn("Available Commands:", res.display_text)
 
     def test_path_collision_avoidance(self):
-        # Linux paths like /etc/hosts or /var/log should fall back to translation
+        # Linux paths like /etc/hosts or /var/log should fall back to default assistant
         for path_input in ["/etc/hosts", "/var/log/syslog", "/usr/bin/bash"]:
             res = route_input(path_input, self.catalog, self.config)
-            self.assertEqual(res.route_type, RouteType.TRANSLATION, f"Failed on {path_input}")
+            self.assertEqual(res.route_type, RouteType.DEFAULT, f"Failed on {path_input}")
             self.assertEqual(res.payload, path_input)
-            self.assertEqual(res.user_prompt_content, f"Translate: {path_input}")
-            self.assertEqual(res.loading_label, "Analyzing...")
+            self.assertEqual(res.user_prompt_content, path_input)
+            self.assertEqual(res.loading_label, "Thinking...")
 
-    def test_standard_translation(self):
+    def test_standard_default_routing(self):
         res = route_input("Hello world", self.catalog, self.config)
-        self.assertEqual(res.route_type, RouteType.TRANSLATION)
+        self.assertEqual(res.route_type, RouteType.DEFAULT)
         self.assertEqual(res.payload, "Hello world")
-        self.assertEqual(res.user_prompt_content, "Translate: Hello world")
-        self.assertEqual(res.loading_label, "Analyzing...")
+        self.assertEqual(res.user_prompt_content, "Hello world")
+        self.assertEqual(res.loading_label, "Thinking...")
+        self.assertIn("Default AI Assistant Prompt", res.system_prompt)
 
 
 if __name__ == "__main__":

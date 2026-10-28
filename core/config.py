@@ -117,7 +117,11 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
     gemini_api_key = get_val("GEMINI_API_KEY", "")
     gemini_model = get_val("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
-    # Resolve default translation prompt file
+    # Resolve default AI assistant prompt file:
+    # 1. $PROMPT_FILE override (if explicitly set in config/env)
+    # 2. User custom default: ~/.config/ctrans/commands/default.md
+    # 3. Repository default: commands/default.md
+    # 4. Fallback legacy candidates: prompt.md / prompt.txt
     explicit_prompt = get_val("PROMPT_FILE", "")
     prompt_file: Optional[Path] = None
     if explicit_prompt:
@@ -127,6 +131,8 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
 
     if prompt_file is None:
         for candidate in [
+            user_commands_dir / "default.md",
+            default_commands_dir / "default.md",
             script_dir / "prompt.md",
             config_dir / "prompt.md",
             script_dir / "prompt.txt",
