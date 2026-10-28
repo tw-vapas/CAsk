@@ -1,4 +1,4 @@
-# 🌐 Ctrans (Convenient Translation & Quick AI Assistant)
+# 🌐 Ctrans (Universal Quick AI Assistant)
 
 [![Linux](https://img.shields.io/badge/OS-Linux%20%2F%20Wayland-blue?logo=linux&logoColor=white)](#)
 [![Qt6](https://img.shields.io/badge/UI-PyQt6%20%2F%20Qt6-41cd52?logo=qt&logoColor=white)](#)
@@ -6,23 +6,25 @@
 [![Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-orange?logo=google&logoColor=white)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A minimalist, ultra-fast, and aesthetic **Glassmorphism Quick Translator & Universal AI Assistant** built with **native PyQt6 (Qt6)** and powered by **Groq Cloud API** (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) with automatic failover to **Google Gemini API** (`gemini-3.5-flash-lite`).
+A minimalist, ultra-fast, and aesthetic **Glassmorphism Universal Quick AI Assistant** built with **native PyQt6 (Qt6)** and powered by **Groq Cloud API** (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) with automatic failover to **Google Gemini API** (`gemini-3.5-flash-lite`).
 
-Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, GNOME) with a seamless single-window Raycast/Spotlight experience, native Markdown rendering, command autocomplete, and click-outside-to-dismiss.
+Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, GNOME) with a seamless single-window Raycast/Spotlight experience, native Markdown rendering, command autocomplete, and deep customization. Users can configure both the default assistant behavior (`commands/default.md`) and any number of modular slash commands (`commands/*.md`).
 
 ---
 
 ## ✨ Features
 
 - ⚡ **Ultra-Fast Hybrid Backend:** Primary requests via **Groq Cloud API** (~0.6s sub-second response) with automatic failover to **Google Gemini API**.
-- 🪟 **Single-Window Fluid HUD:** Frameless, frosted dark HUD (`rgba(28, 28, 30, 0.95)`). Smoothly transitions from Input to Loading and expands to Result with zero window churn or visual flicker.
-- 📜 **Native CommonMark Rendering:** Renders headers, bold/italics, bullet points, blockquotes, and code blocks using Qt6's native Markdown engine.
-- ↕️ **Smooth Mouse-Wheel Scrolling:** Responsive scrolling with custom glassmorphic slim scrollbars for long explanations.
+- 🪟 **Single-Window Fluid HUD:** Frameless, frosted dark HUD (`rgba(28, 28, 30, 0.95)`, `border-radius: 12px`, 1px subtle 3D glass border) with a deep floating drop-shadow. Smoothly transitions between states with zero window churn or visual flicker.
+- 🎯 **Fully Customizable Personas:**
+  - **Default Assistant (`commands/default.md`):** Customize the AI behavior when no slash command is used (e.g., translator, concise knowledge assistant, summarizer, or coding helper).
+  - **Modular Slash Commands (`commands/*.md`):** Add new slash commands anytime (`/ask`, `/eva`, `/summary`, etc.) simply by adding a markdown prompt file.
+- 📜 **Native CommonMark Rendering:** Renders headers, bold/italics, bullet points, blockquotes, and syntax-highlighted code blocks using Qt6's native Markdown engine.
+- ↕️ **Smooth Scrolling & Stealth Scrollbar:** Responsive mouse-wheel scrolling with an invisible scrollbar that only appears as a thin translucent strip when hovered.
 - ⌨️ **Slash Command Autocomplete:** Type `/` to instantly open an interactive dropdown of all registered commands (`/help`, `/ask`, `/eva`).
 - 📋 **1-Click Clipboard Copy:** Instant copy button on every response card with visual `"✓ Copied!"` feedback.
 - 🖱️ **Wayland Click-to-Dismiss:** Closes automatically on <kbd>Enter</kbd>, <kbd>Esc</kbd>, or when clicking anywhere outside the HUD window.
-- 🚀 **Modular Command Prompts:** Standalone prompt files (`commands/*.md`)—create new assistant personas without writing application code.
-- 💻 **Headless CLI Mode:** Run queries directly in the terminal via `ctrans --cli [query]` for scripting or shell pipelines.
+- 💻 **Headless CLI Mode:** Run queries directly in the terminal via `ctrans --cli [query]` for shell pipelines and automation.
 
 ---
 
@@ -63,8 +65,8 @@ chmod +x install.sh
 This script will:
 - Verify Python 3 and PyQt6.
 - Set up configuration directory at `~/.config/ctrans/` and `~/.config/ctrans/commands/`.
-- Copy template configuration (`config.env`) and link default system prompt (`prompt.md`).
-- Symlink default modular commands (`ask.md`, `eva.md`).
+- Copy template configuration (`config.env`).
+- Symlink default persona (`commands/default.md`) and modular commands (`ask.md`, `eva.md`).
 - Symlink `ctrans.py` to `~/.local/bin/ctrans` and `~/.local/bin/Ctrans`.
 - Register `ctrans.desktop` for system-wide shortcut binding.
 
@@ -93,7 +95,7 @@ Run it directly from your terminal:
 ```bash
 ctrans
 ```
-Or bind `ctrans` to a global keyboard shortcut in KDE Plasma / GNOME / Hyprland (e.g. `Meta + T` or `Ctrl + Alt + T`).
+Or bind `ctrans` to a global keyboard shortcut in KDE Plasma / GNOME / Hyprland (e.g. `Meta + Space` or `Alt + Space`).
 
 ---
 
@@ -101,33 +103,29 @@ Or bind `ctrans` to a global keyboard shortcut in KDE Plasma / GNOME / Hyprland 
 
 | Input | Mode | Description |
 |---|---|---|
-| `<word or sentence>` | **Translator (Default)** | Direct English ↔ Vietnamese translation with IPA, keywords, or definitions. |
+| `<prompt or text>` | **Default Assistant** | Direct execution with customizable default persona (`commands/default.md`). |
 | `/help` or `/` | **Command Help** | Displays the interactive catalog of all available commands. |
 | `/ask <topic>` | **Bilingual Explainer** | Clear, structured concept explanation in English followed by Vietnamese. |
 | `/eva <sentence>` | **Language Coach** | Grammar critique in Vietnamese and 3 native English rephrasing suggestions. |
 
 ---
 
-## 💻 CLI & Headless Usage
+## 🎨 Customizing the Default Assistant
 
-You can execute queries directly in your terminal without opening the HUD:
+You can define how Ctrans behaves when no slash command is entered:
 
-```bash
-# Direct translation
-ctrans --cli "Hello world"
-
-# Run a slash command
-ctrans --cli /ask "Quantum computing"
-
-# View available commands
-ctrans --help
-```
+1. Edit your personal default prompt file:
+   ```bash
+   nano ~/.config/ctrans/commands/default.md
+   ```
+2. Replace it with any desired AI persona (e.g., concise knowledge assistant, translation engine, terminal command helper, or code explainer).
+3. Any plain query typed into Ctrans will now be executed according to your custom default instructions.
 
 ---
 
 ## 🧩 Adding Custom Slash Commands
 
-You can create custom slash commands without touching any application code:
+You can create new slash commands without touching any application code:
 
 1. Create a markdown file inside `~/.config/ctrans/commands/`:
    ```bash
@@ -144,6 +142,23 @@ You can create custom slash commands without touching any application code:
 3. Save the file. Your new command is immediately available:
    - Type `/` to see `/summary` in the autocomplete list.
    - Run `/summary <paste text>` to execute!
+
+---
+
+## 💻 CLI & Headless Usage
+
+You can execute queries directly in your terminal without opening the HUD:
+
+```bash
+# Direct default query
+ctrans --cli "Explain Dijkstra algorithm in 2 sentences"
+
+# Run a slash command
+ctrans --cli /ask "Quantum computing"
+
+# View available commands
+ctrans --help
+```
 
 ---
 
@@ -166,14 +181,14 @@ ctrans/
 │   ├── result_view.py         # QTextBrowser with CommonMark & 1-click copy
 │   ├── loading_indicator.py   # Subtle animated request indicator
 │   └── styles.qss             # Translucent Glassmorphism QSS stylesheet
-├── commands/                  # Modular command prompt templates
+├── commands/                  # Modular command prompt templates & default persona
 │   ├── GUIDE.md               # Command authoring specifications
+│   ├── default.md             # Default assistant prompt (used when no slash command is given)
 │   ├── ask.md                 # /ask bilingual explanation prompt
 │   └── eva.md                 # /eva grammar and phrasing critique prompt
 ├── tests/                     # Automated test suite
 │   ├── test_core.py           # Core router and loader unit tests
 │   └── test_ui.py             # Headless PyQt6 UI tests
-├── prompt.md                  # Default translation system prompt
 ├── install.sh                 # System installer & desktop entry setup
 └── README.md                  # Documentation
 ```

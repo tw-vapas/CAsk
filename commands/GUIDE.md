@@ -17,7 +17,9 @@ Commands are resolved in the following priority order:
 - **Filename:** `{command_name}.md` (e.g., `ask.md`, `eva.md`, `code.md`).
 - **Trigger:** The command is triggered in the input bar via `/{command_name}`.
 - **Allowed characters:** Alphanumeric characters, hyphens, and underscores (`[a-zA-Z0-9_-]+`). Must be lowercase.
-- **Reserved filenames:** `GUIDE.md`, `README.md` (these are ignored by the router and help catalog).
+- **Reserved filenames:** `GUIDE.md`, `README.md`, `default.md`.
+  - `GUIDE.md` and `README.md` are documentation files.
+  - `default.md` configures the default assistant prompt executed when no slash command is used. It is excluded from the `/help` catalog and autocomplete. Users can edit `~/.config/ctrans/commands/default.md` to customize the default persona (e.g. translator, coding assistant, or executive summarizer).
 
 ---
 
