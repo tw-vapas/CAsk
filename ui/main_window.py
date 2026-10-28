@@ -6,9 +6,10 @@ from typing import Optional
 
 try:
     from PyQt6.QtCore import QEvent, QPoint, QRect, QSize, Qt
-    from PyQt6.QtGui import QCursor, QGuiApplication
+    from PyQt6.QtGui import QCursor, QGuiApplication, QMouseEvent
     from PyQt6.QtWidgets import (
         QFrame,
+        QGridLayout,
         QStackedLayout,
         QVBoxLayout,
         QWidget,
@@ -52,9 +53,6 @@ class MainWindow(QWidget):
             self.input_bar.setText(self.initial_input)
             self._handle_submit(self.initial_input)
 
-    SHADOW_PAD_X = 24
-    SHADOW_PAD_Y = 24
-
     def _setup_window_properties(self) -> None:
         """Configure frameless, translucent, always-on-top window flags."""
         self.setWindowFlags(
@@ -67,15 +65,14 @@ class MainWindow(QWidget):
         self.setProperty("kwin_blur", True)
 
     def _setup_ui(self) -> None:
-        """Build layout and state views."""
-        root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(
-            self.SHADOW_PAD_X,
-            self.SHADOW_PAD_Y,
-            self.SHADOW_PAD_X,
-            self.SHADOW_PAD_Y,
-        )
-        root_layout.setSpacing(0)
+        """Build layout and state views within a screen-anchored canvas."""
+        screen = self._get_target_screen()
+        screen_geo = screen.availableGeometry() if screen else QRect(0, 0, 1920, 1080)
+        self.setGeometry(screen_geo)
+
+        # Root layout centering the floating capsule horizontally and vertically
+        root_layout = QGridLayout(self)
+        root_layout.setContentsMargins(0, 0, 0, 0)
 
         # Central container frame with glassmorphism border and background
         self.container = QFrame(self)
@@ -117,7 +114,8 @@ class MainWindow(QWidget):
         self.result_view.dismiss_requested.connect(self.close)
         self.stack.addWidget(self.result_view)
 
-        root_layout.addWidget(self.container)
+        # Anchor container to true horizontal & vertical screen center
+        root_layout.addWidget(self.container, 0, 0, Qt.AlignmentFlag.AlignCenter)
 
         self._switch_state(self.STATE_INPUT, target_width=600, target_height=50)
 
@@ -129,29 +127,16 @@ class MainWindow(QWidget):
             screen = QGuiApplication.primaryScreen()
         return screen
 
-    def _reposition(self, width: int, height: int) -> None:
-        """Center the HUD horizontally and vertically on the target monitor."""
+    def _reposition(self) -> None:
+        """Ensure window canvas covers the target monitor workspace."""
         screen = self._get_target_screen()
-        if not screen:
-            self.resize(width, height)
-            return
-
-        screen_geo = screen.availableGeometry()
-        x = screen_geo.x() + (screen_geo.width() - width) // 2
-        y = screen_geo.y() + (screen_geo.height() - height) // 2
-
-        self.setGeometry(x, y, width, height)
-        self.resize(width, height)
-        self.move(x, y)
+        if screen:
+            self.setGeometry(screen.availableGeometry())
 
     def _switch_state(self, state: int, target_width: int, target_height: int) -> None:
         """Transition between UI states and adjust geometry."""
         self.stack.setCurrentIndex(state)
         self.container.setFixedSize(target_width, target_height)
-
-        total_width = target_width + (self.SHADOW_PAD_X * 2)
-        total_height = target_height + (self.SHADOW_PAD_Y * 2)
-        self._reposition(total_width, total_height)
 
         if state == self.STATE_INPUT:
             self.input_bar.setFocus()
@@ -212,19 +197,30 @@ class MainWindow(QWidget):
         self._worker.start()
 
     def _show_result(self, badge: str, content: str, is_error: bool = False) -> None:
-        """Render response in result state and auto-fit window height."""
+        """Render response with elastic dynamic auto-expansion and max-height constraint."""
         self.result_view.set_content(badge, content, is_error=is_error)
 
         screen = self._get_target_screen()
-        max_h = 620
-        if screen:
-            max_h = min(620, screen.availableGeometry().height() - 100)
+        screen_geo = screen.availableGeometry() if screen else QRect(0, 0, 1920, 1080)
 
-        # Estimate optimal height based on content line count
-        line_count = max(4, len(content.splitlines()))
-        calculated_h = min(max_h, max(180, line_count * 24 + 100))
+        # Dynamic Height with Max-height Constraint
+        target_width = 760
+        ideal_h = self.result_view.calculate_ideal_height(available_width=target_width)
+        max_h = min(620, max(300, screen_geo.height() - 120))
+        min_h = 140
+        bounded_h = max(min_h, min(max_h, ideal_h))
 
-        self._switch_state(self.STATE_RESULT, target_width=760, target_height=calculated_h)
+        self._switch_state(self.STATE_RESULT, target_width=target_width, target_height=bounded_h)
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        """Dismiss HUD when clicking outside the floating capsule canvas."""
+        completer = self.input_bar.completer()
+        if completer and completer.popup() and completer.popup().isVisible():
+            if completer.popup().geometry().contains(event.globalPosition().toPoint()):
+                return
+        if not self.container.geometry().contains(event.pos()):
+            self.close()
+        super().mousePressEvent(event)
 
     def changeEvent(self, event) -> None:
         """Detect window focus loss for Wayland click-outside-to-dismiss."""

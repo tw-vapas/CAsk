@@ -59,6 +59,7 @@ class ResultView(QFrame):
         self.text_browser.setObjectName("ResultText")
         self.text_browser.setOpenExternalLinks(True)
         self.text_browser.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.text_browser.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         main_layout.addWidget(self.text_browser)
 
     def set_content(self, badge: str, content: str, is_error: bool = False) -> None:
@@ -73,12 +74,20 @@ class ResultView(QFrame):
         self.text_browser.setMarkdown(content)
         self.copy_button.setText("Copy")
 
+    def calculate_ideal_height(self, available_width: int = 760) -> int:
+        """Calculate desired container height based on natural markdown document dimensions."""
+        # Content width inside text browser (subtracting container padding 36px and browser margins)
+        content_width = max(300, available_width - 44)
+        doc = self.text_browser.document().clone()
+        doc.setTextWidth(content_width)
+        doc_height = int(doc.size().height())
+        # Overhead: header bar (~36px) + layout margins (28px) + spacing (10px) + document internal margin (8px)
+        overhead = 85
+        return doc_height + overhead
+
     def get_document_ideal_height(self) -> int:
-        """Calculate desired document height for dynamic window expansion."""
-        doc = self.text_browser.document()
-        if doc:
-            return int(doc.size().height()) + 80
-        return 200
+        """Backward-compatible alias for calculate_ideal_height."""
+        return self.calculate_ideal_height()
 
     def _copy_to_clipboard(self) -> None:
         """Copy active response text to the system clipboard."""

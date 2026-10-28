@@ -9,7 +9,8 @@ from pathlib import Path
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QEvent, QPointF
+from PyQt6.QtGui import QMouseEvent
 
 from core.config import load_config
 from core.command_loader import load_commands
@@ -66,11 +67,24 @@ class TestUIComponents(unittest.TestCase):
     def test_result_view(self):
         view = ResultView()
         self.assertTrue(view.testAttribute(Qt.WidgetAttribute.WA_StyledBackground))
+        self.assertEqual(view.text_browser.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.assertEqual(view.text_browser.horizontalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
         test_md = "## Test Title\n\n• Point 1\n• Point 2"
         view.set_content(badge="/ask", content=test_md, is_error=False)
         self.assertEqual(view.badge_label.text(), "/ask")
         self.assertEqual(view._raw_content, test_md)
         self.assertIn("Test Title", view.text_browser.toPlainText())
+
+        # Test elastic height calculation
+        short_h = view.calculate_ideal_height(available_width=760)
+        self.assertGreater(short_h, 85)
+        self.assertLess(short_h, 250)
+
+        long_md = "\n\n".join([f"### Section {i}\nDetailed paragraph text {i}" for i in range(12)])
+        view.set_content(badge="/ask", content=long_md, is_error=False)
+        long_h = view.calculate_ideal_height(available_width=760)
+        self.assertGreater(long_h, short_h)
 
         # Test copy functionality
         view._copy_to_clipboard()
@@ -88,12 +102,13 @@ class TestUIComponents(unittest.TestCase):
         self.assertEqual(margins.right(), 0)
         self.assertEqual(margins.bottom(), 0)
 
-        # Verify initial input state centering
-        g0 = window.geometry()
+        # Verify initial input state centering on screen
         screen = window._get_target_screen()
         screen_geo = screen.availableGeometry()
-        self.assertEqual(g0.x() + g0.width() // 2, screen_geo.x() + screen_geo.width() // 2)
-        self.assertEqual(g0.y() + g0.height() // 2, screen_geo.y() + screen_geo.height() // 2)
+        window.layout().activate()
+        c0 = window.container.geometry()
+        self.assertEqual(c0.x() + c0.width() // 2, screen_geo.width() // 2)
+        self.assertEqual(c0.y() + c0.height() // 2, screen_geo.height() // 2)
 
         # Submit /help
         window._handle_submit("/help")
@@ -102,9 +117,10 @@ class TestUIComponents(unittest.TestCase):
         self.assertIn("Available Commands:", window.result_view.text_browser.toPlainText())
 
         # Verify result state horizontal and vertical centering
-        g2 = window.geometry()
-        self.assertEqual(g2.x() + g2.width() // 2, screen_geo.x() + screen_geo.width() // 2)
-        self.assertEqual(g2.y() + g2.height() // 2, screen_geo.y() + screen_geo.height() // 2)
+        window.layout().activate()
+        c2 = window.container.geometry()
+        self.assertEqual(c2.x() + c2.width() // 2, screen_geo.width() // 2)
+        self.assertEqual(c2.y() + c2.height() // 2, screen_geo.height() // 2)
 
         # Submit missing argument
         window._handle_submit("/ask")
@@ -118,7 +134,18 @@ class TestUIComponents(unittest.TestCase):
         self.assertEqual(window.result_view.badge_label.text(), "Unknown Command")
         self.assertIn("Unknown Command: /unknown_command_foo", window.result_view.text_browser.toPlainText())
 
-        window.close()
+        # Test click outside floating capsule dismisses the HUD
+        closed = []
+        window.close = lambda: closed.append(True)
+        event = QMouseEvent(
+            QEvent.Type.MouseButtonPress,
+            QPointF(5, 5),
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+        window.mousePressEvent(event)
+        self.assertTrue(closed)
 
 
 if __name__ == "__main__":
