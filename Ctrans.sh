@@ -9,7 +9,13 @@
 set -o pipefail
 
 # Config directory and file paths
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ctrans"
 if [ ! -d "$CONFIG_DIR" ] && [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/rofi-translate" ]; then
     CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rofi-translate"
@@ -164,6 +170,7 @@ THEME_RESULT="
     wrap: true;
     font: \"Inter 13\";
     vertical-align: 0.0;
+    markup: false;
   }
 "
 
@@ -224,30 +231,29 @@ generate_help_text() {
         fi
     done
 
-    echo "💡 Ctrans Quick AI Assistant - Commands & Help"
+    echo "💡 Ctrans Quick AI Assistant - Commands and Usage Guide"
     echo ""
     echo "Available Commands:"
-    printf "  • /%-18s %s\n" "help" "Show available commands and usage guide"
+    printf "  • /%-20s %s\n" "help" "Show available commands and usage guide"
 
     for cmd in "${cmd_names[@]}"; do
         local file="${seen_cmds[$cmd]}"
         local first_line
         first_line=$(awk 'NF{print;exit}' "$file" 2>/dev/null)
-        local desc
-        desc=$(echo "$first_line" | sed -E 's/^#[[:space:]]*(Description:[[:space:]]*)?(\/[a-zA-Z0-9_-]+[[:space:]]*[-:][[:space:]]*)?//')
-        [ -z "$desc" ] && desc="Custom command prompt"
-        local arg_hint
-        case "$cmd" in
-            ask) arg_hint="<topic>" ;;
-            eva) arg_hint="<sentence>" ;;
-            *)   arg_hint="<input>" ;;
-        esac
-        printf "  • /%-18s %s\n" "$cmd $arg_hint" "$desc"
+        local sig="/$cmd <input>"
+        local desc="Custom command prompt"
+        if [[ "$first_line" =~ ^#[[:space:]]*(\/[a-zA-Z0-9_-]+([[:space:]]+<[^>]+>)?)[[:space:]]*[-:][[:space:]]*(.*)$ ]]; then
+            sig="${BASH_REMATCH[1]}"
+            desc="${BASH_REMATCH[3]}"
+        elif [ -n "$first_line" ]; then
+            desc="$(echo "$first_line" | sed -E 's/^#[[:space:]]*//')"
+        fi
+        printf "  • /%-20s %s\n" "${sig#/}" "$desc"
     done
 
     echo ""
     echo "Quick Tips:"
-    echo "  • Type any word or sentence without '/' for instant translation (EN ↔ VI)."
+    echo "  • Type any word or sentence without '/' for instant translation (EN <-> VI)."
     echo "  • Press Enter, Esc, or click outside this card to dismiss."
 }
 
@@ -276,10 +282,10 @@ if [ "$INPUT" = "/" ] || [ "$INPUT" = "/help" ] || [[ "$INPUT" =~ ^/help([[:spac
     exit 0
 fi
 
-# 2.2. Match slash command pattern: ^/([a-zA-Z0-9_-]+)[[:space:]]*(.*)$
-if [[ "$INPUT" =~ ^/([a-zA-Z0-9_-]+)[[:space:]]*(.*)$ ]]; then
+# 2.2. Match slash command pattern: require whitespace before arguments to avoid matching file paths (e.g. /etc/hosts)
+if [[ "$INPUT" =~ ^/([a-zA-Z0-9_-]+)([[:space:]]+(.*))?$ ]]; then
     COMMAND="${BASH_REMATCH[1]}"
-    PAYLOAD="${BASH_REMATCH[2]}"
+    PAYLOAD="${BASH_REMATCH[3]}"
 
     # Locate modular command file (User config -> Repo defaults)
     COMMAND_FILE=""
@@ -301,22 +307,18 @@ $(generate_help_text)"
 
     # Validate argument payload
     if [ -z "$PAYLOAD" ]; then
-        case "$COMMAND" in
-            ask)
-                USAGE_HINT="/ask <topic or question>"
-                EXAMPLE_HINT="/ask Quantum computing"
-                ;;
-            eva)
-                USAGE_HINT="/eva <sentence to evaluate>"
-                EXAMPLE_HINT="/eva I am looking forward to hear from you"
-                ;;
-            *)
-                USAGE_HINT="/$COMMAND <input>"
-                EXAMPLE_HINT="/$COMMAND sample query"
-                ;;
-        esac
         FIRST_LINE=$(awk 'NF{print;exit}' "$COMMAND_FILE" 2>/dev/null)
-        CMD_DESC=$(echo "$FIRST_LINE" | sed -E 's/^#[[:space:]]*(Description:[[:space:]]*)?(\/[a-zA-Z0-9_-]+[[:space:]]*[-:][[:space:]]*)?//')
+        USAGE_HINT="/$COMMAND <input>"
+        CMD_DESC="Custom command prompt"
+        if [[ "$FIRST_LINE" =~ ^#[[:space:]]*(\/[a-zA-Z0-9_-]+([[:space:]]+<[^>]+>)?)[[:space:]]*[-:][[:space:]]*(.*)$ ]]; then
+            USAGE_HINT="${BASH_REMATCH[1]}"
+            CMD_DESC="${BASH_REMATCH[3]}"
+        elif [ -n "$FIRST_LINE" ]; then
+            CMD_DESC="$(echo "$FIRST_LINE" | sed -E 's/^#[[:space:]]*//')"
+        fi
+
+        EXAMPLE_HINT=$(grep -m 1 -i '^[[:space:]]*<!--[[:space:]]*Example:[[:space:]]*' "$COMMAND_FILE" 2>/dev/null | sed -E 's/^[[:space:]]*<!--[[:space:]]*[Ee]xample:[[:space:]]*//; s/[[:space:]]*-->$//')
+        [ -z "$EXAMPLE_HINT" ] && EXAMPLE_HINT="$USAGE_HINT ..."
 
         MISSING_ARG_MSG="⚠️ Missing argument for /$COMMAND
 
