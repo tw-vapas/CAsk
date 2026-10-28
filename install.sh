@@ -111,12 +111,14 @@ echo "  ✓ Created desktop entry at $DESKTOP_FILE"
 
 # 5. Optional KWin window effects for KDE Plasma
 if command -v kwriteconfig6 >/dev/null 2>&1 && [ "$XDG_CURRENT_DESKTOP" = "KDE" ]; then
-    echo "🎨 Configuring KDE KWin window effects (Fade instead of Scale)..."
+    echo "🎨 Configuring KDE KWin window effects (Fade & Background Blur)..."
     kwriteconfig6 --file kwinrc --group Plugins --key scaleEnabled false 2>/dev/null || true
     kwriteconfig6 --file kwinrc --group Plugins --key fadeEnabled true 2>/dev/null || true
+    kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled true 2>/dev/null || true
     if command -v qdbus-qt6 >/dev/null 2>&1; then
         qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect "scale" 2>/dev/null || true
         qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect "fade" 2>/dev/null || true
+        qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect "blur" 2>/dev/null || true
         qdbus-qt6 org.kde.KWin /KWin org.kde.KWin.reconfigure 2>/dev/null || true
     fi
 fi
