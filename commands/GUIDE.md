@@ -70,19 +70,18 @@ Output Structure:
 
 ## 3. Best Practices for Command Output
 
-Ctrans renders responses inside a floating Rofi card (`THEME_RESULT`, max width 760px). Format your prompt outputs to ensure optimal readability:
+Ctrans renders responses inside a floating Glassmorphism HUD card with native Qt6 CommonMark rendering (`max width 760px`). Format your prompt outputs to ensure optimal readability:
 
 1. **Zero Fluff Policy:**
    - Prohibit conversational filler (e.g., *"Sure, here is your explanation..."*).
    - Demand immediate, structured output.
-2. **Bullet Points & Scannability:**
-   - Use standard text bullets (`-` or `•`) for lists.
-   - Use bold headers (`[Topic]`, `• Header:`) to delineate sections.
-3. **Avoid Unsupported Elements:**
-   - Do not request HTML tags or markdown tables (they do not render well in terminal-based Rofi textboxes).
-   - Keep line length reasonable; auto soft-wrap breaks at 78 characters.
-4. **Appropriate Length:**
-   - Aim for 5–25 lines of response. Responses should be digestible in a 5-second popup glance.
+2. **Bullet Points & Markdown Structure:**
+   - Use standard Markdown (`#`, `##`, `-`, `*`) for headers and lists.
+   - Code blocks with syntax highlighting (` ```python `) and inline code spans (`` `code` ``) are natively rendered.
+   - Bold headers (`**Topic**`, `• Header:`) clearly delineate sections.
+3. **Appropriate Length & Scannability:**
+   - Aim for digestible responses that can be reviewed in a quick glance.
+   - For longer responses, smooth mouse-wheel and touchpad scrolling are natively supported.
 
 ---
 
@@ -116,9 +115,9 @@ Output Structure:
 
 ## 5. Execution Lifecycle
 
-1. User enters: `/{command_name} {payload}` in Rofi.
-2. Ctrans regex extracts `COMMAND="{command_name}"` and `PAYLOAD="{payload}"`.
-3. Ctrans verifies that `{command_name}.md` exists (excluding `GUIDE.md`).
-4. Ctrans sets loading state to: `processing /{command_name}...`.
+1. User enters: `/{command_name} {payload}` in the Ctrans HUD or CLI.
+2. Ctrans router extracts `command="{command_name}"` and `payload="{payload}"`.
+3. Ctrans verifies that `{command_name}.md` exists in user config or defaults.
+4. Ctrans transitions to loading state: `processing /{command_name}...`.
 5. The full content of `{command_name}.md` is passed as `system` prompt, and `{payload}` is passed as `user` message.
-6. The AI response is formatted and presented in the glassmorphism Rofi result modal.
+6. The AI response is streamed/rendered in the Glassmorphism Markdown viewer.

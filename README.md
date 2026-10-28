@@ -8,7 +8,7 @@
 
 A minimalist, ultra-fast, and aesthetic **Glassmorphism Quick Translator & Universal AI Assistant** built with **native PyQt6 (Qt6)** and powered by **Groq Cloud API** (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) with automatic failover to **Google Gemini API** (`gemini-3.5-flash-lite`).
 
-Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, GNOME) with a seamless single-window Raycast/Spotlight experience, native Markdown rendering, command autocomplete, click-outside-to-dismiss, and backward-compatible Rofi fallback.
+Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, GNOME) with a seamless single-window Raycast/Spotlight experience, native Markdown rendering, command autocomplete, and click-outside-to-dismiss.
 
 ---
 
@@ -23,24 +23,25 @@ Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, 
 - 🖱️ **Wayland Click-to-Dismiss:** Closes automatically on <kbd>Enter</kbd>, <kbd>Esc</kbd>, or when clicking anywhere outside the HUD window.
 - 🚀 **Modular Command Prompts:** Standalone prompt files (`commands/*.md`)—create new assistant personas without writing application code.
 - 💻 **Headless CLI Mode:** Run queries directly in the terminal via `ctrans --cli [query]` for scripting or shell pipelines.
-- 🛡️ **Backward Compatibility:** Seamlessly falls back to the legacy Rofi/Bash script (`Ctrans.sh`) if PyQt6 is not installed.
 
 ---
 
 ## 🛠️ Prerequisites
 
-| Dependency | Package Name (Fedora) | Package Name (Arch / Ubuntu) | Purpose |
-|------------|----------------------|------------------------------|---------|
-| `python3` | `python3` | `python3` | Core runtime |
-| `python3-pyqt6` | `python3-pyqt6` / `pip install PyQt6` | `python-pyqt6` / `python3-pyqt6` | Native Qt6 Glassmorphic HUD |
-| `rofi` *(Optional)* | `rofi` | `rofi` / `rofi-wayland` | Fallback legacy UI |
-| `curl` *(Optional)* | `curl` | `curl` | Fallback legacy network client |
-| `jq` *(Optional)* | `jq` | `jq` | Fallback legacy JSON processing |
+| Dependency | Package Name (Fedora) | Package Name (Ubuntu/Debian) | Package Name (Arch) | Purpose |
+|------------|----------------------|------------------------------|---------------------|---------|
+| `python3` | `python3` | `python3` | `python` | Core Python runtime |
+| `PyQt6` | `python3-pyqt6` | `python3-pyqt6` | `python-pyqt6` | Native Qt6 Glassmorphism HUD |
 
-### Quick Install (Fedora):
+### Installation:
 ```bash
+# Fedora:
 sudo dnf install python3-pyqt6
-# Or via pip:
+
+# Ubuntu / Debian:
+sudo apt install python3-pyqt6
+
+# Or via pip (user install):
 pip install PyQt6
 ```
 
@@ -107,6 +108,23 @@ Or bind `ctrans` to a global keyboard shortcut in KDE Plasma / GNOME / Hyprland 
 
 ---
 
+## 💻 CLI & Headless Usage
+
+You can execute queries directly in your terminal without opening the HUD:
+
+```bash
+# Direct translation
+ctrans --cli "Hello world"
+
+# Run a slash command
+ctrans --cli /ask "Quantum computing"
+
+# View available commands
+ctrans --help
+```
+
+---
+
 ## 🧩 Adding Custom Slash Commands
 
 You can create custom slash commands without touching any application code:
@@ -125,7 +143,7 @@ You can create custom slash commands without touching any application code:
    ```
 3. Save the file. Your new command is immediately available:
    - Type `/` to see `/summary` in the autocomplete list.
-   - Run `/summary <paste article>` to execute!
+   - Run `/summary <paste text>` to execute!
 
 ---
 
@@ -135,11 +153,13 @@ You can create custom slash commands without touching any application code:
 ctrans/
 ├── ctrans.py                  # Main executable entrypoint (PyQt6 HUD / CLI)
 ├── core/                      # Application core engine
+│   ├── __init__.py            # Core exports
 │   ├── config.py              # Configuration loader (config.env / .env)
 │   ├── router.py              # Slash command parser & deterministic router
 │   ├── command_loader.py      # Scans commands/*.md and metadata
 │   └── api_client.py          # Asynchronous Groq / Gemini hybrid client
 ├── ui/                        # PyQt6 Glassmorphism user interface
+│   ├── __init__.py            # UI exports
 │   ├── app.py                 # QApplication lifecycle & font setup
 │   ├── main_window.py         # Frameless single-window container & state machine
 │   ├── input_bar.py           # QLineEdit with slash command autocomplete
@@ -150,10 +170,22 @@ ctrans/
 │   ├── GUIDE.md               # Command authoring specifications
 │   ├── ask.md                 # /ask bilingual explanation prompt
 │   └── eva.md                 # /eva grammar and phrasing critique prompt
+├── tests/                     # Automated test suite
+│   ├── test_core.py           # Core router and loader unit tests
+│   └── test_ui.py             # Headless PyQt6 UI tests
 ├── prompt.md                  # Default translation system prompt
 ├── install.sh                 # System installer & desktop entry setup
-├── Ctrans.sh                  # Legacy Bash/Rofi fallback script
 └── README.md                  # Documentation
+```
+
+---
+
+## 🧪 Running Tests
+
+Ctrans includes automated unit tests covering both the core engine and the UI components:
+
+```bash
+python3 -m unittest discover tests
 ```
 
 ---
