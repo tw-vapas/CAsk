@@ -222,21 +222,30 @@ class TestUIComponents(unittest.TestCase):
         # Single line text
         bar.setText("Hello world")
         self.assertEqual(bar.calculate_ideal_height(600), 50)
+        self.assertEqual(bar.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         # Multiline text expands height
         bar.setText("Line 1\nLine 2\nLine 3\nLine 4")
         expanded_h = bar.calculate_ideal_height(600)
         self.assertGreater(expanded_h, 50)
         self.assertTrue(len(height_events) > 0)
+        self.assertEqual(bar.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        # Clamped at maximum 220
+        # Clamped at maximum 220 -> scrollbar becomes AsNeeded
         bar.setText("\n".join(f"Line {i}" for i in range(25)))
         self.assertEqual(bar.calculate_ideal_height(600), 220)
+        self.assertEqual(bar.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
     def test_result_view_pinning(self):
         view = ResultView()
         view.set_content("Test", "Some response content")
         self.assertFalse(view.is_pinned)
+
+        # Verify buttons and icons
+        self.assertFalse(view.search_button.icon().isNull())
+        self.assertFalse(view.copy_button.icon().isNull())
+        self.assertFalse(view.pin_button.icon().isNull())
+        self.assertFalse(view.close_button.icon().isNull())
 
         dismissed = []
         view.dismiss_requested.connect(lambda: dismissed.append(True))
@@ -252,7 +261,7 @@ class TestUIComponents(unittest.TestCase):
         # Pin the view
         view.pin_button.click()
         self.assertTrue(view.is_pinned)
-        self.assertEqual(view.pin_button.text(), "📌 Pinned")
+        self.assertEqual(view.pin_button.text(), "Pinned")
 
         # Pinned: Esc and Enter do NOT emit dismiss_requested
         view.keyPressEvent(esc_event)
@@ -266,8 +275,52 @@ class TestUIComponents(unittest.TestCase):
         # Unpin: Esc again emits dismiss_requested
         view.pin_button.click()
         self.assertFalse(view.is_pinned)
+        self.assertEqual(view.pin_button.text(), "Pin")
         view.keyPressEvent(esc_event)
         self.assertEqual(len(dismissed), 3)
+
+    def test_result_view_shortcuts(self):
+        view = ResultView()
+        view.set_content("Test", "Sample content to test shortcuts")
+
+        search_invoked = []
+        view.return_to_input_requested.connect(lambda: search_invoked.append(True))
+
+        from PyQt6.QtGui import QKeyEvent
+        # Key 'A': return to input bar
+        a_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_A, Qt.KeyboardModifier.NoModifier, "a")
+        view.keyPressEvent(a_event)
+        self.assertEqual(len(search_invoked), 1)
+
+        # Key 'P': toggle pin
+        self.assertFalse(view.is_pinned)
+        p_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_P, Qt.KeyboardModifier.NoModifier, "p")
+        view.keyPressEvent(p_event)
+        self.assertTrue(view.is_pinned)
+        view.keyPressEvent(p_event)
+        self.assertFalse(view.is_pinned)
+
+        # Key 'C': copy content
+        c_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_C, Qt.KeyboardModifier.NoModifier, "c")
+        view.keyPressEvent(c_event)
+        self.assertEqual(view.copy_button.text(), "✓ Copied!")
+
+        # Test shortcut via text_browser event filter
+        search_invoked.clear()
+        from PyQt6.QtWidgets import QApplication
+        QApplication.sendEvent(view.text_browser, a_event)
+        self.assertEqual(len(search_invoked), 1)
+
+    def test_capsule_return_to_input(self):
+        from ui.capsule import CAskCapsule
+        capsule = CAskCapsule(config=self.config, catalog=self.catalog)
+        capsule.switch_state(CAskCapsule.STATE_RESULT)
+        self.assertEqual(capsule.state, CAskCapsule.STATE_RESULT)
+
+        # Trigger return to input
+        capsule.result_view.return_to_input_requested.emit()
+        self.assertEqual(capsule.state, CAskCapsule.STATE_INPUT)
+        self.assertEqual(capsule.stack.currentIndex(), CAskCapsule.STATE_INPUT)
 
     def test_multi_capsule_layout(self):
         window = MainWindow(config=self.config, catalog=self.catalog)

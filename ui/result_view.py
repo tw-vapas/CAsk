@@ -1,10 +1,10 @@
-"""Markdown result viewer widget with header bar and copy button."""
+"""Markdown result viewer widget with header bar, action buttons, and keyboard shortcuts."""
 
 from __future__ import annotations
 
 try:
-    from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-    from PyQt6.QtGui import QGuiApplication
+    from PyQt6.QtCore import QEvent, Qt, QTimer, pyqtSignal
+    from PyQt6.QtGui import QGuiApplication, QKeyEvent
     from PyQt6.QtWidgets import (
         QFrame,
         QHBoxLayout,
@@ -17,15 +17,16 @@ try:
 except ImportError:
     pass
 
-
 from core.math_formatter import format_math_in_markdown
+from ui.icons import get_copy_icon, get_exit_icon, get_pin_icon, get_search_icon
 
 
 class ResultView(QFrame):
-    """Rich text / Markdown viewer with 1-click clipboard copy."""
+    """Rich text / Markdown viewer with 1-click actions and keyboard shortcuts."""
 
     dismiss_requested = pyqtSignal()
     pin_toggled = pyqtSignal(bool)
+    return_to_input_requested = pyqtSignal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -44,6 +45,7 @@ class ResultView(QFrame):
         header_widget.setObjectName("HeaderBar")
         header_layout = QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(8)
 
         self.badge_label = QLabel("Result", header_widget)
         self.badge_label.setObjectName("BadgeLabel")
@@ -51,21 +53,39 @@ class ResultView(QFrame):
 
         header_layout.addStretch()
 
+        # 1. Search button (icon kính lúp) - shortcut [A]
+        self.search_button = QPushButton("Search", header_widget)
+        self.search_button.setObjectName("SearchButton")
+        self.search_button.setIcon(get_search_icon())
+        self.search_button.setToolTip("Return to input bar [A]")
+        self.search_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.search_button.clicked.connect(self.return_to_input_requested.emit)
+        header_layout.addWidget(self.search_button)
+
+        # 2. Copy button (icon copy) - shortcut [C]
         self.copy_button = QPushButton("Copy", header_widget)
         self.copy_button.setObjectName("CopyButton")
+        self.copy_button.setIcon(get_copy_icon())
+        self.copy_button.setToolTip("Copy response [C]")
         self.copy_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.copy_button.clicked.connect(self._copy_to_clipboard)
         header_layout.addWidget(self.copy_button)
 
-        self.pin_button = QPushButton("📌 Pin", header_widget)
+        # 3. Pin button (icon pin) - shortcut [P]
+        self.pin_button = QPushButton("Pin", header_widget)
         self.pin_button.setObjectName("PinButton")
+        self.pin_button.setIcon(get_pin_icon(pinned=False))
+        self.pin_button.setToolTip("Pin window [P]")
         self.pin_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.pin_button.setProperty("pinned", False)
         self.pin_button.clicked.connect(self._toggle_pin)
         header_layout.addWidget(self.pin_button)
 
-        self.close_button = QPushButton("✕", header_widget)
-        self.close_button.setObjectName("CloseButton")
+        # 4. Exit button (icon X) - shortcut [Esc]
+        self.close_button = QPushButton("Exit", header_widget)
+        self.close_button.setObjectName("ExitButton")
+        self.close_button.setIcon(get_exit_icon())
+        self.close_button.setToolTip("Close card [Esc]")
         self.close_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.close_button.clicked.connect(self.dismiss_requested.emit)
         header_layout.addWidget(self.close_button)
@@ -78,6 +98,7 @@ class ResultView(QFrame):
         self.text_browser.setOpenExternalLinks(True)
         self.text_browser.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.text_browser.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.text_browser.installEventFilter(self)
         main_layout.addWidget(self.text_browser)
 
     def set_content(self, badge: str, content: str, is_error: bool = False) -> None:
@@ -96,15 +117,14 @@ class ResultView(QFrame):
         formatted_content = format_math_in_markdown(content)
         self.text_browser.setMarkdown(formatted_content)
         self.copy_button.setText("Copy")
+        self.copy_button.setIcon(get_copy_icon())
 
     def calculate_ideal_height(self, available_width: int = 760) -> int:
         """Calculate desired container height based on natural markdown document dimensions."""
-        # Content width inside text browser (subtracting container padding 36px and browser margins)
         content_width = max(300, available_width - 44)
         doc = self.text_browser.document().clone()
         doc.setTextWidth(content_width)
         doc_height = int(doc.size().height())
-        # Overhead: header bar (~36px) + layout margins (28px) + spacing (10px) + document internal margin (8px)
         overhead = 85
         return doc_height + overhead
 
@@ -128,22 +148,66 @@ class ResultView(QFrame):
         """Toggle pinned status of the response box."""
         self.is_pinned = not self.is_pinned
         self.pin_button.setProperty("pinned", self.is_pinned)
-        self.pin_button.setText("📌 Pinned" if self.is_pinned else "📌 Pin")
-        # Force style re-polish to apply dynamic QSS property styling
+        self.pin_button.setText("Pinned" if self.is_pinned else "Pin")
+        self.pin_button.setIcon(get_pin_icon(pinned=self.is_pinned))
+        self.pin_button.setToolTip("Unpin window [P]" if self.is_pinned else "Pin window [P]")
+
         style = self.pin_button.style()
         if style:
             style.unpolish(self.pin_button)
             style.polish(self.pin_button)
         self.pin_toggled.emit(self.is_pinned)
 
-    def keyPressEvent(self, event) -> None:
-        if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
-            if self.is_pinned:
-                # Suppress dismissal when pinned
+    def _handle_key_event(self, event: QKeyEvent) -> bool:
+        """Process keyboard shortcuts (A, P, C, Esc, Enter)."""
+        key = event.key()
+        modifiers = event.modifiers()
+
+        # Shortcut A: Return to input bar
+        if key == Qt.Key.Key_A and modifiers == Qt.KeyboardModifier.NoModifier:
+            self.return_to_input_requested.emit()
+            event.accept()
+            return True
+
+        # Shortcut P: Toggle pin
+        if key == Qt.Key.Key_P and modifiers == Qt.KeyboardModifier.NoModifier:
+            self._toggle_pin()
+            event.accept()
+            return True
+
+        # Shortcut C: Copy
+        if key == Qt.Key.Key_C:
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                self._copy_to_clipboard()
                 event.accept()
-                return
+                return True
+            elif modifiers == Qt.KeyboardModifier.ControlModifier:
+                if self.text_browser.textCursor().hasSelection():
+                    self.text_browser.copy()
+                else:
+                    self._copy_to_clipboard()
+                event.accept()
+                return True
+
+        # Shortcut Esc / Enter: Dismiss
+        if key in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if self.is_pinned:
+                event.accept()
+                return True
             self.dismiss_requested.emit()
             event.accept()
-            return
+            return True
 
+        return False
+
+    def eventFilter(self, obj, event) -> bool:
+        """Intercept key events from text browser to support shortcuts."""
+        if obj == self.text_browser and event.type() == QEvent.Type.KeyPress:
+            if self._handle_key_event(event):
+                return True
+        return super().eventFilter(obj, event)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if self._handle_key_event(event):
+            return
         super().keyPressEvent(event)

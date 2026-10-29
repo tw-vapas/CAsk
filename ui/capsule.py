@@ -106,9 +106,16 @@ class CAskCapsule(QWidget):
         # 2. Result View
         self.result_view = ResultView(parent=self)
         self.result_view.dismiss_requested.connect(lambda: self.close_requested.emit(self))
+        self.result_view.return_to_input_requested.connect(self._handle_return_to_input)
         self.stack.addWidget(self.result_view)
 
         layout.addWidget(self.container)
+
+    def _handle_return_to_input(self) -> None:
+        """Switch from Result state back to Input state and focus input bar."""
+        self.switch_state(self.STATE_INPUT)
+        self.input_bar.selectAll()
+        self.input_bar.setFocus()
 
     def switch_state(self, state: int) -> None:
         """Switch active state inside this capsule."""
