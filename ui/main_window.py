@@ -53,6 +53,8 @@ class MainWindow(QWidget):
             self.input_bar.setText(self.initial_input)
             self._handle_submit(self.initial_input)
 
+    SHADOW_PAD = 24
+
     def _setup_window_properties(self) -> None:
         """Configure frameless, translucent, always-on-top window flags with IME support."""
         self.setWindowFlags(
@@ -66,14 +68,16 @@ class MainWindow(QWidget):
         self.setProperty("kwin_blur", True)
 
     def _setup_ui(self) -> None:
-        """Build layout and state views within a screen-anchored canvas."""
-        screen = self._get_target_screen()
-        screen_geo = screen.availableGeometry() if screen else QRect(0, 0, 1920, 1080)
-        self.setGeometry(screen_geo)
-
-        # Root layout centering the floating capsule horizontally and vertically
-        root_layout = QGridLayout(self)
-        root_layout.setContentsMargins(0, 0, 0, 0)
+        """Build layout and state views within an exact-sized floating capsule."""
+        # Root layout with padding for shadow
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(
+            self.SHADOW_PAD,
+            self.SHADOW_PAD,
+            self.SHADOW_PAD,
+            self.SHADOW_PAD,
+        )
+        root_layout.setSpacing(0)
 
         # Central container frame with glassmorphism border and background
         self.container = QFrame(self)
@@ -86,8 +90,8 @@ class MainWindow(QWidget):
 
             shadow = QGraphicsDropShadowEffect(self.container)
             shadow.setBlurRadius(48)
-            shadow.setOffset(0, 8)
-            shadow.setColor(QColor(10, 15, 26, 150))
+            shadow.setOffset(0, 6)
+            shadow.setColor(QColor(0, 0, 0, 160))
             self.container.setGraphicsEffect(shadow)
         except Exception:
             pass
@@ -115,8 +119,7 @@ class MainWindow(QWidget):
         self.result_view.dismiss_requested.connect(self.close)
         self.stack.addWidget(self.result_view)
 
-        # Anchor container to true horizontal & vertical screen center
-        root_layout.addWidget(self.container, 0, 0, Qt.AlignmentFlag.AlignCenter)
+        root_layout.addWidget(self.container)
 
         self._switch_state(self.STATE_INPUT, target_width=600, target_height=50)
 
@@ -128,16 +131,29 @@ class MainWindow(QWidget):
             screen = QGuiApplication.primaryScreen()
         return screen
 
-    def _reposition(self) -> None:
-        """Ensure window canvas covers the target monitor workspace."""
+    def _reposition(self, width: int, height: int) -> None:
+        """Center the HUD horizontally and vertically on the target monitor."""
         screen = self._get_target_screen()
-        if screen:
-            self.setGeometry(screen.availableGeometry())
+        if not screen:
+            self.resize(width, height)
+            return
+
+        screen_geo = screen.availableGeometry()
+        x = screen_geo.x() + (screen_geo.width() - width) // 2
+        y = screen_geo.y() + (screen_geo.height() - height) // 2
+
+        self.setGeometry(x, y, width, height)
+        self.resize(width, height)
+        self.move(x, y)
 
     def _switch_state(self, state: int, target_width: int, target_height: int) -> None:
         """Transition between UI states and adjust geometry."""
         self.stack.setCurrentIndex(state)
         self.container.setFixedSize(target_width, target_height)
+
+        total_width = target_width + (self.SHADOW_PAD * 2)
+        total_height = target_height + (self.SHADOW_PAD * 2)
+        self._reposition(total_width, total_height)
 
         if state == self.STATE_INPUT:
             self.input_bar.setFocus()
@@ -214,24 +230,28 @@ class MainWindow(QWidget):
         self._switch_state(self.STATE_RESULT, target_width=target_width, target_height=bounded_h)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        """Dismiss HUD when clicking outside the floating capsule canvas."""
-        completer = self.input_bar.completer()
-        if completer and completer.popup() and completer.popup().isVisible():
-            if completer.popup().geometry().contains(event.globalPosition().toPoint()):
-                return
-        if not self.container.geometry().contains(event.pos()):
-            self.close()
+        """Dismiss HUD when clicking outside the container while in Result state."""
+        if self.stack.currentIndex() == self.STATE_RESULT:
+            completer = self.input_bar.completer()
+            if completer and completer.popup() and completer.popup().isVisible():
+                if completer.popup().geometry().contains(event.globalPosition().toPoint()):
+                    return
+            if not self.container.geometry().contains(event.pos()):
+                self.close()
         super().mousePressEvent(event)
 
     def changeEvent(self, event) -> None:
-        """Detect window focus loss for Wayland click-outside-to-dismiss."""
+        """Detect window focus loss for click-outside-to-dismiss (Result state only)."""
         if event.type() == QEvent.Type.ActivationChange:
             if not self.isActiveWindow():
                 # Avoid closing if completer popup is active
                 completer = self.input_bar.completer()
                 if completer and completer.popup() and completer.popup().isVisible():
                     return
-                self.close()
+                # Only dismiss automatically when in RESULT state;
+                # In INPUT and LOADING states, keep HUD open and allow interaction with other windows
+                if self.stack.currentIndex() == self.STATE_RESULT:
+                    self.close()
 
         super().changeEvent(event)
 
