@@ -37,8 +37,7 @@ class TestUIComponents(unittest.TestCase):
         self.assertIn("#CentralContainer", css)
         self.assertIn("rgba(28, 28, 30, 0.95)", css)
         self.assertIn("border-radius: 12px", css)
-        self.assertIn("#89b4fa", css)
-        self.assertIn("#cdd6f4", css)
+        self.assertIn("#dcdfe7", css)
         self.assertIn("JetBrainsMono Nerd Font", css)
         self.assertIn("QScrollBar:vertical", css)
 
@@ -54,14 +53,21 @@ class TestUIComponents(unittest.TestCase):
         self.assertIn("/ask", string_list)
         self.assertIn("/eva", string_list)
 
+        # Test command property toggle
+        bar.setText("/ask entropy")
+        self.assertTrue(bar.property("is_command"))
+        bar.setText("plain query")
+        self.assertFalse(bar.property("is_command"))
+
     def test_loading_indicator(self):
         indicator = LoadingIndicator()
         self.assertTrue(indicator.testAttribute(Qt.WidgetAttribute.WA_StyledBackground))
         indicator.set_loading_text("processing /ask...")
-        self.assertEqual(indicator.label.text(), "processing /ask...")
+        self.assertIn("/ask", indicator.label.text())
+        self.assertIn("#f9e2af", indicator.label.text())
         indicator.start()
         indicator._animate_step()
-        self.assertTrue(indicator.label.text().startswith("processing /ask"))
+        self.assertIn("/ask", indicator.label.text())
         indicator.stop()
 
     def test_result_view(self):
@@ -70,16 +76,19 @@ class TestUIComponents(unittest.TestCase):
         self.assertEqual(view.text_browser.verticalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.assertEqual(view.text_browser.horizontalScrollBarPolicy(), Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        test_md = "## Test Title\n\n• Point 1\n• Point 2"
+        test_md = "## Test Title\n\n• Point 1\n• Point 2\n\nFormula: $E = mc^2$"
         view.set_content(badge="/ask", content=test_md, is_error=False)
         self.assertEqual(view.badge_label.text(), "/ask")
+        self.assertIn("#f9e2af", view.badge_label.styleSheet())
         self.assertEqual(view._raw_content, test_md)
         self.assertIn("Test Title", view.text_browser.toPlainText())
+        # Verify math formula was parsed into Unicode
+        self.assertIn("E = mc²", view.text_browser.toPlainText())
 
         # Test elastic height calculation
         short_h = view.calculate_ideal_height(available_width=760)
         self.assertGreater(short_h, 85)
-        self.assertLess(short_h, 250)
+        self.assertLess(short_h, 300)
 
         long_md = "\n\n".join([f"### Section {i}\nDetailed paragraph text {i}" for i in range(12)])
         view.set_content(badge="/ask", content=long_md, is_error=False)
@@ -114,7 +123,7 @@ class TestUIComponents(unittest.TestCase):
         window._handle_submit("/help")
         self.assertEqual(window.stack.currentIndex(), MainWindow.STATE_RESULT)
         self.assertEqual(window.result_view.badge_label.text(), "Help")
-        self.assertIn("Available Commands:", window.result_view.text_browser.toPlainText())
+        self.assertIn("Available Commands", window.result_view.text_browser.toPlainText())
 
         # Verify result state horizontal and vertical centering
         window.layout().activate()
@@ -126,7 +135,8 @@ class TestUIComponents(unittest.TestCase):
         window._handle_submit("/ask")
         self.assertEqual(window.stack.currentIndex(), MainWindow.STATE_RESULT)
         self.assertEqual(window.result_view.badge_label.text(), "Usage")
-        self.assertIn("Missing argument for /ask", window.result_view.text_browser.toPlainText())
+        self.assertIn("Missing argument for", window.result_view.text_browser.toPlainText())
+        self.assertIn("/ask", window.result_view.text_browser.toPlainText())
 
         # Submit unknown command
         window._handle_submit("/unknown_command_foo")

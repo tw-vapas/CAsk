@@ -203,11 +203,11 @@ class MainWindow(QWidget):
         screen = self._get_target_screen()
         screen_geo = screen.availableGeometry() if screen else QRect(0, 0, 1920, 1080)
 
-        # Dynamic Height with Max-height Constraint
+        # Dynamic Height with Max-height Constraint (expanded by 35%)
         target_width = 760
-        ideal_h = self.result_view.calculate_ideal_height(available_width=target_width)
-        max_h = min(620, max(300, screen_geo.height() - 120))
-        min_h = 140
+        ideal_h = int(self.result_view.calculate_ideal_height(available_width=target_width) * 1.35)
+        max_h = min(840, max(400, screen_geo.height() - 80))
+        min_h = 190
         bounded_h = max(min_h, min(max_h, ideal_h))
 
         self._switch_state(self.STATE_RESULT, target_width=target_width, target_height=bounded_h)

@@ -18,6 +18,9 @@ except ImportError:
     pass
 
 
+from core.math_formatter import format_math_in_markdown
+
+
 class ResultView(QFrame):
     """Rich text / Markdown viewer with 1-click clipboard copy."""
 
@@ -63,15 +66,20 @@ class ResultView(QFrame):
         main_layout.addWidget(self.text_browser)
 
     def set_content(self, badge: str, content: str, is_error: bool = False) -> None:
-        """Render markdown content and set badge indicator."""
+        """Render markdown content with math formula parsing and set badge indicator."""
         self._raw_content = content
         self.badge_label.setText(badge)
         if is_error:
-            self.badge_label.setStyleSheet("color: #f87171; background-color: rgba(248, 113, 113, 0.15);")
+            self.badge_label.setStyleSheet("color: #f87171; background-color: rgba(248, 113, 113, 0.15); border: 1px solid rgba(248, 113, 113, 0.35); border-radius: 6px; padding: 3px 8px; font-weight: bold;")
+        elif badge.startswith("/"):
+            # Command mode: bold yellow badge styling
+            self.badge_label.setStyleSheet("color: #f9e2af; background-color: rgba(249, 226, 175, 0.15); border: 1px solid rgba(249, 226, 175, 0.35); border-radius: 6px; padding: 3px 8px; font-weight: bold;")
         else:
             self.badge_label.setStyleSheet("")
 
-        self.text_browser.setMarkdown(content)
+        # Parse AI math formulas into clean Unicode notation
+        formatted_content = format_math_in_markdown(content)
+        self.text_browser.setMarkdown(formatted_content)
         self.copy_button.setText("Copy")
 
     def calculate_ideal_height(self, available_width: int = 760) -> int:

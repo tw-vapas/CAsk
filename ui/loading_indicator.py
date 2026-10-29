@@ -9,6 +9,9 @@ except ImportError:
     pass
 
 
+import re
+
+
 class LoadingIndicator(QFrame):
     """Subtle animated loading state indicator."""
 
@@ -33,11 +36,20 @@ class LoadingIndicator(QFrame):
         self.timer.setInterval(350)
         self.timer.timeout.connect(self._animate_step)
 
+    def _render_text(self, dots: str) -> str:
+        """Format base text with bold yellow styling for command tokens."""
+        formatted = re.sub(
+            r"(^|\s)(/[a-zA-Z0-9_-]+)",
+            r'\1<b style="color: #f9e2af;">\2</b>',
+            self._base_text,
+        )
+        return f"{formatted}{dots}"
+
     def set_loading_text(self, text: str) -> None:
         """Update loading status label."""
         self._base_text = text.rstrip(".")
         self._dot_count = 0
-        self.label.setText(f"{self._base_text}...")
+        self.label.setText(self._render_text("..."))
 
     def start(self) -> None:
         """Start animation loop."""
@@ -51,4 +63,4 @@ class LoadingIndicator(QFrame):
     def _animate_step(self) -> None:
         self._dot_count = (self._dot_count + 1) % 4
         dots = "." * self._dot_count
-        self.label.setText(f"{self._base_text}{dots}")
+        self.label.setText(self._render_text(dots))

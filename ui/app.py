@@ -42,15 +42,13 @@ def run_gui(
     app.setApplicationDisplayName("Ctrans Quick AI Assistant")
     app.setApplicationVersion("2.0.0")
 
-    # Set default typography: JetBrainsMono Nerd Font with fallbacks
+    # Set default typography: JetBrainsMono Nerd Font with monospace fallback
     font = QFont("JetBrainsMono Nerd Font")
     if not font.exactMatch():
         font = QFont("JetBrains Mono")
     if not font.exactMatch():
-        font = QFont("Inter")
-    if not font.exactMatch():
-        font = QFont("Sans Serif")
-    font.setPointSize(11)
+        font = QFont("monospace")
+    font.setPointSize(12)
     app.setFont(font)
 
     # Load glassmorphic stylesheet

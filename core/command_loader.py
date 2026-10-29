@@ -59,16 +59,15 @@ class CommandCatalog:
     def generate_help_text(self) -> str:
         """Format dynamic commands catalog matching established CLI output."""
         lines = [
-            "Ctrans Quick AI Assistant - Commands and Usage Guide",
+            "### Ctrans Quick AI Assistant - Available Commands",
             "",
-            "Available Commands:",
-            f"  • /{ 'help':<20} Show available commands and usage guide",
+            "  • **<span style=\"color: #f9e2af;\">/help</span>**                 Show available commands and usage guide",
         ]
 
         for name in sorted(self._commands.keys()):
             cmd = self._commands[name]
             sig_display = cmd.signature.lstrip("/")
-            lines.append(f"  • /{sig_display:<20} {cmd.description}")
+            lines.append(f"  • **<span style=\"color: #f9e2af;\">/{sig_display}</span>** {cmd.description}")
 
         lines.extend([
             "",

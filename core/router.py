@@ -52,13 +52,13 @@ class RouteResult:
 def format_missing_arg_message(cmd_name: str, signature: str, description: str, example: str) -> str:
     """Format structured missing argument message."""
     return (
-        f"Missing argument for /{cmd_name}\n\n"
+        f"Missing argument for **<span style=\"color: #f9e2af;\">/{cmd_name}</span>**\n\n"
         "Usage:\n"
-        f"  {signature}\n\n"
+        f"  `{signature}`\n\n"
         "Description:\n"
         f"  {description}\n\n"
         "Example:\n"
-        f"  {example}"
+        f"  `{example}`"
     )
 
 

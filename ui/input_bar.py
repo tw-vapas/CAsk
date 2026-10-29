@@ -40,6 +40,16 @@ class InputBar(QLineEdit):
         if catalog:
             self._setup_completer(catalog)
 
+        self.textChanged.connect(self._handle_text_changed)
+
+    def _handle_text_changed(self, text: str) -> None:
+        """Dynamically style command prefix with bold yellow when starting with slash."""
+        is_cmd = bool(text.strip().startswith("/"))
+        if self.property("is_command") != is_cmd:
+            self.setProperty("is_command", is_cmd)
+            self.style().unpolish(self)
+            self.style().polish(self)
+
     def _setup_completer(self, catalog: CommandCatalog) -> None:
         """Setup command autocomplete dropdown popup."""
         completions = ["/help"] + [f"/{name}" for name in catalog.list_names()]
