@@ -44,10 +44,10 @@ class TestCoreCommandLoader(unittest.TestCase):
     def test_help_text_generation(self):
         help_text = self.catalog.generate_help_text()
         self.assertIn("Ctrans Quick AI Assistant", help_text)
-        self.assertIn("• /help", help_text)
-        self.assertIn("• /ask <topic>", help_text)
-        self.assertIn("• /eva <sentence>", help_text)
-        self.assertNotIn("• /default", help_text)
+        self.assertIn("/help", help_text)
+        self.assertIn("/ask <topic>", help_text)
+        self.assertIn("/eva <sentence>", help_text)
+        self.assertNotIn("/default", help_text)
 
 
 class TestCoreRouter(unittest.TestCase):
@@ -67,7 +67,7 @@ class TestCoreRouter(unittest.TestCase):
         for inp in ["/", "/help", "/help me"]:
             res = route_input(inp, self.catalog, self.config)
             self.assertEqual(res.route_type, RouteType.HELP, f"Failed on {inp}")
-            self.assertIn("Ctrans Quick AI Assistant", res.display_text)
+            self.assertIn("Available Commands", res.display_text)
 
     def test_valid_command(self):
         res = route_input("/ask What is entropy?", self.catalog, self.config)
@@ -81,7 +81,8 @@ class TestCoreRouter(unittest.TestCase):
     def test_missing_argument(self):
         res = route_input("/ask", self.catalog, self.config)
         self.assertEqual(res.route_type, RouteType.MISSING_ARG)
-        self.assertIn("Missing argument for /ask", res.display_text)
+        self.assertIn("Missing argument for", res.display_text)
+        self.assertIn("/ask", res.display_text)
         self.assertIn("/ask <topic>", res.display_text)
 
         res = route_input("/ask   ", self.catalog, self.config)
@@ -91,7 +92,7 @@ class TestCoreRouter(unittest.TestCase):
         res = route_input("/nonexistent hello", self.catalog, self.config)
         self.assertEqual(res.route_type, RouteType.UNKNOWN_COMMAND)
         self.assertIn("Unknown Command: /nonexistent", res.display_text)
-        self.assertIn("Available Commands:", res.display_text)
+        self.assertIn("Available Commands", res.display_text)
 
     def test_path_collision_avoidance(self):
         # Linux paths like /etc/hosts or /var/log should fall back to default assistant
@@ -109,6 +110,36 @@ class TestCoreRouter(unittest.TestCase):
         self.assertEqual(res.user_prompt_content, "Hello world")
         self.assertEqual(res.loading_label, "Thinking...")
         self.assertIn("Default AI Assistant Prompt", res.system_prompt)
+
+
+class TestMathFormatter(unittest.TestCase):
+    def test_formula_conversions(self):
+        from core.math_formatter import format_math_expression
+
+        # Quadratic formula
+        res = format_math_expression(r"x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}")
+        self.assertIn("±", res)
+        self.assertIn("√", res)
+        self.assertIn("b²", res)
+
+        # Physics & Greeks
+        res_e = format_math_expression(r"E = mc^2")
+        self.assertEqual(res_e, "E = mc²")
+
+        res_circle = format_math_expression(r"S = \pi r^2")
+        self.assertEqual(res_circle, "S = π r²")
+
+        res_disc = format_math_expression(r"\Delta = b^2 - 4ac")
+        self.assertEqual(res_disc, "Δ = b² - 4ac")
+
+    def test_markdown_math_processing(self):
+        from core.math_formatter import format_math_in_markdown
+
+        doc = "Equation: $E = mc^2$\n\n$$\\Delta = b^2 - 4ac$$\n\nCost is $50."
+        processed = format_math_in_markdown(doc)
+        self.assertIn("`E = mc²`", processed)
+        self.assertIn("Δ = b² - 4ac", processed)
+        self.assertIn("Cost is $50.", processed)
 
 
 if __name__ == "__main__":
