@@ -35,8 +35,8 @@ class TestUIComponents(unittest.TestCase):
     def test_stylesheet_loads(self):
         css = load_stylesheet()
         self.assertIn("#CentralContainer", css)
-        self.assertIn("rgba(63, 75, 101, 0.70)", css)
-        self.assertIn("rgba(63, 75, 101, 0.72)", css)
+        self.assertIn("rgba(27, 31, 38, 0.75)", css)
+        self.assertIn("rgba(27, 31, 38, 0.78)", css)
         self.assertIn("border-radius: 14px", css)
         self.assertIn("#e6ebf5", css)
         self.assertIn("JetBrainsMono Nerd Font", css)
@@ -143,8 +143,19 @@ class TestUIComponents(unittest.TestCase):
         screen_geo = screen.availableGeometry()
         window.layout().activate()
         c0 = window.container.geometry()
-        self.assertEqual(c0.x() + c0.width() // 2, screen_geo.width() // 2)
-        self.assertEqual(c0.y() + c0.height() // 2, screen_geo.height() // 2)
+        self.assertEqual(window.x() + c0.x() + c0.width() // 2, screen_geo.width() // 2)
+        self.assertEqual(window.y() + c0.y() + c0.height() // 2, screen_geo.height() // 2)
+
+        # Test focus loss (ActivationChange) in STATE_INPUT does NOT close window
+        input_closed = []
+        window.close = lambda: input_closed.append(True)
+        window.changeEvent(QEvent(QEvent.Type.ActivationChange))
+        self.assertFalse(input_closed)
+
+        # Test focus loss in STATE_LOADING does NOT close window
+        window._switch_state(MainWindow.STATE_LOADING, target_width=600, target_height=54)
+        window.changeEvent(QEvent(QEvent.Type.ActivationChange))
+        self.assertFalse(input_closed)
 
         # Submit /help
         window._handle_submit("/help")
@@ -155,8 +166,8 @@ class TestUIComponents(unittest.TestCase):
         # Verify result state horizontal and vertical centering
         window.layout().activate()
         c2 = window.container.geometry()
-        self.assertEqual(c2.x() + c2.width() // 2, screen_geo.width() // 2)
-        self.assertEqual(c2.y() + c2.height() // 2, screen_geo.height() // 2)
+        self.assertEqual(window.x() + c2.x() + c2.width() // 2, screen_geo.width() // 2)
+        self.assertEqual(window.y() + c2.y() + c2.height() // 2, screen_geo.height() // 2)
 
         # Submit missing argument
         window._handle_submit("/ask")
@@ -171,9 +182,15 @@ class TestUIComponents(unittest.TestCase):
         self.assertEqual(window.result_view.badge_label.text(), "Unknown Command")
         self.assertIn("Unknown Command: /unknown_command_foo", window.result_view.text_browser.toPlainText())
 
-        # Test click outside floating capsule dismisses the HUD
-        closed = []
-        window.close = lambda: closed.append(True)
+        # Test focus loss in STATE_RESULT DOES dismiss window
+        result_closed = []
+        window.close = lambda: result_closed.append(True)
+        window.changeEvent(QEvent(QEvent.Type.ActivationChange))
+        self.assertTrue(result_closed)
+
+        # Test click outside floating capsule dismisses the HUD in Result state
+        click_closed = []
+        window.close = lambda: click_closed.append(True)
         event = QMouseEvent(
             QEvent.Type.MouseButtonPress,
             QPointF(5, 5),
@@ -182,7 +199,7 @@ class TestUIComponents(unittest.TestCase):
             Qt.KeyboardModifier.NoModifier,
         )
         window.mousePressEvent(event)
-        self.assertTrue(closed)
+        self.assertTrue(click_closed)
 
     def test_glassmorphism_capsules(self):
         window = MainWindow(config=self.config, catalog=self.catalog)

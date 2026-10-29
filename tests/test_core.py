@@ -37,7 +37,7 @@ class TestCoreCommandLoader(unittest.TestCase):
         self.assertIsNotNone(ask)
         self.assertEqual(ask.name, "ask")
         self.assertEqual(ask.signature, "/ask <topic>")
-        self.assertIn("Bilingual concept explanation", ask.description)
+        self.assertIn("Concept explanation", ask.description)
         self.assertEqual(ask.example, "/ask Quantum computing")
         self.assertIn("Output Structure:", ask.prompt)
 
