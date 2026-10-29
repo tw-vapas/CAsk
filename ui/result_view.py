@@ -17,7 +17,7 @@ try:
 except ImportError:
     pass
 
-from core.math_formatter import format_math_in_markdown
+from core.markdown_renderer import render_markdown_to_html
 from ui.icons import get_copy_icon, get_exit_icon, get_pin_icon, get_search_icon
 
 
@@ -114,9 +114,9 @@ class ResultView(QFrame):
         else:
             self.badge_label.setStyleSheet("")
 
-        # Parse AI math formulas into clean Unicode notation
-        formatted_content = format_math_in_markdown(content)
-        self.text_browser.setMarkdown(formatted_content)
+        # Render rich HTML with full GFM tables, lists, and LaTeX math formulas
+        rendered_html = render_markdown_to_html(content)
+        self.text_browser.setHtml(rendered_html)
         self.copy_button.setText("Copy")
         self.copy_button.setIcon(get_copy_icon())
 

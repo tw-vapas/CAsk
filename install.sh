@@ -47,6 +47,13 @@ else
     echo "     pip install PyQt6                (User install)"
 fi
 
+if python3 -c "import markdown" >/dev/null 2>&1; then
+    echo "  ✓ python-markdown found"
+else
+    echo "  ℹ️ Installing python-markdown for GFM tables..."
+    python3 -m pip install --user markdown >/dev/null 2>&1 || true
+fi
+
 # 2. Setup configuration directory and files
 echo "📁 Setting up configuration..."
 mkdir -p "$CONFIG_DIR"
