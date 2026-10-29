@@ -53,14 +53,15 @@ class ResultView(QFrame):
 
         header_layout.addStretch()
 
-        # 1. Search button (icon kính lúp) - shortcut [A]
-        self.search_button = QPushButton("Search", header_widget)
-        self.search_button.setObjectName("SearchButton")
-        self.search_button.setIcon(get_search_icon())
-        self.search_button.setToolTip("Return to input bar [A]")
-        self.search_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.search_button.clicked.connect(self.return_to_input_requested.emit)
-        header_layout.addWidget(self.search_button)
+        # 1. Ask button (icon kính lúp) - shortcut [A]
+        self.ask_button = QPushButton("Ask", header_widget)
+        self.ask_button.setObjectName("AskButton")
+        self.ask_button.setIcon(get_search_icon())
+        self.ask_button.setToolTip("Return to input bar / Ask [A]")
+        self.ask_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.ask_button.clicked.connect(self.return_to_input_requested.emit)
+        header_layout.addWidget(self.ask_button)
+        self.search_button = self.ask_button  # Backward-compatible alias
 
         # 2. Copy button (icon copy) - shortcut [C]
         self.copy_button = QPushButton("Copy", header_widget)

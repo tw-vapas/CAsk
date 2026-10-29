@@ -103,6 +103,7 @@ QListView#CompleterPopup::item:hover {
     border-radius: 6px;
 }
 
+#AskButton,
 #SearchButton,
 #CopyButton,
 #PinButton,
@@ -117,6 +118,7 @@ QListView#CompleterPopup::item:hover {
     qproperty-iconSize: 14px 14px;
 }
 
+#AskButton:hover,
 #SearchButton:hover,
 #CopyButton:hover {
     background-color: rgba(137, 180, 250, 0.25);
@@ -124,6 +126,7 @@ QListView#CompleterPopup::item:hover {
     color: #ffffff;
 }
 
+#AskButton:pressed,
 #SearchButton:pressed,
 #CopyButton:pressed {
     background-color: rgba(137, 180, 250, 0.40);
