@@ -154,7 +154,7 @@ class MainWindow(QWidget):
         - 1 Capsule (W1):
             Preserved centered horizontally & vertically.
         - 2 Capsules (W1, W2):
-            Horizontal side-by-side, equal widths, occupying 2/3 of screen width.
+            Horizontal side-by-side, equal widths, occupying 80% of screen width.
             W1 on left, W2 on right.
         - 3 Capsules (W1, W2, W3):
             Horizontal side-by-side, full screen width with ratio 30:40:30.
@@ -185,7 +185,7 @@ class MainWindow(QWidget):
         elif n == 2:
             w1 = self.capsules[0]
             w2 = self.capsules[1]
-            total_w = int(sw * 2 / 3)
+            total_w = int(sw * 0.80)
             card_w = (total_w - self.GAP) // 2
             x_start = sx + (sw - total_w) // 2
 

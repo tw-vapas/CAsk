@@ -242,7 +242,8 @@ class TestUIComponents(unittest.TestCase):
         self.assertFalse(view.is_pinned)
 
         # Verify buttons and icons
-        self.assertFalse(view.search_button.icon().isNull())
+        self.assertFalse(view.ask_button.icon().isNull())
+        self.assertEqual(view.ask_button.text(), "Ask")
         self.assertFalse(view.copy_button.icon().isNull())
         self.assertFalse(view.pin_button.icon().isNull())
         self.assertFalse(view.close_button.icon().isNull())
@@ -346,7 +347,7 @@ class TestUIComponents(unittest.TestCase):
         self.assertIs(cap_right, window.capsules[1])  # W2
         self.assertEqual(w_l, w_r)
         total_2w = (x_r + w_r) - x_l
-        self.assertAlmostEqual(total_2w, int(sw * 2 / 3), delta=1)
+        self.assertAlmostEqual(total_2w, int(sw * 0.80), delta=1)
 
         # 3 Windows: full screen, 30:40:30 ratio, W3 on left, W1 in center, W2 on right
         window.handle_external_launch("")
