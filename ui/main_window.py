@@ -60,7 +60,7 @@ class MainWindow(QWidget):
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Dialog
+            | Qt.WindowType.Window
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
@@ -256,7 +256,7 @@ class MainWindow(QWidget):
         super().changeEvent(event)
 
     def keyPressEvent(self, event) -> None:
-        if event.key() == Qt.Key.Key_Escape:
+        if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self.close()
             event.accept()
             return
