@@ -15,6 +15,7 @@ except ImportError:
 from core.command_loader import CommandCatalog
 from core.config import Config
 from ui.main_window import MainWindow
+from ui.single_instance import SingleInstanceManager
 
 
 def load_stylesheet() -> str:
@@ -38,9 +39,15 @@ def run_gui(
     if not app:
         app = QApplication(sys.argv)
 
-    app.setApplicationName("CAsk")
+    app.setApplicationName("cask")
     app.setApplicationDisplayName("CAsk Quick AI Assistant")
+    app.setDesktopFileName("cask")
     app.setApplicationVersion("2.0.0")
+
+    # Enforce single instance: if another instance is already running, activate it and exit
+    manager = SingleInstanceManager(app_name="cask")
+    if not manager.try_acquire(initial_input=initial_input):
+        return 0
 
     # Set default typography: JetBrainsMono Nerd Font with monospace fallback
     font = QFont("JetBrainsMono Nerd Font")
@@ -57,8 +64,14 @@ def run_gui(
         app.setStyleSheet(stylesheet)
 
     window = MainWindow(config=config, catalog=catalog, initial_input=initial_input)
+    manager.register_window(window)
+    app.aboutToQuit.connect(manager.cleanup)
+
     window.show()
     window.raise_()
     window.activateWindow()
 
-    return app.exec()
+    try:
+        return app.exec()
+    finally:
+        manager.cleanup()
