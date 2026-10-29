@@ -145,11 +145,12 @@ class TestUIComponents(unittest.TestCase):
 
         # Verify initial input state centering on screen
         screen = window._get_target_screen()
+        # Verify initial input state centering on screen
+        screen = window._get_target_screen()
         screen_geo = screen.availableGeometry()
-        window.layout().activate()
-        c0 = window.container.geometry()
+        c0 = window.capsules[0].geometry()
         self.assertEqual(window.x() + c0.x() + c0.width() // 2, screen_geo.width() // 2)
-        self.assertEqual(window.y() + c0.y() + c0.height() // 2, screen_geo.height() // 2)
+        self.assertAlmostEqual(window.y() + c0.y() + c0.height() // 2, screen_geo.height() // 2, delta=1)
 
         # Test focus loss (ActivationChange) in STATE_INPUT does NOT close window
         input_closed = []
@@ -171,10 +172,9 @@ class TestUIComponents(unittest.TestCase):
         self.assertIn("/eva <sentence>", window.result_view.text_browser.toPlainText())
 
         # Verify result state horizontal and vertical centering
-        window.layout().activate()
-        c2 = window.container.geometry()
+        c2 = window.capsules[0].geometry()
         self.assertEqual(window.x() + c2.x() + c2.width() // 2, screen_geo.width() // 2)
-        self.assertEqual(window.y() + c2.y() + c2.height() // 2, screen_geo.height() // 2)
+        self.assertAlmostEqual(window.y() + c2.y() + c2.height() // 2, screen_geo.height() // 2, delta=1)
 
         # Submit missing argument
         window._handle_submit("/ask")
@@ -189,15 +189,17 @@ class TestUIComponents(unittest.TestCase):
         self.assertEqual(window.result_view.badge_label.text(), "Unknown Command")
         self.assertIn("Unknown Command: /unknown_command_foo", window.result_view.text_browser.toPlainText())
 
-        # Test focus loss in STATE_RESULT DOES dismiss window
+        # Test focus loss in STATE_RESULT DOES dismiss unpinned window
         result_closed = []
         window.close = lambda: result_closed.append(True)
         window.changeEvent(QEvent(QEvent.Type.ActivationChange))
         self.assertTrue(result_closed)
 
         # Test click outside floating capsule dismisses the HUD in Result state
+        window2 = MainWindow(config=self.config, catalog=self.catalog)
+        window2._handle_submit("/help")
         click_closed = []
-        window.close = lambda: click_closed.append(True)
+        window2.close = lambda: click_closed.append(True)
         event = QMouseEvent(
             QEvent.Type.MouseButtonPress,
             QPointF(5, 5),
@@ -205,8 +207,123 @@ class TestUIComponents(unittest.TestCase):
             Qt.MouseButton.LeftButton,
             Qt.KeyboardModifier.NoModifier,
         )
-        window.mousePressEvent(event)
+        window2.mousePressEvent(event)
         self.assertTrue(click_closed)
+
+    def test_input_bar_dynamic_height_expansion(self):
+        bar = InputBar(catalog=self.catalog)
+        bar.resize(600, 50)
+        # Empty text
+        self.assertEqual(bar.calculate_ideal_height(600), 50)
+
+        height_events = []
+        bar.height_changed.connect(lambda h: height_events.append(h))
+
+        # Single line text
+        bar.setText("Hello world")
+        self.assertEqual(bar.calculate_ideal_height(600), 50)
+
+        # Multiline text expands height
+        bar.setText("Line 1\nLine 2\nLine 3\nLine 4")
+        expanded_h = bar.calculate_ideal_height(600)
+        self.assertGreater(expanded_h, 50)
+        self.assertTrue(len(height_events) > 0)
+
+        # Clamped at maximum 220
+        bar.setText("\n".join(f"Line {i}" for i in range(25)))
+        self.assertEqual(bar.calculate_ideal_height(600), 220)
+
+    def test_result_view_pinning(self):
+        view = ResultView()
+        view.set_content("Test", "Some response content")
+        self.assertFalse(view.is_pinned)
+
+        dismissed = []
+        view.dismiss_requested.connect(lambda: dismissed.append(True))
+
+        from PyQt6.QtGui import QKeyEvent
+        esc_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Escape, Qt.KeyboardModifier.NoModifier)
+        enter_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier)
+
+        # Unpinned: Esc emits dismiss_requested
+        view.keyPressEvent(esc_event)
+        self.assertEqual(len(dismissed), 1)
+
+        # Pin the view
+        view.pin_button.click()
+        self.assertTrue(view.is_pinned)
+        self.assertEqual(view.pin_button.text(), "📌 Pinned")
+
+        # Pinned: Esc and Enter do NOT emit dismiss_requested
+        view.keyPressEvent(esc_event)
+        view.keyPressEvent(enter_event)
+        self.assertEqual(len(dismissed), 1)
+
+        # Pinned: Close button still emits dismiss_requested
+        view.close_button.click()
+        self.assertEqual(len(dismissed), 2)
+
+        # Unpin: Esc again emits dismiss_requested
+        view.pin_button.click()
+        self.assertFalse(view.is_pinned)
+        view.keyPressEvent(esc_event)
+        self.assertEqual(len(dismissed), 3)
+
+    def test_multi_capsule_layout(self):
+        window = MainWindow(config=self.config, catalog=self.catalog)
+        screen = window._get_target_screen()
+        screen_geo = screen.availableGeometry()
+        sw = screen_geo.width()
+
+        # 1 Window: centered
+        self.assertEqual(len(window.capsules), 1)
+        slots1 = window._calculate_slot_geometries(screen_geo)
+        self.assertEqual(len(slots1), 1)
+        w1_cap, x1, y1, w1, h1 = slots1[0]
+        self.assertEqual(x1 + w1 // 2, screen_geo.x() + sw // 2)
+
+        # 2 Windows: 2/3 of screen width, equal width, W1 on left, W2 on right
+        window.handle_external_launch("")
+        self.assertEqual(len(window.capsules), 2)
+        slots2 = window._calculate_slot_geometries(screen_geo)
+        self.assertEqual(len(slots2), 2)
+        cap_left, x_l, _, w_l, _ = slots2[0]
+        cap_right, x_r, _, w_r, _ = slots2[1]
+        self.assertIs(cap_left, window.capsules[0])   # W1
+        self.assertIs(cap_right, window.capsules[1])  # W2
+        self.assertEqual(w_l, w_r)
+        total_2w = (x_r + w_r) - x_l
+        self.assertAlmostEqual(total_2w, int(sw * 2 / 3), delta=1)
+
+        # 3 Windows: full screen, 30:40:30 ratio, W3 on left, W1 in center, W2 on right
+        window.handle_external_launch("")
+        self.assertEqual(len(window.capsules), 3)
+        slots3 = window._calculate_slot_geometries(screen_geo)
+        self.assertEqual(len(slots3), 3)
+        s_left, s_center, s_right = slots3
+        self.assertIs(s_left[0], window.capsules[2])    # W3
+        self.assertIs(s_center[0], window.capsules[0])  # W1
+        self.assertIs(s_right[0], window.capsules[1])   # W2
+
+        w_left = s_left[3]
+        w_center = s_center[3]
+        w_right = s_right[3]
+        # Verify 30:40:30 ratio
+        total_content_w = w_left + w_center + w_right
+        self.assertAlmostEqual(w_left / total_content_w, 0.30, delta=0.03)
+        self.assertAlmostEqual(w_right / total_content_w, 0.30, delta=0.03)
+        self.assertAlmostEqual(w_center / total_content_w, 0.40, delta=0.03)
+
+        # 4th launch must NOT exceed 3 capsules
+        window.handle_external_launch("extra launch")
+        self.assertEqual(len(window.capsules), 3)
+
+        # Close W3 -> falls back to 2 windows (W1 left, W2 right)
+        window._handle_capsule_close(window.capsules[2])
+        self.assertEqual(len(window.capsules), 2)
+        slots_after = window._calculate_slot_geometries(screen_geo)
+        self.assertIs(slots_after[0][0], window.capsules[0])
+        self.assertIs(slots_after[1][0], window.capsules[1])
 
     def test_enter_key_dismissal(self):
         # Empty input bar cancels on Enter

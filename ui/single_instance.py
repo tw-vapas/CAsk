@@ -84,14 +84,12 @@ class SingleInstanceManager:
             sock = self.server.nextPendingConnection()
             if not sock:
                 return
+            query = ""
             if sock.waitForReadyRead(500):
                 try:
                     data = sock.readAll().data().decode("utf-8", errors="ignore")
                     if data.startswith("ACTIVATE:"):
                         query = data[len("ACTIVATE:"):].strip()
-                        if query and hasattr(window, "input_bar"):
-                            if window.stack.currentIndex() == window.STATE_INPUT:
-                                window.input_bar.setText(query)
                 except Exception:
                     pass
             try:
@@ -99,12 +97,14 @@ class SingleInstanceManager:
             except Exception:
                 pass
 
-            # Bring window to front and activate
-            window.show()
-            window.raise_()
-            window.activateWindow()
-            if hasattr(window, "input_bar") and window.stack.currentIndex() == window.STATE_INPUT:
-                window.input_bar.setFocus()
+            if hasattr(window, "handle_external_launch"):
+                window.handle_external_launch(query)
+            else:
+                window.show()
+                window.raise_()
+                window.activateWindow()
+                if hasattr(window, "input_bar") and window.stack.currentIndex() == window.STATE_INPUT:
+                    window.input_bar.setFocus()
 
         self.server.newConnection.connect(_on_new_connection)
 
