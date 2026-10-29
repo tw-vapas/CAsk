@@ -62,19 +62,20 @@ class CommandCatalog:
         lines = [
             "### CAsk - Available Commands",
             "",
-            "  • **<span style=\"color: #f9e2af;\">/help</span>** — Show available commands and usage guide",
+            "- <b style=\"color: #f9e2af;\">/help</b> — Show available commands and usage guide",
         ]
 
         for name in sorted(self._commands.keys()):
             cmd = self._commands[name]
             sig_display = cmd.signature.lstrip("/")
-            lines.append(f"  • **<span style=\"color: #f9e2af;\">/{sig_display}</span>** — {cmd.description}")
+            safe_sig = sig_display.replace("<", "&lt;").replace(">", "&gt;")
+            lines.append(f"- <b style=\"color: #f9e2af;\">/{safe_sig}</b> — {cmd.description}")
 
         lines.extend([
             "",
-            "Quick Tips:",
-            "  • Type any prompt without '/' to run the default assistant (execution/DEFAULT.md).",
-            "  • Press Enter, Esc, or click outside this card to dismiss.",
+            "**Quick Tips:**",
+            "- Type any prompt without a leading slash to run the default assistant.",
+            "- Press Enter, Esc, or click outside this card to dismiss.",
         ])
 
         return "\n".join(lines)

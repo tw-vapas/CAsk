@@ -57,8 +57,8 @@ class TestCoreCommandLoader(unittest.TestCase):
         help_text = self.catalog.generate_help_text()
         self.assertIn("CAsk - Available Commands", help_text)
         self.assertIn("/help", help_text)
-        self.assertIn("/ask <topic>", help_text)
-        self.assertIn("/eva <sentence>", help_text)
+        self.assertIn("/ask &lt;topic&gt;", help_text)
+        self.assertIn("/eva &lt;sentence&gt;", help_text)
         self.assertNotIn("/default", help_text)
 
 
