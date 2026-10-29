@@ -134,6 +134,10 @@ class InputBar(QTextEdit):
         popup = completer.popup()
         if popup:
             popup.setObjectName("CompleterPopup")
+            popup.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+            popup.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+            if popup.viewport():
+                popup.viewport().setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
             popup.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         self.setCompleter(completer)
