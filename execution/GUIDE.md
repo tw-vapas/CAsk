@@ -1,16 +1,16 @@
 # Command Development Guide
 
-This guide establishes the specifications, file structure, and best practices for creating modular slash commands in Ctrans.
+This guide establishes the specifications, file structure, and best practices for creating modular slash commands in CAsk.
 
 ---
 
 ## 1. File Location & Naming Conventions
 
-Command files are decoupled markdown files (`.md`) loaded dynamically by the Ctrans Bash Router.
+Command files are decoupled markdown files (`.md`) loaded dynamically by the CAsk Router.
 
 ### Directory Resolution
 Commands are resolved in the following priority order:
-1. **User Custom Commands:** `~/.config/ctrans/execution/commands/{command_name}.md`
+1. **User Custom Commands:** `~/.config/cask/execution/commands/{command_name}.md`
 2. **Project Default Commands:** `execution/commands/{command_name}.md` (in the repository)
 
 ### Naming Rules
@@ -19,7 +19,7 @@ Commands are resolved in the following priority order:
 - **Allowed characters:** Alphanumeric characters, hyphens, and underscores (`[a-zA-Z0-9_-]+`). Must be lowercase.
 - **Reserved filenames:** `GUIDE.md`, `README.md`, `DEFAULT.md`.
   - `GUIDE.md` and `README.md` are documentation files.
-  - `DEFAULT.md` (in `execution/DEFAULT.md`) configures the default assistant prompt executed when no slash command is used. It is excluded from the `/help` catalog and autocomplete. Users can edit `~/.config/ctrans/execution/DEFAULT.md` to customize the default persona (e.g. translator, coding assistant, or executive summarizer).
+  - `DEFAULT.md` (in `execution/DEFAULT.md`) configures the default assistant prompt executed when no slash command is used. It is excluded from the `/help` catalog and autocomplete. Users can edit `~/.config/cask/execution/DEFAULT.md` to customize the default persona (e.g. translator, coding assistant, or executive summarizer).
 
 ---
 
@@ -72,7 +72,7 @@ Output Structure:
 
 ## 3. Best Practices for Command Output
 
-Ctrans renders responses inside a floating Glassmorphism HUD card with native Qt6 CommonMark rendering (`max width 760px`). Format your prompt outputs to ensure optimal readability:
+CAsk renders responses inside a floating Glassmorphism HUD card with native Qt6 CommonMark rendering (`max width 760px`). Format your prompt outputs to ensure optimal readability:
 
 1. **Zero Fluff Policy:**
    - Prohibit conversational filler (e.g., *"Sure, here is your explanation..."*).
@@ -117,9 +117,9 @@ Output Structure:
 
 ## 5. Execution Lifecycle
 
-1. User enters: `/{command_name} {payload}` in the Ctrans HUD or CLI.
-2. Ctrans router extracts `command="{command_name}"` and `payload="{payload}"`.
-3. Ctrans verifies that `{command_name}.md` exists in user config or defaults.
-4. Ctrans transitions to loading state: `processing /{command_name}...`.
+1. User enters: `/{command_name} {payload}` in the CAsk HUD or CLI.
+2. CAsk router extracts `command="{command_name}"` and `payload="{payload}"`.
+3. CAsk verifies that `{command_name}.md` exists in user config or defaults.
+4. CAsk transitions to loading state: `processing /{command_name}...`.
 5. The full content of `{command_name}.md` is passed as `system` prompt, and `{payload}` is passed as `user` message.
 6. The AI response is streamed/rendered in the Glassmorphism Markdown viewer.
