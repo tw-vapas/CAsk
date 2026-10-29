@@ -61,7 +61,8 @@ class InputBar(QTextEdit):
         self.setAcceptRichText(False)
         self.setTabChangesFocus(True)
         self.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.document().setDocumentMargin(2)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled, True)
@@ -183,6 +184,11 @@ class InputBar(QTextEdit):
 
         # Dynamic height check
         new_height = self.calculate_ideal_height()
+        if new_height >= 220:
+            self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        else:
+            self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
         if new_height != self._current_ideal_height:
             self._current_ideal_height = new_height
             self.height_changed.emit(new_height)
