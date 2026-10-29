@@ -54,14 +54,15 @@ class MainWindow(QWidget):
             self._handle_submit(self.initial_input)
 
     def _setup_window_properties(self) -> None:
-        """Configure frameless, translucent, always-on-top window flags."""
+        """Configure frameless, translucent, always-on-top window flags with IME support."""
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Tool
+            | Qt.WindowType.Dialog
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled, True)
         self.setProperty("kwin_blur", True)
 
     def _setup_ui(self) -> None:
