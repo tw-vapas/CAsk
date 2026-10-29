@@ -123,11 +123,20 @@ echo "  ✓ Created desktop entry at $DESKTOP_FILE"
 # 5. Optional KWin window effects & rules for KDE Plasma
 if command -v kwriteconfig6 >/dev/null 2>&1 && [ "$XDG_CURRENT_DESKTOP" = "KDE" ]; then
     echo "🎨 Configuring KDE KWin window rules and effects (Keep Above & Background Blur)..."
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud" --key Description "CAsk HUD Keep Above" 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud" --key wmclass "cask" 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud" --key wmclassmatch 1 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud" --key above true 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud" --key aboverule 2 2>/dev/null || true
+    kwriteconfig6 --file kwinrulesrc --group General --key count 2 2>/dev/null || true
+    kwriteconfig6 --file kwinrulesrc --group General --key rules "cask-hud-class,cask-hud-title" 2>/dev/null || true
+
+    kwriteconfig6 --file kwinrulesrc --group "cask-hud-class" --key Description "CAsk HUD Class Keep Above" 2>/dev/null || true
+    kwriteconfig6 --file kwinrulesrc --group "cask-hud-class" --key wmclass "cask" 2>/dev/null || true
+    kwriteconfig6 --file kwinrulesrc --group "cask-hud-class" --key wmclassmatch 2 2>/dev/null || true
+    kwriteconfig6 --file kwinrulesrc --group "cask-hud-class" --key above true 2>/dev/null || true
+    kwriteconfig6 --file kwinrulesrc --group "cask-hud-class" --key aboverule 3 2>/dev/null || true
+
+    kwriteconfig6 --file kwinrulesrc --group "cask-hud-title" --key Description "CAsk HUD Title Keep Above" 2>/dev/null || true
+    kwriteconfig6 --file kwinrulesrc --group "cask-hud-title" --key title "CAsk" 2>/dev/null || true
+    kwriteconfig6 --file kwinrulesrc --group "cask-hud-title" --key titlematch 2 2>/dev/null || true
+    kwriteconfig6 --file kwinrulesrc --group "cask-hud-title" --key above true 2>/dev/null || true
+    kwriteconfig6 --file kwinrulesrc --group "cask-hud-title" --key aboverule 3 2>/dev/null || true
 
     kwriteconfig6 --file kwinrc --group Plugins --key scaleEnabled false 2>/dev/null || true
     kwriteconfig6 --file kwinrc --group Plugins --key fadeEnabled true 2>/dev/null || true

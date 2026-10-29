@@ -57,6 +57,8 @@ class MainWindow(QWidget):
 
     def _setup_window_properties(self) -> None:
         """Configure frameless, translucent, always-on-top window flags with IME support."""
+        self.setWindowTitle("CAsk")
+        self.setObjectName("CAskHUD")
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
@@ -66,6 +68,10 @@ class MainWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self.setAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled, True)
         self.setProperty("kwin_blur", True)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self.raise_()
 
     def _setup_ui(self) -> None:
         """Build layout and state views within an exact-sized floating capsule."""
@@ -249,9 +255,11 @@ class MainWindow(QWidget):
                 if completer and completer.popup() and completer.popup().isVisible():
                     return
                 # Only dismiss automatically when in RESULT state;
-                # In INPUT and LOADING states, keep HUD open and allow interaction with other windows
+                # In INPUT and LOADING states, keep HUD open and raise above other windows
                 if self.stack.currentIndex() == self.STATE_RESULT:
                     self.close()
+                else:
+                    self.raise_()
 
         super().changeEvent(event)
 
