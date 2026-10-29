@@ -69,7 +69,7 @@ This script will:
 - Set up configuration directory at `~/.config/cask/execution/` and `~/.config/cask/execution/commands/`.
 - Copy template configuration (`config.env`).
 - Symlink default persona (`execution/DEFAULT.md`) and modular commands (`ask.md`, `eva.md`).
-- Symlink `cask.py` to `~/.local/bin/cask`, `~/.local/bin/CAsk`, and `~/.local/bin/ctrans`.
+- Symlink `cask.py` to `~/.local/bin/cask` and `~/.local/bin/CAsk`.
 - Register `cask.desktop` for system-wide shortcut binding.
 
 ### 3. Add your API Keys
@@ -170,7 +170,6 @@ cask --help
 ```
 cask/
 ├── cask.py                    # Main executable entrypoint (PyQt6 HUD / CLI)
-├── ctrans.py                  # Symlink wrapper for backwards compatibility
 ├── core/                      # Application core engine
 │   ├── __init__.py            # Core exports
 │   ├── config.py              # Configuration loader (config.env / .env)
