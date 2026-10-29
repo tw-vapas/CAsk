@@ -48,6 +48,7 @@ class InputBar(QTextEdit):
 
     submitted = pyqtSignal(str)
     cancelled = pyqtSignal()
+    height_changed = pyqtSignal(int)
 
     def __init__(
         self,
@@ -60,13 +61,14 @@ class InputBar(QTextEdit):
         self.setAcceptRichText(False)
         self.setTabChangesFocus(True)
         self.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled, True)
 
         self._max_length: int = 500
         self._completer: Optional[QCompleter] = None
+        self._current_ideal_height: int = 50
 
         # Set placeholder text color to rgba(255, 255, 255, 0.55)
         palette = self.palette()
@@ -81,8 +83,27 @@ class InputBar(QTextEdit):
 
         self.textChanged.connect(self._handle_text_changed)
 
+    def calculate_ideal_height(self, available_width: Optional[int] = None) -> int:
+        """Calculate dynamic height based on text content and line wrapping."""
+        width = available_width if available_width is not None else self.width()
+        if width <= 0:
+            width = 600
+        content_width = max(200, width - 36)
+        raw_text = self.toPlainText()
+        if not raw_text.strip():
+            return 50
+
+        doc = self.document().clone()
+        doc.setTextWidth(content_width)
+        doc_height = doc.size().height()
+        if doc.lineCount() <= 1 and "\n" not in raw_text and doc_height <= 32:
+            return 50
+
+        computed = int(doc_height + 24)
+        return max(50, min(220, computed))
+
     def sizeHint(self) -> QSize:
-        return QSize(600, 50)
+        return QSize(600, self.calculate_ideal_height())
 
     def minimumSizeHint(self) -> QSize:
         return QSize(200, 48)
@@ -160,6 +181,12 @@ class InputBar(QTextEdit):
         if self.property("is_command") != is_cmd:
             self.setProperty("is_command", is_cmd)
 
+        # Dynamic height check
+        new_height = self.calculate_ideal_height()
+        if new_height != self._current_ideal_height:
+            self._current_ideal_height = new_height
+            self.height_changed.emit(new_height)
+
         if not self._completer:
             return
 
@@ -175,8 +202,8 @@ class InputBar(QTextEdit):
                 popup.hide()
 
     def insertFromMimeData(self, source) -> None:
-        """Flatten multi-line clipboard paste and enforce max length."""
-        text = source.text().replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+        """Normalize line breaks and enforce max length."""
+        text = source.text().replace("\r\n", "\n").replace("\r", "\n")
         if self._max_length and len(self.text()) + len(text) > self._max_length:
             allowed = max(0, self._max_length - len(self.text()))
             text = text[:allowed]
@@ -209,6 +236,11 @@ class InputBar(QTextEdit):
             event.accept()
             return
         elif event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                self.insertPlainText("\n")
+                event.accept()
+                return
+
             app = QApplication.instance()
             im = app.inputMethod() if app else None
             if im and im.isVisible():
