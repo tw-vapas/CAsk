@@ -91,15 +91,17 @@ fi
 mkdir -p "$HOME/.local/bin"
 chmod +x "$SCRIPT_DIR/cask.py"
 
-# Clean up legacy link if present
+# Clean up legacy links if present
 if [ -L "$BIN_TARGET_LEGACY" ] || [ -f "$BIN_TARGET_LEGACY" ]; then
     rm -f "$BIN_TARGET_LEGACY"
+fi
+if [ -L "$BIN_TARGET_CTRANS" ] || [ -f "$BIN_TARGET_CTRANS" ]; then
+    rm -f "$BIN_TARGET_CTRANS"
 fi
 
 ln -sf "$SCRIPT_DIR/cask.py" "$BIN_TARGET"
 ln -sf "$SCRIPT_DIR/cask.py" "$BIN_TARGET_ALIAS"
-ln -sf "$SCRIPT_DIR/cask.py" "$BIN_TARGET_CTRANS"
-echo "  ✓ Linked executables: $BIN_TARGET, $BIN_TARGET_ALIAS, and backwards-compatible $BIN_TARGET_CTRANS"
+echo "  ✓ Linked executables: $BIN_TARGET and $BIN_TARGET_ALIAS"
 
 # 4. Create Desktop Entry for global shortcut binding
 mkdir -p "$DESKTOP_DIR"
@@ -134,4 +136,4 @@ fi
 
 echo ""
 echo "🎉 Installation complete!"
-echo "Run 'cask' (or 'ctrans') from terminal or trigger it via your configured keyboard shortcut."
+echo "Run 'cask' from terminal or trigger it via your configured keyboard shortcut."
