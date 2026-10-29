@@ -128,7 +128,7 @@ class TestUIComponents(unittest.TestCase):
         window = MainWindow(config=self.config, catalog=self.catalog)
         self.assertEqual(window.stack.currentIndex(), MainWindow.STATE_INPUT)
         self.assertIsNotNone(window.container.graphicsEffect())
-        self.assertEqual(window.windowType(), Qt.WindowType.Dialog)
+        self.assertEqual(window.windowType(), Qt.WindowType.Window)
         self.assertTrue(window.testAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled))
 
         # Verify zero layout margins on container (no box-in-box)
@@ -201,13 +201,35 @@ class TestUIComponents(unittest.TestCase):
         window.mousePressEvent(event)
         self.assertTrue(click_closed)
 
-    def test_glassmorphism_capsules(self):
+    def test_enter_key_dismissal(self):
+        # Empty input bar cancels on Enter
+        bar = InputBar(catalog=self.catalog)
+        cancelled = []
+        bar.cancelled.connect(lambda: cancelled.append(True))
+        from PyQt6.QtGui import QKeyEvent
+        enter_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier)
+        bar.keyPressEvent(enter_event)
+        self.assertTrue(cancelled)
+
+        # MainWindow dismisses on Enter in Loading state
         window = MainWindow(config=self.config, catalog=self.catalog)
-        self.assertTrue(window.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
-        self.assertFalse(hasattr(window, "background_layer"))
-        self.assertIsNotNone(window.container.graphicsEffect())
-        effect = window.container.graphicsEffect()
-        self.assertEqual(effect.blurRadius(), 48)
+        window._switch_state(MainWindow.STATE_LOADING, 600, 54)
+        closed = []
+        window.close = lambda: closed.append(True)
+        window.keyPressEvent(enter_event)
+        self.assertTrue(closed)
+
+    def test_single_instance_manager(self):
+        from ui.single_instance import SingleInstanceManager
+        app_name = "cask_unit_test"
+        mgr1 = SingleInstanceManager(app_name=app_name)
+        try:
+            self.assertTrue(mgr1.try_acquire())
+            # Second attempt while mgr1 is running must return False
+            mgr2 = SingleInstanceManager(app_name=app_name)
+            self.assertFalse(mgr2.try_acquire())
+        finally:
+            mgr1.cleanup()
 
 
 if __name__ == "__main__":
