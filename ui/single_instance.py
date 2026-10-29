@@ -22,6 +22,7 @@ class SingleInstanceManager:
     """
 
     def __init__(self, app_name: str = "cask") -> None:
+        self.app_name = app_name
         self.server_name = f"{app_name}_instance_{os.getuid()}"
         self.server: Optional[QLocalServer] = None
         self._lock_file: Optional[Path] = None
@@ -35,7 +36,7 @@ class SingleInstanceManager:
             False if another instance is already running (activation requested).
         """
         runtime_dir = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp"))
-        self._lock_file = runtime_dir / f"cask_{os.getuid()}.lock"
+        self._lock_file = runtime_dir / f"{self.app_name}_{os.getuid()}.lock"
 
         try:
             self._lock_fd = os.open(
