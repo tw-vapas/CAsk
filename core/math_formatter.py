@@ -1,4 +1,4 @@
-"""LaTeX mathematical formula formatter for Ctrans HUD.
+"""LaTeX mathematical formula formatter for CAsk HUD.
 
 Converts AI-generated LaTeX math expressions ($...$, $$...$$, \\[...\\], \\(...\\))
 into high-fidelity Unicode mathematical representations rendered cleanly in Qt Markdown/HTML.

@@ -54,7 +54,7 @@ class APIClient:
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {config.groq_api_key}",
-                "User-Agent": "Ctrans/2.0",
+                "User-Agent": "CAsk/2.0",
             },
             method="POST",
         )
@@ -111,7 +111,7 @@ class APIClient:
             data=json.dumps(payload).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
-                "User-Agent": "Ctrans/2.0",
+                "User-Agent": "CAsk/2.0",
             },
             method="POST",
         )

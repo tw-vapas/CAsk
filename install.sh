@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# Installer for Ctrans (Convenient Translation & Quick AI Assistant)
+# Installer for CAsk (Universal Quick AI Assistant & Command Runner)
 # Native PyQt6 Glassmorphism HUD Architecture
 # ==============================================================================
 
@@ -14,18 +14,19 @@ while [ -L "$SOURCE" ]; do
     [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
-BIN_TARGET="$HOME/.local/bin/ctrans"
-BIN_TARGET_ALIAS="$HOME/.local/bin/Ctrans"
+BIN_TARGET="$HOME/.local/bin/cask"
+BIN_TARGET_ALIAS="$HOME/.local/bin/CAsk"
+BIN_TARGET_CTRANS="$HOME/.local/bin/ctrans"
 BIN_TARGET_LEGACY="$HOME/.local/bin/ctrans-legacy"
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ctrans"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/cask"
 CONFIG_FILE="$CONFIG_DIR/config.env"
 PROMPT_TARGET="$CONFIG_DIR/prompt.md"
 EXECUTION_DIR="$CONFIG_DIR/execution"
 COMMANDS_DIR="$EXECUTION_DIR/commands"
 DESKTOP_DIR="$HOME/.local/share/applications"
-DESKTOP_FILE="$DESKTOP_DIR/ctrans.desktop"
+DESKTOP_FILE="$DESKTOP_DIR/cask.desktop"
 
-echo "✨ Installing Ctrans (Convenient Translation & Quick AI Assistant)..."
+echo "✨ Installing CAsk (Universal Quick AI Assistant & Command Runner)..."
 
 # 1. Check Python & PyQt6 dependencies
 echo "🔍 Checking dependencies..."
@@ -88,23 +89,24 @@ fi
 
 # 3. Create symlinks in ~/.local/bin
 mkdir -p "$HOME/.local/bin"
-chmod +x "$SCRIPT_DIR/ctrans.py"
+chmod +x "$SCRIPT_DIR/cask.py"
 
 # Clean up legacy link if present
 if [ -L "$BIN_TARGET_LEGACY" ] || [ -f "$BIN_TARGET_LEGACY" ]; then
     rm -f "$BIN_TARGET_LEGACY"
 fi
 
-ln -sf "$SCRIPT_DIR/ctrans.py" "$BIN_TARGET"
-ln -sf "$SCRIPT_DIR/ctrans.py" "$BIN_TARGET_ALIAS"
-echo "  ✓ Linked executable: $BIN_TARGET and $BIN_TARGET_ALIAS"
+ln -sf "$SCRIPT_DIR/cask.py" "$BIN_TARGET"
+ln -sf "$SCRIPT_DIR/cask.py" "$BIN_TARGET_ALIAS"
+ln -sf "$SCRIPT_DIR/cask.py" "$BIN_TARGET_CTRANS"
+echo "  ✓ Linked executables: $BIN_TARGET, $BIN_TARGET_ALIAS, and backwards-compatible $BIN_TARGET_CTRANS"
 
 # 4. Create Desktop Entry for global shortcut binding
 mkdir -p "$DESKTOP_DIR"
 cat << EOF > "$DESKTOP_FILE"
 [Desktop Entry]
-Name=Ctrans
-GenericName=Convenient Translation & AI Assistant
+Name=CAsk
+GenericName=Universal AI Assistant & Command Runner
 Comment=Quick AI Assistant with Native Qt6 Glassmorphism HUD
 Exec=$BIN_TARGET
 Icon=accessories-dictionary
@@ -132,4 +134,4 @@ fi
 
 echo ""
 echo "🎉 Installation complete!"
-echo "Run 'ctrans' from terminal or trigger it via your configured keyboard shortcut."
+echo "Run 'cask' (or 'ctrans') from terminal or trigger it via your configured keyboard shortcut."

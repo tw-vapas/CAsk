@@ -1,4 +1,4 @@
-"""Ctrans Core Engine Package."""
+"""CAsk Core Engine Package."""
 
 from .config import Config, load_config
 from .command_loader import CommandMetadata, CommandCatalog, load_commands

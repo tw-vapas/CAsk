@@ -1,4 +1,4 @@
-"""Configuration loader for Ctrans.
+"""Configuration loader for CAsk.
 
 Loads API keys and paths following the established precedence hierarchy.
 """
@@ -20,10 +20,10 @@ class Config:
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash-lite"
     prompt_file: Optional[Path] = None
-    config_dir: Path = Path.home() / ".config" / "ctrans"
+    config_dir: Path = Path.home() / ".config" / "cask"
     script_dir: Path = Path(__file__).resolve().parent.parent
-    user_execution_dir: Path = Path.home() / ".config" / "ctrans" / "execution"
-    user_commands_dir: Path = Path.home() / ".config" / "ctrans" / "execution" / "commands"
+    user_execution_dir: Path = Path.home() / ".config" / "cask" / "execution"
+    user_commands_dir: Path = Path.home() / ".config" / "cask" / "execution" / "commands"
     default_execution_dir: Path = Path(__file__).resolve().parent.parent / "execution"
     default_commands_dir: Path = Path(__file__).resolve().parent.parent / "execution" / "commands"
 
@@ -74,9 +74,12 @@ def resolve_config_dir() -> Path:
     """Resolve configuration directory with fallback support."""
     xdg_config = os.getenv("XDG_CONFIG_HOME")
     base_dir = Path(xdg_config) if xdg_config else Path.home() / ".config"
-    target_dir = base_dir / "ctrans"
+    target_dir = base_dir / "cask"
 
     if not target_dir.exists():
+        ctrans_dir = base_dir / "ctrans"
+        if ctrans_dir.exists():
+            return ctrans_dir
         legacy_dir = base_dir / "rofi-translate"
         if legacy_dir.exists():
             return legacy_dir
@@ -96,7 +99,7 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
     default_commands_dir = default_execution_dir / "commands"
 
     # Search order:
-    # 1. ~/.config/ctrans/config.env (or ~/.config/rofi-translate/config.env)
+    # 1. ~/.config/cask/config.env (or fallback ~/.config/ctrans/config.env)
     # 2. config.env in script directory
     # 3. .env in script directory
     file_vars: dict[str, str] = {}
@@ -123,7 +126,7 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
 
     # Resolve default AI assistant prompt file:
     # 1. $PROMPT_FILE override (if explicitly set in config/env)
-    # 2. User custom default: ~/.config/ctrans/execution/DEFAULT.md
+    # 2. User custom default: ~/.config/cask/execution/DEFAULT.md (or ~/.config/ctrans/execution/DEFAULT.md)
     # 3. Repository default: execution/DEFAULT.md
     # 4. Fallback legacy candidates: default.md / prompt.md
     explicit_prompt = get_val("PROMPT_FILE", "")

@@ -1,4 +1,4 @@
-"""Ctrans UI Package."""
+"""CAsk UI Package."""
 
 from .main_window import MainWindow
 from .input_bar import InputBar

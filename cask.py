@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ctrans - Convenient Translation & Quick AI Assistant.
+"""CAsk - Universal Quick AI Assistant & Command Runner.
 
 Main entry point supporting native PyQt6 Glassmorphism HUD
 and headless CLI query execution.
@@ -63,7 +63,7 @@ def run_cli_mode(query: str, config, catalog) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Ctrans: Fast AI Translator & Quick Assistant",
+        description="CAsk: Fast AI Universal Assistant & Command Runner",
         add_help=False,
     )
     parser.add_argument("-h", "--help", action="store_true", help="Show help and command list")
@@ -77,7 +77,7 @@ def main() -> int:
     catalog = load_commands(config)
 
     if args.version:
-        print(f"Ctrans v{VERSION} (Native PyQt6 HUD & Groq/Gemini Hybrid)")
+        print(f"CAsk v{VERSION} (Native PyQt6 HUD & Groq/Gemini Hybrid)")
         return 0
 
     if args.help:
@@ -109,7 +109,7 @@ def main() -> int:
         )
     except ImportError as e:
         print(
-            f"Error: PyQt6 is required to run the Ctrans HUD ({e}).\n"
+            f"Error: PyQt6 is required to run the CAsk HUD ({e}).\n"
             "Please install PyQt6 using your system package manager:\n"
             "  sudo dnf install python3-pyqt6   (Fedora)\n"
             "  sudo apt install python3-pyqt6   (Ubuntu/Debian)\n"

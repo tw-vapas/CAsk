@@ -38,8 +38,8 @@ def run_gui(
     if not app:
         app = QApplication(sys.argv)
 
-    app.setApplicationName("Ctrans")
-    app.setApplicationDisplayName("Ctrans Quick AI Assistant")
+    app.setApplicationName("CAsk")
+    app.setApplicationDisplayName("CAsk Quick AI Assistant")
     app.setApplicationVersion("2.0.0")
 
     # Set default typography: JetBrainsMono Nerd Font with monospace fallback
