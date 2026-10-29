@@ -312,6 +312,28 @@ class TestUIComponents(unittest.TestCase):
         QApplication.sendEvent(view.text_browser, a_event)
         self.assertEqual(len(search_invoked), 1)
 
+    def test_result_view_table_rendering(self):
+        view = ResultView()
+        table_md = (
+            "## Self-Love\n\n"
+            "| Why it matters | How to practice it |\n"
+            "| :--- | :--- |\n"
+            "| Empty cup | • Identify strengths<br>• Forgive yourself |\n"
+            "| Resilience | • Set boundaries |\n\n"
+            "1. First point\n"
+            "   - Sub point A\n"
+        )
+        view.set_content("Test", table_md)
+        plain = view.text_browser.toPlainText()
+        self.assertIn("Why it matters", plain)
+        self.assertIn("How to practice it", plain)
+        self.assertIn("Empty cup", plain)
+        self.assertIn("Identify strengths", plain)
+        self.assertIn("Forgive yourself", plain)
+        self.assertIn("Set boundaries", plain)
+        self.assertIn("First point", plain)
+        self.assertIn("Sub point A", plain)
+
     def test_capsule_return_to_input(self):
         from ui.capsule import CAskCapsule
         capsule = CAskCapsule(config=self.config, catalog=self.catalog)
@@ -328,15 +350,15 @@ class TestUIComponents(unittest.TestCase):
         screen = window._get_target_screen()
         screen_geo = screen.availableGeometry()
         sw = screen_geo.width()
-
-        # 1 Window: centered
+        # 1 Window: centered with 35% screen width
         self.assertEqual(len(window.capsules), 1)
         slots1 = window._calculate_slot_geometries(screen_geo)
         self.assertEqual(len(slots1), 1)
         w1_cap, x1, y1, w1, h1 = slots1[0]
+        self.assertEqual(w1, max(400, int(sw * 0.35)))
         self.assertEqual(x1 + w1 // 2, screen_geo.x() + sw // 2)
 
-        # 2 Windows: 2/3 of screen width, equal width, W1 on left, W2 on right
+        # 2 Windows: 80% of screen width, equal width, W1 on left, W2 on right
         window.handle_external_launch("")
         self.assertEqual(len(window.capsules), 2)
         slots2 = window._calculate_slot_geometries(screen_geo)

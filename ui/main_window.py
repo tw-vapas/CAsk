@@ -173,7 +173,7 @@ class MainWindow(QWidget):
 
         if n == 1:
             capsule = self.capsules[0]
-            target_w = 760 if capsule.state == CAskCapsule.STATE_RESULT else 600
+            target_w = 760 if capsule.state == CAskCapsule.STATE_RESULT else max(400, int(sw * 0.35))
             ideal_h = capsule.calculate_ideal_height(
                 available_width=target_w,
                 max_available_height=sh - 80,
