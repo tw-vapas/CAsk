@@ -25,6 +25,7 @@ class ResultView(QFrame):
     """Rich text / Markdown viewer with 1-click clipboard copy."""
 
     dismiss_requested = pyqtSignal()
+    pin_toggled = pyqtSignal(bool)
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -32,6 +33,7 @@ class ResultView(QFrame):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         self._raw_content = ""
+        self.is_pinned: bool = False
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(18, 14, 18, 14)
@@ -54,6 +56,19 @@ class ResultView(QFrame):
         self.copy_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.copy_button.clicked.connect(self._copy_to_clipboard)
         header_layout.addWidget(self.copy_button)
+
+        self.pin_button = QPushButton("📌 Pin", header_widget)
+        self.pin_button.setObjectName("PinButton")
+        self.pin_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.pin_button.setProperty("pinned", False)
+        self.pin_button.clicked.connect(self._toggle_pin)
+        header_layout.addWidget(self.pin_button)
+
+        self.close_button = QPushButton("✕", header_widget)
+        self.close_button.setObjectName("CloseButton")
+        self.close_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.close_button.clicked.connect(self.dismiss_requested.emit)
+        header_layout.addWidget(self.close_button)
 
         main_layout.addWidget(header_widget)
 
@@ -109,8 +124,24 @@ class ResultView(QFrame):
         self.copy_button.setText("✓ Copied!")
         QTimer.singleShot(1500, lambda: self.copy_button.setText("Copy"))
 
+    def _toggle_pin(self) -> None:
+        """Toggle pinned status of the response box."""
+        self.is_pinned = not self.is_pinned
+        self.pin_button.setProperty("pinned", self.is_pinned)
+        self.pin_button.setText("📌 Pinned" if self.is_pinned else "📌 Pin")
+        # Force style re-polish to apply dynamic QSS property styling
+        style = self.pin_button.style()
+        if style:
+            style.unpolish(self.pin_button)
+            style.polish(self.pin_button)
+        self.pin_toggled.emit(self.is_pinned)
+
     def keyPressEvent(self, event) -> None:
         if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if self.is_pinned:
+                # Suppress dismissal when pinned
+                event.accept()
+                return
             self.dismiss_requested.emit()
             event.accept()
             return
