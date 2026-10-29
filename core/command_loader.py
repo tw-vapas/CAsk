@@ -36,6 +36,7 @@ class CommandMetadata:
     description: str
     example: str
     prompt: str
+    raw_header: str = ""
 
 
 class CommandCatalog:
@@ -57,22 +58,22 @@ class CommandCatalog:
         return sorted(self._commands.keys())
 
     def generate_help_text(self) -> str:
-        """Format dynamic commands catalog matching established CLI output."""
+        """Format dynamic commands catalog displaying available commands and their features."""
         lines = [
-            "### Ctrans Quick AI Assistant - Available Commands",
+            "### CAsk - Available Commands",
             "",
-            "  • **<span style=\"color: #f9e2af;\">/help</span>**                 Show available commands and usage guide",
+            "  • **<span style=\"color: #f9e2af;\">/help</span>** — Show available commands and usage guide",
         ]
 
         for name in sorted(self._commands.keys()):
             cmd = self._commands[name]
             sig_display = cmd.signature.lstrip("/")
-            lines.append(f"  • **<span style=\"color: #f9e2af;\">/{sig_display}</span>** {cmd.description}")
+            lines.append(f"  • **<span style=\"color: #f9e2af;\">/{sig_display}</span>** — {cmd.description}")
 
         lines.extend([
             "",
             "Quick Tips:",
-            "  • Type any word or sentence without '/' for instant translation (EN <-> VI).",
+            "  • Type any prompt without '/' to run the default assistant (execution/DEFAULT.md).",
             "  • Press Enter, Esc, or click outside this card to dismiss.",
         ])
 
@@ -122,6 +123,7 @@ def parse_command_file(file_path: Path) -> Optional[CommandMetadata]:
         description=desc,
         example=example,
         prompt=content,
+        raw_header=first_line.lstrip("#").strip(),
     )
 
 

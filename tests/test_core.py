@@ -1,4 +1,4 @@
-"""Unit tests for Ctrans Core engine."""
+"""Unit tests for CAsk Core engine."""
 
 import unittest
 from pathlib import Path
@@ -43,7 +43,7 @@ class TestCoreCommandLoader(unittest.TestCase):
 
     def test_help_text_generation(self):
         help_text = self.catalog.generate_help_text()
-        self.assertIn("Ctrans Quick AI Assistant", help_text)
+        self.assertIn("CAsk - Available Commands", help_text)
         self.assertIn("/help", help_text)
         self.assertIn("/ask <topic>", help_text)
         self.assertIn("/eva <sentence>", help_text)
