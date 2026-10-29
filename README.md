@@ -19,8 +19,8 @@ Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, 
 - 🎯 **Fully Customizable Personas:**
   - **Default Assistant (`execution/DEFAULT.md`):** Customize the AI behavior when no slash command is used (e.g., translator, concise knowledge assistant, summarizer, or coding helper).
   - **Modular Slash Commands (`execution/commands/*.md`):** Add new slash commands anytime (`/ask`, `/eva`, `/summary`, etc.) simply by adding a markdown prompt file.
-- 📜 **Native CommonMark Rendering:** Renders headers, bold/italics, bullet points, blockquotes, and syntax-highlighted code blocks using Qt6's native Markdown engine.
-- ↕️ **Smooth Scrolling & Stealth Scrollbar:** Responsive mouse-wheel scrolling with an invisible scrollbar that only appears as a thin translucent strip when hovered.
+- 📜 **Native CommonMark & Math Formula Rendering:** Renders headers, lists, code blocks, and AI LaTeX mathematical formulas (`$...$`, `$$...$$`, `\[...\]`, `\(...\)`) automatically converted into clean Unicode mathematical notation.
+- ↕️ **Smooth Scrolling & Modern Slim Scrollbar:** Responsive mouse-wheel scrolling with an elegant, visible, slim (5px) modern gray scrollbar.
 - ⌨️ **Slash Command Autocomplete:** Type `/` to instantly open an interactive dropdown of all registered commands (`/help`, `/ask`, `/eva`).
 - 📋 **1-Click Clipboard Copy:** Instant copy button on every response card with visual `"✓ Copied!"` feedback.
 - 🖱️ **Wayland Click-to-Dismiss:** Closes automatically on <kbd>Enter</kbd>, <kbd>Esc</kbd>, or when clicking anywhere outside the HUD window.
