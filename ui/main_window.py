@@ -154,12 +154,22 @@ class MainWindow(QWidget):
 
     def _switch_state(self, state: int, target_width: int, target_height: int) -> None:
         """Transition between UI states and adjust geometry."""
+        is_state_change = (self.stack.currentIndex() != state)
+        was_visible = self.isVisible()
+        if is_state_change and was_visible:
+            self.hide()
+
         self.stack.setCurrentIndex(state)
         self.container.setFixedSize(target_width, target_height)
 
         total_width = target_width + (self.SHADOW_PAD * 2)
         total_height = target_height + (self.SHADOW_PAD * 2)
         self._reposition(total_width, total_height)
+
+        if is_state_change and was_visible:
+            self.show()
+            self.raise_()
+            self.activateWindow()
 
         if state == self.STATE_INPUT:
             self.input_bar.setFocus()

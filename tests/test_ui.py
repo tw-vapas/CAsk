@@ -54,6 +54,11 @@ class TestUIComponents(unittest.TestCase):
         self.assertIn("/ask", string_list)
         self.assertIn("/eva", string_list)
 
+        popup = completer.popup()
+        self.assertIsNotNone(popup)
+        self.assertTrue(popup.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
+        self.assertTrue(bool(popup.windowFlags() & Qt.WindowType.FramelessWindowHint))
+
         # Test command property toggle
         bar.setText("/ask entropy")
         self.assertTrue(bar.property("is_command"))
@@ -162,6 +167,8 @@ class TestUIComponents(unittest.TestCase):
         self.assertEqual(window.stack.currentIndex(), MainWindow.STATE_RESULT)
         self.assertEqual(window.result_view.badge_label.text(), "Help")
         self.assertIn("Available Commands", window.result_view.text_browser.toPlainText())
+        self.assertIn("/ask <topic>", window.result_view.text_browser.toPlainText())
+        self.assertIn("/eva <sentence>", window.result_view.text_browser.toPlainText())
 
         # Verify result state horizontal and vertical centering
         window.layout().activate()
