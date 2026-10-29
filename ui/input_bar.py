@@ -59,7 +59,7 @@ class InputBar(QTextEdit):
         self.setPlaceholderText("Type what's on your mind...")
         self.setAcceptRichText(False)
         self.setTabChangesFocus(True)
-        self.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        self.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -68,9 +68,9 @@ class InputBar(QTextEdit):
         self._max_length: int = 500
         self._completer: Optional[QCompleter] = None
 
-        # Set placeholder text color to rgba(255, 255, 255, 0.4)
+        # Set placeholder text color to rgba(255, 255, 255, 0.55)
         palette = self.palette()
-        palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(255, 255, 255, 102))
+        palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(255, 255, 255, 140))
         self.setPalette(palette)
 
         # Highlight only the leading command token
