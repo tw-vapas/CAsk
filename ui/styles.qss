@@ -1,4 +1,4 @@
-/* CAsk Glassmorphism Theme with #3F4B65 Capsule Panels */
+/* CAsk Glassmorphism Theme (#1b1f26 Translucent Capsules) */
 
 QWidget {
     font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
@@ -14,11 +14,11 @@ QWidget {
     border: none;
 }
 
-/* Foreground UI Windows: Glass Capsules with #3F4B65 semi-transparent background */
+/* Foreground UI Windows: Glass Capsules with #1b1f26 semi-transparent background */
 #InputBar {
-    background-color: rgba(63, 75, 101, 0.70);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-top: 1px solid rgba(255, 255, 255, 0.42);
+    background-color: rgba(27, 31, 38, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-top: 1px solid rgba(255, 255, 255, 0.32);
     border-radius: 14px;
     padding: 10px 18px;
     font-size: 12pt;
@@ -29,15 +29,15 @@ QWidget {
 
 #InputBar:focus {
     border: 1px solid rgba(137, 180, 250, 0.70);
-    border-top: 1px solid rgba(255, 255, 255, 0.55);
-    background-color: rgba(75, 89, 120, 0.78);
+    border-top: 1px solid rgba(255, 255, 255, 0.50);
+    background-color: rgba(35, 41, 52, 0.85);
 }
 
 /* Completer Popup Dropdown */
 QListView#CompleterPopup {
-    background-color: rgba(55, 66, 90, 0.88);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-top: 1px solid rgba(255, 255, 255, 0.40);
+    background-color: rgba(27, 31, 38, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-top: 1px solid rgba(255, 255, 255, 0.35);
     border-radius: 12px;
     padding: 6px;
     color: #e6ebf5;
@@ -55,16 +55,16 @@ QListView#CompleterPopup::item {
 
 QListView#CompleterPopup::item:selected,
 QListView#CompleterPopup::item:hover {
-    background-color: rgba(249, 226, 175, 0.25);
+    background-color: rgba(249, 226, 175, 0.22);
     color: #f9e2af;
-    border: 1px solid rgba(249, 226, 175, 0.45);
+    border: 1px solid rgba(249, 226, 175, 0.40);
 }
 
 /* Loading State Glass Capsule */
 #LoadingWidget {
-    background-color: rgba(63, 75, 101, 0.70);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-top: 1px solid rgba(255, 255, 255, 0.42);
+    background-color: rgba(27, 31, 38, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-top: 1px solid rgba(255, 255, 255, 0.32);
     border-radius: 14px;
 }
 
@@ -76,15 +76,15 @@ QListView#CompleterPopup::item:hover {
 
 /* Result View Glass Capsule */
 #ResultViewWidget {
-    background-color: rgba(63, 75, 101, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-top: 1px solid rgba(255, 255, 255, 0.42);
+    background-color: rgba(27, 31, 38, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-top: 1px solid rgba(255, 255, 255, 0.32);
     border-radius: 14px;
 }
 
 /* Result View Header */
 #HeaderBar {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
     padding-bottom: 8px;
     margin-bottom: 8px;
 }
@@ -94,14 +94,14 @@ QListView#CompleterPopup::item:hover {
     font-size: 10pt;
     font-weight: 600;
     padding: 3px 8px;
-    background-color: rgba(137, 180, 250, 0.22);
-    border: 1px solid rgba(137, 180, 250, 0.38);
+    background-color: rgba(137, 180, 250, 0.18);
+    border: 1px solid rgba(137, 180, 250, 0.32);
     border-radius: 6px;
 }
 
 #CopyButton {
-    background-color: rgba(255, 255, 255, 0.10);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 6px;
     color: #e6ebf5;
     font-size: 10pt;
@@ -109,13 +109,13 @@ QListView#CompleterPopup::item:hover {
 }
 
 #CopyButton:hover {
-    background-color: rgba(137, 180, 250, 0.30);
+    background-color: rgba(137, 180, 250, 0.25);
     border-color: #89b4fa;
     color: #ffffff;
 }
 
 #CopyButton:pressed {
-    background-color: rgba(137, 180, 250, 0.45);
+    background-color: rgba(137, 180, 250, 0.40);
 }
 
 /* Markdown Text Browser */
@@ -131,20 +131,20 @@ QTextBrowser#ResultText {
 /* Modern Slim Gray Scrollbar */
 QScrollBar:vertical {
     border: none;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.04);
     width: 5px;
     margin: 4px 2px 4px 0px;
     border-radius: 2px;
 }
 
 QScrollBar::handle:vertical {
-    background: rgba(255, 255, 255, 0.30);
+    background: rgba(255, 255, 255, 0.25);
     min-height: 28px;
     border-radius: 2px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background: rgba(255, 255, 255, 0.50);
+    background: rgba(255, 255, 255, 0.45);
 }
 
 QScrollBar::handle:vertical:pressed {
