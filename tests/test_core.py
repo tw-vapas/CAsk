@@ -17,6 +17,18 @@ class TestCoreConfig(unittest.TestCase):
         self.assertTrue(config.default_execution_dir.is_dir())
         self.assertTrue(config.default_commands_dir.is_dir())
 
+    def test_placeholder_key_detection(self):
+        from core.config import is_placeholder_key
+
+        self.assertTrue(is_placeholder_key(""))
+        self.assertTrue(is_placeholder_key("   "))
+        self.assertTrue(is_placeholder_key("your_groq_api_key_here"))
+        self.assertTrue(is_placeholder_key('"your_gemini_api_key_here"'))
+        self.assertTrue(is_placeholder_key("'your_api_key_here'"))
+        self.assertTrue(is_placeholder_key("gsk_your_groq_api_key_here"))
+        self.assertFalse(is_placeholder_key("gsk_actualRealKey1234567890abcdef"))
+        self.assertFalse(is_placeholder_key("AIzaSyActualRealGeminiKey123456"))
+
 
 class TestCoreCommandLoader(unittest.TestCase):
     def setUp(self):

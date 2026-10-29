@@ -77,6 +77,26 @@ def resolve_config_dir() -> Path:
     return base_dir / "cask"
 
 
+def is_placeholder_key(val: str) -> bool:
+    """Return True if an API key string is empty or matches known placeholder templates."""
+    cleaned = val.strip().strip("'\"").lower()
+    if not cleaned:
+        return True
+    placeholders = {
+        "your_groq_api_key_here",
+        "your_gemini_api_key_here",
+        "your_api_key_here",
+        "aizasyyourgeminiapikeyhere",
+        "gsk_your_groq_api_key_here",
+    }
+    return (
+        cleaned in placeholders
+        or cleaned.startswith("your_")
+        or cleaned.endswith("_here")
+        or "your_api_key" in cleaned
+    )
+
+
 def load_config(script_dir: Optional[Path] = None) -> Config:
     """Load and merge configuration from config files and system environment."""
     if script_dir is None:
@@ -88,26 +108,38 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
     default_execution_dir = script_dir / "execution"
     default_commands_dir = default_execution_dir / "commands"
 
-    # Search order:
-    # 1. ~/.config/cask/config.env
-    # 2. config.env in script directory
-    # 3. .env in script directory
+    # Merge configuration with priority:
+    # 1. Base: script_dir / .env
+    # 2. Repo: script_dir / config.env
+    # 3. User: config_dir / config.env (ignores placeholder template values)
+    # 4. System Environment variables
     file_vars: dict[str, str] = {}
     for candidate in [
-        config_dir / "config.env",
-        script_dir / "config.env",
         script_dir / ".env",
+        script_dir / "config.env",
+        config_dir / "config.env",
     ]:
         if candidate.is_file():
-            file_vars = parse_env_file(candidate)
-            break
+            parsed = parse_env_file(candidate)
+            for k, v in parsed.items():
+                if "KEY" in k:
+                    if not is_placeholder_key(v):
+                        file_vars[k] = v
+                elif v:
+                    file_vars[k] = v
 
-    # Environment variables override file definitions if set
+    # Environment variables override file definitions if set and non-placeholder
     def get_val(key: str, default: str = "") -> str:
         env_val = os.getenv(key)
         if env_val is not None:
-            return env_val
-        return file_vars.get(key, default)
+            if "KEY" in key and is_placeholder_key(env_val):
+                pass
+            else:
+                return env_val
+        val = file_vars.get(key, default)
+        if "KEY" in key and is_placeholder_key(val):
+            return ""
+        return val
 
     groq_api_key = get_val("GROQ_API_KEY", "")
     groq_model = get_val("GROQ_MODEL", "openai/gpt-oss-120b")

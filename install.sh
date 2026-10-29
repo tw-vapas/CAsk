@@ -54,10 +54,20 @@ mkdir -p "$EXECUTION_DIR"
 mkdir -p "$COMMANDS_DIR"
 
 if [ ! -f "$CONFIG_FILE" ]; then
-    cp "$SCRIPT_DIR/.env.example" "$CONFIG_FILE"
-    chmod 600 "$CONFIG_FILE"
-    echo "  ✓ Created config at $CONFIG_FILE"
-    echo "  👉 Please edit $CONFIG_FILE and configure your Groq or Gemini API Key!"
+    if [ -f "$SCRIPT_DIR/config.env" ]; then
+        cp "$SCRIPT_DIR/config.env" "$CONFIG_FILE"
+        chmod 600 "$CONFIG_FILE"
+        echo "  ✓ Copied active config from repo to $CONFIG_FILE"
+    elif [ -f "$SCRIPT_DIR/.env" ]; then
+        cp "$SCRIPT_DIR/.env" "$CONFIG_FILE"
+        chmod 600 "$CONFIG_FILE"
+        echo "  ✓ Copied active .env from repo to $CONFIG_FILE"
+    else
+        cp "$SCRIPT_DIR/.env.example" "$CONFIG_FILE"
+        chmod 600 "$CONFIG_FILE"
+        echo "  ✓ Created config at $CONFIG_FILE"
+        echo "  👉 Please edit $CONFIG_FILE and configure your Groq or Gemini API Key!"
+    fi
 else
     echo "  ✓ Existing configuration found at $CONFIG_FILE"
 fi
