@@ -8,24 +8,33 @@
 
 A minimalist, ultra-fast, and aesthetic **Glassmorphism Universal Quick AI Assistant** built with **native PyQt6 (Qt6)** and powered by **Groq Cloud API** (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) with automatic failover to **Google Gemini API** (`gemini-3.5-flash-lite`).
 
-Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, GNOME) with a seamless single-window Raycast/Spotlight experience, token-based command syntax highlighting, Vietnamese IME support, native Markdown rendering, command autocomplete, and deep customization. Users can configure both the default assistant behavior (`execution/DEFAULT.md`) and any number of modular slash commands (`execution/commands/*.md`).
+Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, GNOME) with multi-window concurrent layouts (up to 3 concurrent capsules), auto-expanding multiline input, interactive keyboard shortcuts, card pinning, token-based command syntax highlighting, Vietnamese IME support, native Markdown rendering, command autocomplete, and deep customization. Users can configure both the default assistant behavior (`execution/DEFAULT.md`) and any number of modular slash commands (`execution/commands/*.md`).
 
 ---
 
 ## ✨ Features
 
 - ⚡ **Ultra-Fast Hybrid Backend:** Primary requests via **Groq Cloud API** (~0.6s sub-second response) with automatic failover to **Google Gemini API**.
-- 🪟 **Single-Window Fluid HUD:** Frameless, frosted dark HUD (`rgba(28, 28, 30, 0.95)`, `border-radius: 12px`, 1px subtle 3D glass border) with a deep floating drop-shadow. Smoothly transitions between states with zero window churn or visual flicker.
+- 🪟 **Multi-Window Concurrent HUD (Up to 3 Windows):**
+  - **1 Window:** Centered on screen.
+  - **2 Windows:** Horizontal side-by-side, occupying **80% of screen width** with equal widths ($W_1$ left, $W_2$ right).
+  - **3 Windows:** Horizontal side-by-side, occupying **100% full screen width** with ratio **30 : 40 : 30** ($W_3$ left 30%, $W_1$ center 40%, $W_2$ right 30%).
+  - Smoothly re-centers and rebalances as cards are opened or closed.
+- 📏 **Auto-Expanding Dynamic Input Bar:** Height dynamically scales from 50px up to 220px to fit multiple lines and wrapped text naturally. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert newlines without submitting.
+- 📌 **Response Card Pinning:** Pin any response card with the **Pin** button or shortcut <kbd>P</kbd>. Pinned cards stay permanently visible and cannot be dismissed by outside clicks, <kbd>Esc</kbd>, or <kbd>Enter</kbd>.
+- ⌨️ **Interactive Keyboard Shortcuts:**
+  - <kbd>A</kbd>: **Ask** — Return to input bar to refine or type a new query.
+  - <kbd>C</kbd>: **Copy** — Instant 1-click clipboard copy with visual confirmation.
+  - <kbd>P</kbd>: **Pin** — Toggle window pinning on/off.
+  - <kbd>Esc</kbd>: **Exit** — Dismiss the active unpinned card.
+- 🎨 **Resolution-Independent SVG Icons:** Crisp vector icons for Ask (magnifying glass), Copy, Pin, and Exit.
 - 🎯 **Fully Customizable Personas:**
   - **Default Assistant (`execution/DEFAULT.md`):** Customize the AI behavior when no slash command is used (e.g., translator, concise knowledge assistant, summarizer, or coding helper).
-  - **Modular Slash Commands (`execution/commands/*.md`):** Add new slash commands anytime (`/ask`, `/eva`, `/summary`, etc.) simply by adding a markdown prompt file.
+  - **Modular Slash Commands (`execution/commands/*.md`):** Add new slash commands anytime (`/ask`, `/eva`, `/trans`, `/summary`, etc.) simply by adding a markdown prompt file.
 - 📜 **Native CommonMark & Math Formula Rendering:** Renders headers, lists, code blocks, and AI LaTeX mathematical formulas (`$...$`, `$$...$$`, `\[...\]`, `\(...\)`) automatically converted into clean Unicode mathematical notation.
 - 🇻🇳 **Vietnamese IME Support:** Full integration with Fcitx5 / IBus across Wayland (`zwp_text_input_v3`) and X11 sessions.
 - 🎨 **Token-Only Command Highlighting:** Formats strictly the slash command token (`/ask`) in bold yellow (`#f9e2af`), leaving your prompt query in clear, clean typography.
-- ↕️ **Smooth Scrolling & Modern Slim Scrollbar:** Responsive mouse-wheel scrolling with an elegant, visible, slim (5px) modern gray scrollbar.
-- ⌨️ **Slash Command Autocomplete:** Type `/` to instantly open an interactive dropdown of all registered commands (`/help`, `/ask`, `/eva`).
-- 📋 **1-Click Clipboard Copy:** Instant copy button on every response card with visual `"✓ Copied!"` feedback.
-- 🖱️ **Wayland Click-to-Dismiss:** Closes automatically on <kbd>Enter</kbd>, <kbd>Esc</kbd>, or when clicking anywhere outside the HUD window.
+- 🖱️ **Wayland Click-Through Masking:** Transparent spaces between and around cards allow clicking and interacting directly with background desktop applications.
 - 💻 **Headless CLI Mode:** Run queries directly in the terminal via `cask --cli [query]` for shell pipelines and automation.
 
 ---
@@ -55,7 +64,7 @@ pip install PyQt6
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/CAsk.git ~/.local/bin/cask_project
+git clone https://github.com/tw-vapas/Ctrans.git ~/.local/bin/cask_project
 cd ~/.local/bin/cask_project
 ```
 
@@ -68,7 +77,7 @@ This script will:
 - Verify Python 3 and PyQt6.
 - Set up configuration directory at `~/.config/cask/execution/` and `~/.config/cask/execution/commands/`.
 - Copy template configuration (`config.env`).
-- Symlink default persona (`execution/DEFAULT.md`) and modular commands (`ask.md`, `eva.md`).
+- Symlink default persona (`execution/DEFAULT.md`) and modular commands (`ask.md`, `eva.md`, `trans.md`).
 - Symlink `cask.py` to `~/.local/bin/cask` and `~/.local/bin/CAsk`.
 - Register `cask.desktop` for system-wide shortcut binding.
 
@@ -98,6 +107,7 @@ Run it directly from your terminal:
 cask
 ```
 Or bind `cask` to a global keyboard shortcut in KDE Plasma / GNOME / Hyprland (e.g. `Meta + Space` or `Alt + Space`).
+Pressing the shortcut multiple times can open up to **3 concurrent side-by-side windows**.
 
 ---
 
@@ -107,8 +117,18 @@ Or bind `cask` to a global keyboard shortcut in KDE Plasma / GNOME / Hyprland (e
 |---|---|---|
 | `<prompt or text>` | **Default Assistant** | Direct execution with customizable default persona (`execution/DEFAULT.md`). |
 | `/help` or `/` | **Command Help** | Displays the interactive catalog of all available commands and their line 1 metadata. |
-| `/ask <topic>` | **Bilingual Explainer** | Clear, structured concept explanation in English followed by Vietnamese. |
-| `/eva <sentence>` | **Language Coach** | Grammar critique in Vietnamese and 3 native English rephrasing suggestions. |
+| `/ask <topic>` | **Concept Explainer** | Clear, concise concept explanation with core intuition and real-world application. |
+| `/eva <sentence>` | **Language Coach** | Sentence evaluation, grammar critique, and native rephrasing suggestions. |
+| `/trans <sentence>` | **Bilingual Translator** | High-density bidirectional translation (English <-> Vietnamese). |
+
+### Keyboard Shortcuts in Response Box:
+
+| Key | Action | Description |
+|---|---|---|
+| <kbd>A</kbd> | **Ask** | Return to the input bar to refine query or enter a new prompt. |
+| <kbd>C</kbd> | **Copy** | Copy response markdown to clipboard. |
+| <kbd>P</kbd> | **Pin** | Pin window permanently; suppresses Esc, Enter, and outside-click dismissal. |
+| <kbd>Esc</kbd> | **Exit** | Close the card (if unpinned). |
 
 ---
 
@@ -180,17 +200,21 @@ cask/
 ├── ui/                        # PyQt6 Glassmorphism user interface
 │   ├── __init__.py            # UI exports
 │   ├── app.py                 # QApplication lifecycle & font setup
-│   ├── main_window.py         # Frameless single-window container & state machine
-│   ├── input_bar.py           # HUD input bar with token highlighting & autocomplete
-│   ├── result_view.py         # QTextBrowser with CommonMark & 1-click copy
+│   ├── capsule.py             # Independent CAsk interactive card (Input, Loading, Result)
+│   ├── icons.py               # Resolution-independent SVG vector icon generators
+│   ├── single_instance.py     # Kernel file lock & QLocalServer IPC manager
+│   ├── main_window.py         # Multi-capsule orchestrator, slot layout, setMask
+│   ├── input_bar.py           # Auto-expanding dynamic input bar with token highlighting
+│   ├── result_view.py         # QTextBrowser with action buttons & keyboard shortcuts
 │   ├── loading_indicator.py   # Subtle animated request indicator
 │   └── styles.qss             # Translucent Glassmorphism QSS stylesheet
 ├── execution/                 # Prompt definitions & command templates
 │   ├── DEFAULT.md             # Default assistant prompt (used when no slash command is given)
 │   ├── GUIDE.md               # Command authoring specifications
 │   └── commands/              # Modular slash command prompts
-│       ├── ask.md             # /ask bilingual explanation prompt
-│       └── eva.md             # /eva grammar and phrasing critique prompt
+│       ├── ask.md             # /ask concept explanation prompt
+│       ├── eva.md             # /eva grammar and phrasing critique prompt
+│       └── trans.md           # /trans bilingual translation prompt
 ├── tests/                     # Automated test suite
 │   ├── test_core.py           # Core router and loader unit tests
 │   └── test_ui.py             # Headless PyQt6 UI tests
