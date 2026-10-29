@@ -75,13 +75,6 @@ class MainWindow(QWidget):
         root_layout = QGridLayout(self)
         root_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Background layer: solid #3F4B65 canvas covering the screen workspace
-        self.background_layer = QFrame(self)
-        self.background_layer.setObjectName("BackgroundLayer")
-        self.background_layer.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.background_layer.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        root_layout.addWidget(self.background_layer, 0, 0)
-
         # Central container frame with glassmorphism border and background
         self.container = QFrame(self)
         self.container.setObjectName("CentralContainer")
@@ -92,9 +85,9 @@ class MainWindow(QWidget):
             from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 
             shadow = QGraphicsDropShadowEffect(self.container)
-            shadow.setBlurRadius(56)
+            shadow.setBlurRadius(48)
             shadow.setOffset(0, 8)
-            shadow.setColor(QColor(15, 20, 35, 140))
+            shadow.setColor(QColor(10, 15, 26, 150))
             self.container.setGraphicsEffect(shadow)
         except Exception:
             pass
