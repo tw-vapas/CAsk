@@ -34,10 +34,9 @@ class TestUIComponents(unittest.TestCase):
 
     def test_stylesheet_loads(self):
         css = load_stylesheet()
-        self.assertIn("#BackgroundLayer", css)
-        self.assertIn("#3F4B65", css)
         self.assertIn("#CentralContainer", css)
-        self.assertIn("rgba(22, 28, 44, 0.52)", css)
+        self.assertIn("rgba(63, 75, 101, 0.70)", css)
+        self.assertIn("rgba(63, 75, 101, 0.72)", css)
         self.assertIn("border-radius: 14px", css)
         self.assertIn("#e6ebf5", css)
         self.assertIn("JetBrainsMono Nerd Font", css)
@@ -185,23 +184,13 @@ class TestUIComponents(unittest.TestCase):
         window.mousePressEvent(event)
         self.assertTrue(closed)
 
-    def test_background_layer_and_glassmorphism(self):
-        from PyQt6.QtGui import QImage
-
+    def test_glassmorphism_capsules(self):
         window = MainWindow(config=self.config, catalog=self.catalog)
-        window.setStyleSheet(load_stylesheet())
-        window.layout().activate()
-        self.assertIsNotNone(getattr(window, "background_layer", None))
-        self.assertEqual(window.background_layer.objectName(), "BackgroundLayer")
-        self.assertTrue(window.background_layer.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents))
-        self.assertTrue(window.background_layer.testAttribute(Qt.WidgetAttribute.WA_StyledBackground))
-
-        # Test rendering offscreen
-        img = QImage(window.size(), QImage.Format.Format_ARGB32)
-        window.render(img)
-        bg_pixel = img.pixelColor(2, 2)
-        self.assertEqual(bg_pixel.name(), "#3f4b65")
-        self.assertEqual(bg_pixel.alpha(), 255)
+        self.assertTrue(window.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
+        self.assertFalse(hasattr(window, "background_layer"))
+        self.assertIsNotNone(window.container.graphicsEffect())
+        effect = window.container.graphicsEffect()
+        self.assertEqual(effect.blurRadius(), 48)
 
 
 if __name__ == "__main__":
