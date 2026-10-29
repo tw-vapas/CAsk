@@ -71,20 +71,10 @@ def parse_env_file(path: Path) -> dict[str, str]:
 
 
 def resolve_config_dir() -> Path:
-    """Resolve configuration directory with fallback support."""
+    """Resolve configuration directory for CAsk."""
     xdg_config = os.getenv("XDG_CONFIG_HOME")
     base_dir = Path(xdg_config) if xdg_config else Path.home() / ".config"
-    target_dir = base_dir / "cask"
-
-    if not target_dir.exists():
-        ctrans_dir = base_dir / "ctrans"
-        if ctrans_dir.exists():
-            return ctrans_dir
-        legacy_dir = base_dir / "rofi-translate"
-        if legacy_dir.exists():
-            return legacy_dir
-
-    return target_dir
+    return base_dir / "cask"
 
 
 def load_config(script_dir: Optional[Path] = None) -> Config:
@@ -99,7 +89,7 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
     default_commands_dir = default_execution_dir / "commands"
 
     # Search order:
-    # 1. ~/.config/cask/config.env (or fallback ~/.config/ctrans/config.env)
+    # 1. ~/.config/cask/config.env
     # 2. config.env in script directory
     # 3. .env in script directory
     file_vars: dict[str, str] = {}
@@ -126,7 +116,7 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
 
     # Resolve default AI assistant prompt file:
     # 1. $PROMPT_FILE override (if explicitly set in config/env)
-    # 2. User custom default: ~/.config/cask/execution/DEFAULT.md (or ~/.config/ctrans/execution/DEFAULT.md)
+    # 2. User custom default: ~/.config/cask/execution/DEFAULT.md
     # 3. Repository default: execution/DEFAULT.md
     # 4. Fallback legacy candidates: default.md / prompt.md
     explicit_prompt = get_val("PROMPT_FILE", "")
