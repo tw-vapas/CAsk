@@ -1,4 +1,4 @@
-"""Unit tests for Ctrans PyQt6 UI components (run headlessly via offscreen QPA)."""
+"""Unit tests for CAsk PyQt6 UI components (run headlessly via offscreen QPA)."""
 
 import os
 import sys
@@ -43,7 +43,7 @@ class TestUIComponents(unittest.TestCase):
 
     def test_input_bar_autocomplete(self):
         bar = InputBar(catalog=self.catalog)
-        self.assertEqual(bar.placeholderText(), "Ask anything, enter prompt, or /help for commands...")
+        self.assertEqual(bar.placeholderText(), "Type what's on your mind...")
         completer = bar.completer()
         self.assertIsNotNone(completer)
         model = completer.model()

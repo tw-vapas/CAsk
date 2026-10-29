@@ -56,7 +56,7 @@ class InputBar(QTextEdit):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("InputBar")
-        self.setPlaceholderText("Ask anything, enter prompt, or /help for commands...")
+        self.setPlaceholderText("Type what's on your mind...")
         self.setAcceptRichText(False)
         self.setTabChangesFocus(True)
         self.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
