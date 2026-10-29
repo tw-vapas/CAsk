@@ -177,7 +177,7 @@ ctrans/
 │   ├── __init__.py            # UI exports
 │   ├── app.py                 # QApplication lifecycle & font setup
 │   ├── main_window.py         # Frameless single-window container & state machine
-│   ├── input_bar.py           # QLineEdit with slash command autocomplete
+│   ├── input_bar.py           # HUD input bar with token highlighting & autocomplete
 │   ├── result_view.py         # QTextBrowser with CommonMark & 1-click copy
 │   ├── loading_indicator.py   # Subtle animated request indicator
 │   └── styles.qss             # Translucent Glassmorphism QSS stylesheet

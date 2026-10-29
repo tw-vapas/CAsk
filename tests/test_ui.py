@@ -59,6 +59,30 @@ class TestUIComponents(unittest.TestCase):
         bar.setText("plain query")
         self.assertFalse(bar.property("is_command"))
 
+    def test_input_bar_command_formatting_and_vietnamese(self):
+        bar = InputBar(catalog=self.catalog)
+        self.assertTrue(bar.testAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled))
+
+        # Command token formatting only
+        bar.setText("/ask giải thích entropy")
+        self.assertEqual(bar.text(), "/ask giải thích entropy")
+        formats = bar.document().firstBlock().layout().formats()
+        self.assertEqual(len(formats), 1)
+        fmt = formats[0]
+        self.assertEqual(fmt.start, 0)
+        self.assertEqual(fmt.length, 4)  # len('/ask')
+        self.assertEqual(fmt.format.foreground().color().name(), "#f9e2af")
+        self.assertEqual(fmt.format.fontWeight(), 700)
+
+        # Content behind command token is not formatted
+        trailing_text = bar.text()[fmt.start + fmt.length:]
+        self.assertEqual(trailing_text, " giải thích entropy")
+
+        # Plain Vietnamese input without command should have 0 custom formats
+        bar.setText("Giải thích thuật toán tìm kiếm")
+        self.assertEqual(bar.text(), "Giải thích thuật toán tìm kiếm")
+        self.assertEqual(len(bar.document().firstBlock().layout().formats()), 0)
+
     def test_loading_indicator(self):
         indicator = LoadingIndicator()
         self.assertTrue(indicator.testAttribute(Qt.WidgetAttribute.WA_StyledBackground))
@@ -103,6 +127,8 @@ class TestUIComponents(unittest.TestCase):
         window = MainWindow(config=self.config, catalog=self.catalog)
         self.assertEqual(window.stack.currentIndex(), MainWindow.STATE_INPUT)
         self.assertIsNotNone(window.container.graphicsEffect())
+        self.assertEqual(window.windowType(), Qt.WindowType.Dialog)
+        self.assertTrue(window.testAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled))
 
         # Verify zero layout margins on container (no box-in-box)
         margins = window.container.layout().contentsMargins()

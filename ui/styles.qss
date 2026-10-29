@@ -15,7 +15,7 @@ QWidget {
 }
 
 /* Single Standalone Floating Input Bar */
-QLineEdit#InputBar {
+#InputBar {
     background-color: rgba(28, 28, 30, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 12px;
@@ -26,15 +26,9 @@ QLineEdit#InputBar {
     selection-color: #ffffff;
 }
 
-QLineEdit#InputBar:focus {
+#InputBar:focus {
     border: 1px solid rgba(255, 255, 255, 0.45);
     background-color: rgba(28, 28, 30, 0.95);
-}
-
-/* Dynamic command highlighting in input bar */
-QLineEdit#InputBar[is_command="true"] {
-    color: #f9e2af;
-    font-weight: bold;
 }
 
 /* Completer Popup Dropdown */
