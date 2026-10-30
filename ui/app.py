@@ -5,7 +5,7 @@ from pathlib import Path
 
 try:
     from PyQt6.QtCore import QLibraryInfo, Qt
-    from PyQt6.QtGui import QFont
+    from PyQt6.QtGui import QFont, QIcon
     from PyQt6.QtWidgets import QApplication
 except ImportError:
     pass
@@ -82,6 +82,12 @@ def run_gui(
     app.setApplicationDisplayName("CAsk Quick AI Assistant")
     app.setDesktopFileName("cask")
     app.setApplicationVersion("2.0.0")
+
+    # Set application icon from assets
+    logo_path = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
+    if logo_path.is_file():
+        app_icon = QIcon(str(logo_path))
+        app.setWindowIcon(app_icon)
 
     # Enforce single instance: if another instance is already running, activate it and exit
     manager = SingleInstanceManager(app_name="cask")

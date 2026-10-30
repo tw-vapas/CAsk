@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import List, Optional
 
 try:
     from PyQt6.QtCore import QEvent, QPoint, QRect, QSize, Qt
-    from PyQt6.QtGui import QCursor, QGuiApplication, QKeyEvent, QMouseEvent, QRegion
+    from PyQt6.QtGui import QCursor, QGuiApplication, QIcon, QKeyEvent, QMouseEvent, QRegion
     from PyQt6.QtWidgets import QFrame, QWidget
 except ImportError:
     pass
@@ -93,6 +94,11 @@ class MainWindow(QWidget):
         """Configure frameless, translucent, always-on-top window flags with IME support."""
         self.setWindowTitle("CAsk")
         self.setObjectName("CAskHUD")
+
+        logo_path = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
+        if logo_path.is_file():
+            self.setWindowIcon(QIcon(str(logo_path)))
+
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint

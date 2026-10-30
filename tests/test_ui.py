@@ -550,6 +550,15 @@ class TestUIComponents(unittest.TestCase):
         self.assertFalse(window.ghost_indicator.isVisible())
         self.assertEqual(window.get_capsule_slot_index(w3), 2)
 
+    def test_app_and_window_icon(self):
+        """Verify assets/logo.png exists and window icon is loaded."""
+        logo_path = self.script_dir / "assets" / "logo.png"
+        self.assertTrue(logo_path.is_file(), "assets/logo.png must exist")
+
+        window = MainWindow(config=self.config, catalog=self.catalog)
+        self.assertFalse(window.windowIcon().isNull(), "MainWindow icon should not be null")
+
 
 if __name__ == "__main__":
     unittest.main()
+
