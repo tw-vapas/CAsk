@@ -84,9 +84,15 @@ if [ -L "$PROMPT_TARGET" ] || [ -f "$PROMPT_TARGET" ]; then
     rm -f "$PROMPT_TARGET"
 fi
 
-# Link execution templates: DEFAULT.md and GUIDE.md
+# Setup execution templates: DEFAULT.md and GUIDE.md
+# Only copy DEFAULT.md if user has not already customized it in ~/.config/cask/execution/DEFAULT.md
 if [ -f "$SCRIPT_DIR/execution/DEFAULT.md" ]; then
-    ln -sf "$SCRIPT_DIR/execution/DEFAULT.md" "$EXECUTION_DIR/DEFAULT.md"
+    if [ ! -f "$EXECUTION_DIR/DEFAULT.md" ]; then
+        cp "$SCRIPT_DIR/execution/DEFAULT.md" "$EXECUTION_DIR/DEFAULT.md"
+        echo "  ✓ Initialized default persona at $EXECUTION_DIR/DEFAULT.md"
+    else
+        echo "  ✓ Preserved custom default persona at $EXECUTION_DIR/DEFAULT.md"
+    fi
 fi
 if [ -f "$SCRIPT_DIR/execution/GUIDE.md" ]; then
     ln -sf "$SCRIPT_DIR/execution/GUIDE.md" "$EXECUTION_DIR/GUIDE.md"
