@@ -10,7 +10,7 @@ Instructions:
 
 Output Format:
 • [EN -> VI | Word/Phrase]:
-  - Input: {English word/phrase}
+  - Input: {English word/phrase} - {IPA transcription or phonetic transcription}
   - Meaning: {EN concise definition}
   - Translation: {VI translation}
 
