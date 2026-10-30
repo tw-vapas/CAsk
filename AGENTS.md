@@ -11,7 +11,7 @@
   - Whenever requirements, behaviors, edge cases, or design specifications are unclear, underspecified, or ambiguous, you **MUST explicitly ask the user for clarification** before proceeding or building.
   - Never make arbitrary assumptions or implement unverified guesswork on unspecified requirements.
 
-## 2. Git Commit Rules
+## 2. Git Commit & Push Rules
 1. **Auto-commit after changes:** Automatically stage and commit changes to git immediately upon completing code or documentation modifications.
 2. **Atomic Commits (Split by logical change):**
    - Never bundle unrelated changes into a single monolithic commit.
@@ -20,3 +20,5 @@
    - Use Conventional Commits format (`feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`, `chore: ...`).
    - Commit titles must be concise, accurate, and written in English.
    - Clearly convey the intent and scope of each change.
+4. **Auto-push after requirement completion:**
+   - Automatically execute `git push` to push all committed changes to the remote repository immediately upon completing each user requirement or task session.
