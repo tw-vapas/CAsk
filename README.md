@@ -132,6 +132,7 @@ Pressing the shortcut multiple times can open up to **3 concurrent side-by-side 
 | <kbd>Shift</kbd> + <kbd>P</kbd> | **Pin** | Pin window permanently; suppresses Esc, Enter, and outside-click dismissal. |
 | <kbd>Alt</kbd> + <kbd>←</kbd> | **Move Left** | Swap active capsule with adjacent left slot (works in both Input Bar and Result Box, preserving slot ratios). |
 | <kbd>Alt</kbd> + <kbd>→</kbd> | **Move Right** | Swap active capsule with adjacent right slot (works in both Input Bar and Result Box, preserving slot ratios). |
+| <kbd>Alt</kbd> + <kbd>H</kbd> | **Toggle On-Top** | Toggle Always-on-Top mode (unhide / hide from top layer across both Input Bar and Result Box). |
 | <kbd>Esc</kbd> | **Exit** | Close the card (if unpinned). |
 
 > **Tip:** You can also drag the grip handle `⋮⋮` in the capsule header (tooltip shows `[Alt + ← / →]`) to reorder windows interactively with live drop preview.
