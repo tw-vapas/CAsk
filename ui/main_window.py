@@ -6,14 +6,24 @@ from typing import List, Optional
 
 try:
     from PyQt6.QtCore import QEvent, QPoint, QRect, QSize, Qt
-    from PyQt6.QtGui import QCursor, QGuiApplication, QMouseEvent, QRegion
-    from PyQt6.QtWidgets import QWidget
+    from PyQt6.QtGui import QCursor, QGuiApplication, QKeyEvent, QMouseEvent, QRegion
+    from PyQt6.QtWidgets import QFrame, QWidget
 except ImportError:
     pass
 
 from core.command_loader import CommandCatalog
 from core.config import Config
 from ui.capsule import CAskCapsule
+
+
+class DropGhostIndicator(QFrame):
+    """Visual drop target indicator during capsule dragging."""
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setObjectName("DropGhostIndicator")
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.hide()
 
 
 class MainWindow(QWidget):
@@ -40,7 +50,13 @@ class MainWindow(QWidget):
         self.initial_input = initial_input
         self.capsules: List[CAskCapsule] = []
 
+        self._dragging_capsule: Optional[CAskCapsule] = None
+        self._target_drop_slot: Optional[int] = None
+
         self._setup_window_properties()
+
+        # Ghost indicator for drag & drop visual feedback
+        self.ghost_indicator = DropGhostIndicator(self)
 
         # Create initial capsule W1
         first_capsule = self._create_capsule(initial_input=self.initial_input)
@@ -106,6 +122,10 @@ class MainWindow(QWidget):
         capsule.close_requested.connect(self._handle_capsule_close)
         capsule.size_changed.connect(lambda _: self._recompute_layout())
         capsule.state_changed.connect(lambda *_: self._recompute_layout())
+        capsule.reorder_requested.connect(self.swap_capsule_slot)
+        capsule.drag_started.connect(self._handle_capsule_drag_start)
+        capsule.drag_moved.connect(self._handle_capsule_drag_move)
+        capsule.drag_ended.connect(self._handle_capsule_drag_end)
         capsule.show()
         return capsule
 
@@ -143,6 +163,121 @@ class MainWindow(QWidget):
             self.close()
         else:
             self._recompute_layout()
+
+    def _get_slot_capsules(self) -> List[CAskCapsule]:
+        """Return capsules mapped to left-to-right visual slot order."""
+        n = len(self.capsules)
+        if n == 0:
+            return []
+        if n == 1:
+            return [self.capsules[0]]
+        if n == 2:
+            return [self.capsules[0], self.capsules[1]]
+        # 3 capsules: Slot 0 = capsules[2], Slot 1 = capsules[0], Slot 2 = capsules[1]
+        return [self.capsules[2], self.capsules[0], self.capsules[1]]
+
+    def _set_slot_capsules(self, slot_capsules: List[CAskCapsule]) -> None:
+        """Map visual left-to-right ordered capsules back into self.capsules."""
+        n = len(slot_capsules)
+        if n <= 2:
+            self.capsules = list(slot_capsules)
+        else:
+            # slot_capsules: [Slot 0, Slot 1, Slot 2]
+            # self.capsules: [W1 (center/slot 1), W2 (right/slot 2), W3 (left/slot 0)]
+            self.capsules = [slot_capsules[1], slot_capsules[2], slot_capsules[0]]
+
+    def get_capsule_slot_index(self, capsule: CAskCapsule) -> int:
+        """Return the current visual 0-indexed slot (left to right) of a capsule."""
+        slot_caps = self._get_slot_capsules()
+        if capsule in slot_caps:
+            return slot_caps.index(capsule)
+        return -1
+
+    def swap_capsule_slot(self, capsule: CAskCapsule, direction: int) -> bool:
+        """Swap capsule with its neighbor left (-1) or right (+1)."""
+        slot_caps = self._get_slot_capsules()
+        if capsule not in slot_caps:
+            return False
+
+        curr_idx = slot_caps.index(capsule)
+        target_idx = curr_idx + direction
+
+        if 0 <= target_idx < len(slot_caps):
+            slot_caps[curr_idx], slot_caps[target_idx] = slot_caps[target_idx], slot_caps[curr_idx]
+            self._set_slot_capsules(slot_caps)
+            self._recompute_layout()
+            # Retain focus on moved capsule
+            if capsule.state == CAskCapsule.STATE_INPUT:
+                capsule.input_bar.setFocus()
+            elif capsule.state == CAskCapsule.STATE_RESULT:
+                capsule.result_view.text_browser.setFocus()
+            return True
+        return False
+
+    def _handle_capsule_drag_start(self, capsule: CAskCapsule, global_pos: QPoint) -> None:
+        """Initiate drag reorder."""
+        if len(self.capsules) <= 1:
+            return
+        self._dragging_capsule = capsule
+        self._update_ghost_indicator(global_pos)
+
+    def _handle_capsule_drag_move(self, capsule: CAskCapsule, global_pos: QPoint) -> None:
+        """Track drag motion and update target slot ghost indicator."""
+        if self._dragging_capsule is not capsule:
+            return
+        self._update_ghost_indicator(global_pos)
+
+    def _handle_capsule_drag_end(self, capsule: CAskCapsule, global_pos: QPoint) -> None:
+        """Complete drag reorder and re-slot."""
+        if self._dragging_capsule is not capsule:
+            return
+
+        target_slot = self._target_drop_slot
+        self.ghost_indicator.hide()
+        self._dragging_capsule = None
+        self._target_drop_slot = None
+
+        if target_slot is not None:
+            slot_caps = self._get_slot_capsules()
+            curr_slot = slot_caps.index(capsule)
+            if curr_slot != target_slot:
+                slot_caps.pop(curr_slot)
+                slot_caps.insert(target_slot, capsule)
+                self._set_slot_capsules(slot_caps)
+                self._recompute_layout()
+                if capsule.state == CAskCapsule.STATE_RESULT:
+                    capsule.result_view.text_browser.setFocus()
+                elif capsule.state == CAskCapsule.STATE_INPUT:
+                    capsule.input_bar.setFocus()
+
+    def _update_ghost_indicator(self, global_pos: QPoint) -> None:
+        """Position drop ghost indicator over the candidate target slot."""
+        screen = self._get_target_screen()
+        screen_geo = screen.availableGeometry() if screen else QRect(0, 0, 1920, 1080)
+        slots = self._calculate_slot_geometries(screen_geo)
+
+        if not slots or not self._dragging_capsule:
+            self.ghost_indicator.hide()
+            return
+
+        cursor_x = global_pos.x()
+        best_slot_idx = 0
+        min_dist = float("inf")
+
+        for idx, (cap, x, y, w, h) in enumerate(slots):
+            center_x = x + w // 2
+            dist = abs(cursor_x - center_x)
+            if dist < min_dist:
+                min_dist = dist
+                best_slot_idx = idx
+
+        self._target_drop_slot = best_slot_idx
+        _, target_x, target_y, target_w, target_h = slots[best_slot_idx]
+        rel_x = target_x - screen_geo.x()
+        rel_y = target_y - screen_geo.y()
+        self.ghost_indicator.setGeometry(rel_x, rel_y, target_w, target_h)
+        self.ghost_indicator.show()
+        self.ghost_indicator.raise_()
 
     def _calculate_slot_geometries(
         self,
@@ -318,8 +453,28 @@ class MainWindow(QWidget):
         super().mousePressEvent(event)
 
     def keyPressEvent(self, event) -> None:
-        """Handle Esc and Enter keys, honoring pin status."""
-        if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
+        """Handle window reordering shortcuts (Shift+Left/Right), Esc, and Enter."""
+        key = event.key()
+        modifiers = event.modifiers()
+
+        # Window reorder shortcuts: Shift + Left / Shift + Right
+        if modifiers & Qt.KeyboardModifier.ShiftModifier:
+            if key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
+                # Find focused capsule
+                focused_capsule = None
+                for c in self.capsules:
+                    if c.hasFocus() or c.isAncestorOf(self.focusWidget()):
+                        focused_capsule = c
+                        break
+
+                target = focused_capsule or (self.capsules[0] if self.capsules else None)
+                if target:
+                    direction = -1 if key == Qt.Key.Key_Left else 1
+                    if self.swap_capsule_slot(target, direction):
+                        event.accept()
+                        return
+
+        if key in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
             # Find focused capsule
             focused_capsule = None
             for c in self.capsules:

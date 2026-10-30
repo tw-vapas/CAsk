@@ -437,6 +437,105 @@ class TestUIComponents(unittest.TestCase):
         finally:
             mgr1.cleanup()
 
+    def test_window_reorder_shortcuts(self):
+        """Test Shift+Left and Shift+Right window swapping at N=2 and N=3."""
+        from PyQt6.QtGui import QKeyEvent
+        window = MainWindow(config=self.config, catalog=self.catalog)
+        screen = window._get_target_screen()
+        screen_geo = screen.availableGeometry()
+
+        # N=1: swap does nothing
+        self.assertFalse(window.swap_capsule_slot(window.capsules[0], -1))
+        self.assertFalse(window.swap_capsule_slot(window.capsules[0], 1))
+
+        # Launch 2nd window
+        window.handle_external_launch("")
+        self.assertEqual(len(window.capsules), 2)
+        w1 = window.capsules[0]
+        w2 = window.capsules[1]
+
+        # Initially slot 0 = w1, slot 1 = w2
+        self.assertEqual(window.get_capsule_slot_index(w1), 0)
+        self.assertEqual(window.get_capsule_slot_index(w2), 1)
+
+        # Swapping left on slot 0 does nothing
+        self.assertFalse(window.swap_capsule_slot(w1, -1))
+
+        # Swap w1 to right (+1)
+        self.assertTrue(window.swap_capsule_slot(w1, 1))
+        self.assertEqual(window.get_capsule_slot_index(w1), 1)
+        self.assertEqual(window.get_capsule_slot_index(w2), 0)
+
+        # Swap w1 back to left (-1)
+        self.assertTrue(window.swap_capsule_slot(w1, -1))
+        self.assertEqual(window.get_capsule_slot_index(w1), 0)
+        self.assertEqual(window.get_capsule_slot_index(w2), 1)
+
+        # Launch 3rd window
+        window.handle_external_launch("")
+        self.assertEqual(len(window.capsules), 3)
+        w3 = window.capsules[2]
+
+        # Initial layout slots: Slot 0 = w3 (30%), Slot 1 = w1 (40%), Slot 2 = w2 (30%)
+        self.assertEqual(window.get_capsule_slot_index(w3), 0)
+        self.assertEqual(window.get_capsule_slot_index(w1), 1)
+        self.assertEqual(window.get_capsule_slot_index(w2), 2)
+
+        # Swap center card (w1) to the left (-1) -> w1 takes slot 0 (30%), w3 takes slot 1 (40%)
+        self.assertTrue(window.swap_capsule_slot(w1, -1))
+        self.assertEqual(window.get_capsule_slot_index(w1), 0)
+        self.assertEqual(window.get_capsule_slot_index(w3), 1)
+        self.assertEqual(window.get_capsule_slot_index(w2), 2)
+
+        # Verify geometry ratio preservation: slot 1 is 40%, slot 0 is 30%
+        slots = window._calculate_slot_geometries(screen_geo)
+        w_s0 = slots[0][3]
+        w_s1 = slots[1][3]
+        w_s2 = slots[2][3]
+        total = w_s0 + w_s1 + w_s2
+        self.assertIs(slots[0][0], w1)
+        self.assertIs(slots[1][0], w3)
+        self.assertAlmostEqual(w_s0 / total, 0.30, delta=0.03)
+        self.assertAlmostEqual(w_s1 / total, 0.40, delta=0.03)
+        self.assertAlmostEqual(w_s2 / total, 0.30, delta=0.03)
+
+        # Test key event interception via MainWindow keyPressEvent
+        shift_right_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.ShiftModifier)
+        window.keyPressEvent(shift_right_event)
+        # w1 was at slot 0, should now be at slot 1
+        self.assertEqual(window.get_capsule_slot_index(w1), 1)
+
+    def test_drag_reorder_and_ghost_indicator(self):
+        """Test drag handle and drop ghost indicator reordering."""
+        from PyQt6.QtCore import QPoint
+        window = MainWindow(config=self.config, catalog=self.catalog)
+        window.handle_external_launch("")
+        window.handle_external_launch("")
+        self.assertEqual(len(window.capsules), 3)
+
+        w1 = window.capsules[0]
+        w2 = window.capsules[1]
+        w3 = window.capsules[2]
+
+        screen = window._get_target_screen()
+        screen_geo = screen.availableGeometry()
+        slots = window._calculate_slot_geometries(screen_geo)
+        # Slot 0 = w3, Slot 1 = w1, Slot 2 = w2
+        self.assertEqual(window.get_capsule_slot_index(w3), 0)
+
+        # Drag w3 towards rightmost slot (Slot 2)
+        target_center_x = slots[2][1] + slots[2][3] // 2
+        drag_pos = QPoint(target_center_x, screen_geo.height() // 2)
+
+        window._handle_capsule_drag_start(w3, drag_pos)
+        self.assertTrue(window.ghost_indicator.isVisible())
+        self.assertEqual(window._target_drop_slot, 2)
+
+        # Drop onto slot 2
+        window._handle_capsule_drag_end(w3, drag_pos)
+        self.assertFalse(window.ghost_indicator.isVisible())
+        self.assertEqual(window.get_capsule_slot_index(w3), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

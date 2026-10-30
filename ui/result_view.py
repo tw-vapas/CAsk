@@ -18,7 +18,7 @@ except ImportError:
     pass
 
 from core.markdown_renderer import render_markdown_to_html
-from ui.icons import get_copy_icon, get_exit_icon, get_pin_icon, get_search_icon
+from ui.icons import get_copy_icon, get_exit_icon, get_grip_icon, get_pin_icon, get_search_icon
 
 
 class ResultView(QFrame):
@@ -27,6 +27,10 @@ class ResultView(QFrame):
     dismiss_requested = pyqtSignal()
     pin_toggled = pyqtSignal(bool)
     return_to_input_requested = pyqtSignal()
+    reorder_requested = pyqtSignal(int)  # -1 for left, +1 for right
+    drag_started = pyqtSignal(object)  # Emits QPoint global position
+    drag_moved = pyqtSignal(object)    # Emits QPoint global position
+    drag_ended = pyqtSignal(object)    # Emits QPoint global position
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -35,6 +39,7 @@ class ResultView(QFrame):
 
         self._raw_content = ""
         self.is_pinned: bool = False
+        self._drag_active: bool = False
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(18, 14, 18, 14)
@@ -46,6 +51,16 @@ class ResultView(QFrame):
         header_layout = QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.setSpacing(8)
+
+        # Drag grip handle
+        self.drag_handle = QPushButton(header_widget)
+        self.drag_handle.setObjectName("DragHandle")
+        self.drag_handle.setIcon(get_grip_icon())
+        self.drag_handle.setToolTip("Drag to reorder window")
+        self.drag_handle.setCursor(Qt.CursorShape.SizeAllCursor)
+        self.drag_handle.setFixedWidth(24)
+        self.drag_handle.installEventFilter(self)
+        header_layout.addWidget(self.drag_handle)
 
         self.badge_label = QLabel("Result", header_widget)
         self.badge_label.setObjectName("BadgeLabel")
@@ -170,6 +185,13 @@ class ResultView(QFrame):
             event.accept()
             return True
 
+        # Shortcut Shift + Left / Right: Reorder window
+        if (modifiers & Qt.KeyboardModifier.ShiftModifier) and key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
+            direction = -1 if key == Qt.Key.Key_Left else 1
+            self.reorder_requested.emit(direction)
+            event.accept()
+            return True
+
         # Shortcut Shift + P: Toggle pin
         if key == Qt.Key.Key_P and (modifiers & Qt.KeyboardModifier.ShiftModifier):
             self._toggle_pin()
@@ -202,10 +224,28 @@ class ResultView(QFrame):
         return False
 
     def eventFilter(self, obj, event) -> bool:
-        """Intercept key events from text browser to support shortcuts."""
+        """Intercept key events from text browser and mouse drag events on drag_handle."""
         if obj == self.text_browser and event.type() == QEvent.Type.KeyPress:
             if self._handle_key_event(event):
                 return True
+
+        if obj == self.drag_handle:
+            event_type = event.type()
+            if event_type == QEvent.Type.MouseButtonPress:
+                if event.button() == Qt.MouseButton.LeftButton:
+                    self._drag_active = True
+                    self.drag_started.emit(event.globalPosition().toPoint())
+                    return True
+            elif event_type == QEvent.Type.MouseMove:
+                if self._drag_active:
+                    self.drag_moved.emit(event.globalPosition().toPoint())
+                    return True
+            elif event_type == QEvent.Type.MouseButtonRelease:
+                if self._drag_active and event.button() == Qt.MouseButton.LeftButton:
+                    self._drag_active = False
+                    self.drag_ended.emit(event.globalPosition().toPoint())
+                    return True
+
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:

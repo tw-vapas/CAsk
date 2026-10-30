@@ -128,7 +128,11 @@ Pressing the shortcut multiple times can open up to **3 concurrent side-by-side 
 | <kbd>Shift</kbd> + <kbd>A</kbd> | **Ask** | Return to the input bar to refine query or enter a new prompt. |
 | <kbd>Shift</kbd> + <kbd>C</kbd> | **Copy** | Copy response markdown to clipboard. |
 | <kbd>Shift</kbd> + <kbd>P</kbd> | **Pin** | Pin window permanently; suppresses Esc, Enter, and outside-click dismissal. |
+| <kbd>Shift</kbd> + <kbd>←</kbd> | **Move Left** | Swap active capsule with adjacent left slot (preserving layout slot ratios). |
+| <kbd>Shift</kbd> + <kbd>→</kbd> | **Move Right** | Swap active capsule with adjacent right slot (preserving layout slot ratios). |
 | <kbd>Esc</kbd> | **Exit** | Close the card (if unpinned). |
+
+> **Tip:** You can also drag the grip handle `⋮⋮` in the capsule header to reorder windows interactively with live drop preview.
 
 ---
 

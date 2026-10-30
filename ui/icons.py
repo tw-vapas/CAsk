@@ -64,3 +64,16 @@ def get_exit_icon(color: str = "#e6ebf5", size: int = 16) -> QIcon:
   <line x1='6' y1='6' x2='18' y2='18'></line>
 </svg>"""
     return _svg_to_icon(svg, size)
+
+
+def get_grip_icon(color: str = "#a6adc8", size: int = 16) -> QIcon:
+    """Return drag grip / reorder handle icon (6 dots)."""
+    svg = f"""<svg xmlns='http://www.w3.org/2000/svg' width='{size}' height='{size}' viewBox='0 0 24 24' fill='{color}'>
+  <circle cx='9' cy='6' r='1.5'></circle>
+  <circle cx='15' cy='6' r='1.5'></circle>
+  <circle cx='9' cy='12' r='1.5'></circle>
+  <circle cx='15' cy='12' r='1.5'></circle>
+  <circle cx='9' cy='18' r='1.5'></circle>
+  <circle cx='15' cy='18' r='1.5'></circle>
+</svg>"""
+    return _svg_to_icon(svg, size)

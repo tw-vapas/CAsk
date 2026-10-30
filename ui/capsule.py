@@ -36,6 +36,10 @@ class CAskCapsule(QWidget):
     close_requested = pyqtSignal(object)  # Emits self
     size_changed = pyqtSignal(object)    # Emits self
     state_changed = pyqtSignal(object, int)  # Emits (self, state)
+    reorder_requested = pyqtSignal(object, int)  # Emits (self, direction: -1 or +1)
+    drag_started = pyqtSignal(object, object)  # Emits (self, QPoint global pos)
+    drag_moved = pyqtSignal(object, object)    # Emits (self, QPoint global pos)
+    drag_ended = pyqtSignal(object, object)    # Emits (self, QPoint global pos)
 
     def __init__(
         self,
@@ -107,6 +111,10 @@ class CAskCapsule(QWidget):
         self.result_view = ResultView(parent=self)
         self.result_view.dismiss_requested.connect(lambda: self.close_requested.emit(self))
         self.result_view.return_to_input_requested.connect(self._handle_return_to_input)
+        self.result_view.reorder_requested.connect(lambda direction: self.reorder_requested.emit(self, direction))
+        self.result_view.drag_started.connect(lambda pt: self.drag_started.emit(self, pt))
+        self.result_view.drag_moved.connect(lambda pt: self.drag_moved.emit(self, pt))
+        self.result_view.drag_ended.connect(lambda pt: self.drag_ended.emit(self, pt))
         self.stack.addWidget(self.result_view)
 
         layout.addWidget(self.container)
