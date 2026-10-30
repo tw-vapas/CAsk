@@ -20,11 +20,6 @@ __pycache__/
 *.log
 scratch/
 
-# Internal documentation / Knowledge base / Agent instructions
-context.md
-AGENTS.md
-agent.md
-
 # Bug reports and screenshots
 bug_screenshots/
 /bug_screenshots/

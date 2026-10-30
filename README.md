@@ -19,15 +19,17 @@ Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, 
   - **1 Window:** Centered on screen.
   - **2 Windows:** Horizontal side-by-side, occupying **80% of screen width** with equal widths ($W_1$ left, $W_2$ right).
   - **3 Windows:** Horizontal side-by-side, occupying **100% full screen width** with ratio **30 : 40 : 30** ($W_3$ left 30%, $W_1$ center 40%, $W_2$ right 30%).
+  - **Interactive Window Reordering:** Reorder windows on the fly using <kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>Shift</kbd> + <kbd>→</kbd> or by dragging the header grip handle (`⋮⋮`) with real-time drop target ghost preview while strictly maintaining predefined slot ratios.
   - Smoothly re-centers and rebalances as cards are opened or closed.
 - 📏 **Auto-Expanding Dynamic Input Bar:** Height dynamically scales from 50px up to 220px to fit multiple lines and wrapped text naturally. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert newlines without submitting.
-- 📌 **Response Card Pinning:** Pin any response card with the **Pin** button or shortcut <kbd>P</kbd>. Pinned cards stay permanently visible and cannot be dismissed by outside clicks, <kbd>Esc</kbd>, or <kbd>Enter</kbd>.
+- 📌 **Response Card Pinning:** Pin any response card with the **Pin** button or shortcut <kbd>Shift</kbd> + <kbd>P</kbd>. Pinned cards stay permanently visible and cannot be dismissed by outside clicks, <kbd>Esc</kbd>, or <kbd>Enter</kbd>.
 - ⌨️ **Interactive Keyboard Shortcuts:**
-  - <kbd>A</kbd>: **Ask** — Return to input bar to refine or type a new query.
-  - <kbd>C</kbd>: **Copy** — Instant 1-click clipboard copy with visual confirmation.
-  - <kbd>P</kbd>: **Pin** — Toggle window pinning on/off.
+  - <kbd>Shift</kbd> + <kbd>A</kbd>: **Ask** — Return to input bar to refine or type a new query.
+  - <kbd>Shift</kbd> + <kbd>C</kbd>: **Copy** — Instant 1-click clipboard copy with visual confirmation.
+  - <kbd>Shift</kbd> + <kbd>P</kbd>: **Pin** — Toggle window pinning on/off.
+  - <kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>Shift</kbd> + <kbd>→</kbd>: **Reorder** — Swap active capsule position with left or right neighbor.
   - <kbd>Esc</kbd>: **Exit** — Dismiss the active unpinned card.
-- 🎨 **Resolution-Independent SVG Icons:** Crisp vector icons for Ask (magnifying glass), Copy, Pin, and Exit.
+- 🎨 **Resolution-Independent SVG Icons:** Crisp vector icons for Ask (magnifying glass), Copy, Pin, Exit, and Drag Grip Handle (`⋮⋮`).
 - 🎯 **Fully Customizable Personas:**
   - **Default Assistant (`execution/DEFAULT.md`):** Customize the AI behavior when no slash command is used (e.g., translator, concise knowledge assistant, summarizer, or coding helper).
   - **Modular Slash Commands (`execution/commands/*.md`):** Add new slash commands anytime (`/ask`, `/eva`, `/trans`, `/summary`, etc.) simply by adding a markdown prompt file.
