@@ -53,30 +53,30 @@ class ResultView(QFrame):
 
         header_layout.addStretch()
 
-        # 1. Ask button (icon kính lúp) - shortcut [A]
+        # 1. Ask button (icon kính lúp) - shortcut [Shift + A]
         self.ask_button = QPushButton("Ask", header_widget)
         self.ask_button.setObjectName("AskButton")
         self.ask_button.setIcon(get_search_icon())
-        self.ask_button.setToolTip("Return to input bar / Ask [A]")
+        self.ask_button.setToolTip("Return to input bar / Ask [Shift + A]")
         self.ask_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.ask_button.clicked.connect(self.return_to_input_requested.emit)
         header_layout.addWidget(self.ask_button)
         self.search_button = self.ask_button  # Backward-compatible alias
 
-        # 2. Copy button (icon copy) - shortcut [C]
+        # 2. Copy button (icon copy) - shortcut [Shift + C]
         self.copy_button = QPushButton("Copy", header_widget)
         self.copy_button.setObjectName("CopyButton")
         self.copy_button.setIcon(get_copy_icon())
-        self.copy_button.setToolTip("Copy response [C]")
+        self.copy_button.setToolTip("Copy response [Shift + C]")
         self.copy_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.copy_button.clicked.connect(self._copy_to_clipboard)
         header_layout.addWidget(self.copy_button)
 
-        # 3. Pin button (icon pin) - shortcut [P]
+        # 3. Pin button (icon pin) - shortcut [Shift + P]
         self.pin_button = QPushButton("Pin", header_widget)
         self.pin_button.setObjectName("PinButton")
         self.pin_button.setIcon(get_pin_icon(pinned=False))
-        self.pin_button.setToolTip("Pin window [P]")
+        self.pin_button.setToolTip("Pin window [Shift + P]")
         self.pin_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.pin_button.setProperty("pinned", False)
         self.pin_button.clicked.connect(self._toggle_pin)
@@ -151,7 +151,7 @@ class ResultView(QFrame):
         self.pin_button.setProperty("pinned", self.is_pinned)
         self.pin_button.setText("Pinned" if self.is_pinned else "Pin")
         self.pin_button.setIcon(get_pin_icon(pinned=self.is_pinned))
-        self.pin_button.setToolTip("Unpin window [P]" if self.is_pinned else "Pin window [P]")
+        self.pin_button.setToolTip("Unpin window [Shift + P]" if self.is_pinned else "Pin window [Shift + P]")
 
         style = self.pin_button.style()
         if style:
@@ -164,25 +164,25 @@ class ResultView(QFrame):
         key = event.key()
         modifiers = event.modifiers()
 
-        # Shortcut A: Return to input bar
-        if key == Qt.Key.Key_A and modifiers == Qt.KeyboardModifier.NoModifier:
+        # Shortcut Shift + A: Return to input bar
+        if key == Qt.Key.Key_A and (modifiers & Qt.KeyboardModifier.ShiftModifier):
             self.return_to_input_requested.emit()
             event.accept()
             return True
 
-        # Shortcut P: Toggle pin
-        if key == Qt.Key.Key_P and modifiers == Qt.KeyboardModifier.NoModifier:
+        # Shortcut Shift + P: Toggle pin
+        if key == Qt.Key.Key_P and (modifiers & Qt.KeyboardModifier.ShiftModifier):
             self._toggle_pin()
             event.accept()
             return True
 
-        # Shortcut C: Copy
+        # Shortcut Shift + C / Ctrl + C: Copy
         if key == Qt.Key.Key_C:
-            if modifiers == Qt.KeyboardModifier.NoModifier:
+            if modifiers & Qt.KeyboardModifier.ShiftModifier:
                 self._copy_to_clipboard()
                 event.accept()
                 return True
-            elif modifiers == Qt.KeyboardModifier.ControlModifier:
+            elif modifiers & Qt.KeyboardModifier.ControlModifier:
                 if self.text_browser.textCursor().hasSelection():
                     self.text_browser.copy()
                 else:

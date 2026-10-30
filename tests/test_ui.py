@@ -288,23 +288,29 @@ class TestUIComponents(unittest.TestCase):
         view.return_to_input_requested.connect(lambda: search_invoked.append(True))
 
         from PyQt6.QtGui import QKeyEvent
-        # Key 'A': return to input bar
-        a_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_A, Qt.KeyboardModifier.NoModifier, "a")
+        # Key 'Shift + A': return to input bar
+        a_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_A, Qt.KeyboardModifier.ShiftModifier, "A")
         view.keyPressEvent(a_event)
         self.assertEqual(len(search_invoked), 1)
 
-        # Key 'P': toggle pin
+        # Key 'Shift + P': toggle pin
         self.assertFalse(view.is_pinned)
-        p_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_P, Qt.KeyboardModifier.NoModifier, "p")
+        p_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_P, Qt.KeyboardModifier.ShiftModifier, "P")
         view.keyPressEvent(p_event)
         self.assertTrue(view.is_pinned)
         view.keyPressEvent(p_event)
         self.assertFalse(view.is_pinned)
 
-        # Key 'C': copy content
-        c_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_C, Qt.KeyboardModifier.NoModifier, "c")
+        # Key 'Shift + C': copy content
+        c_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_C, Qt.KeyboardModifier.ShiftModifier, "C")
         view.keyPressEvent(c_event)
         self.assertEqual(view.copy_button.text(), "✓ Copied!")
+
+        # Plain keys without Shift should NOT trigger shortcuts
+        search_invoked.clear()
+        plain_a = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_A, Qt.KeyboardModifier.NoModifier, "a")
+        view.keyPressEvent(plain_a)
+        self.assertEqual(len(search_invoked), 0)
 
         # Test shortcut via text_browser event filter
         search_invoked.clear()

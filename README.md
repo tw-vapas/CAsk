@@ -125,9 +125,9 @@ Pressing the shortcut multiple times can open up to **3 concurrent side-by-side 
 
 | Key | Action | Description |
 |---|---|---|
-| <kbd>A</kbd> | **Ask** | Return to the input bar to refine query or enter a new prompt. |
-| <kbd>C</kbd> | **Copy** | Copy response markdown to clipboard. |
-| <kbd>P</kbd> | **Pin** | Pin window permanently; suppresses Esc, Enter, and outside-click dismissal. |
+| <kbd>Shift</kbd> + <kbd>A</kbd> | **Ask** | Return to the input bar to refine query or enter a new prompt. |
+| <kbd>Shift</kbd> + <kbd>C</kbd> | **Copy** | Copy response markdown to clipboard. |
+| <kbd>Shift</kbd> + <kbd>P</kbd> | **Pin** | Pin window permanently; suppresses Esc, Enter, and outside-click dismissal. |
 | <kbd>Esc</kbd> | **Exit** | Close the card (if unpinned). |
 
 ---
