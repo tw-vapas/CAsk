@@ -56,7 +56,7 @@ class ResultView(QFrame):
         self.drag_handle = QPushButton(header_widget)
         self.drag_handle.setObjectName("DragHandle")
         self.drag_handle.setIcon(get_grip_icon())
-        self.drag_handle.setToolTip("Drag to reorder window")
+        self.drag_handle.setToolTip("Drag or press [Alt + ← / →] to reorder window")
         self.drag_handle.setCursor(Qt.CursorShape.SizeAllCursor)
         self.drag_handle.setFixedWidth(24)
         self.drag_handle.installEventFilter(self)
@@ -185,8 +185,8 @@ class ResultView(QFrame):
             event.accept()
             return True
 
-        # Shortcut Shift + Left / Right: Reorder window
-        if (modifiers & Qt.KeyboardModifier.ShiftModifier) and key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
+        # Shortcut Alt + Left / Right: Reorder window
+        if (modifiers & Qt.KeyboardModifier.AltModifier) and key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
             direction = -1 if key == Qt.Key.Key_Left else 1
             self.reorder_requested.emit(direction)
             event.accept()

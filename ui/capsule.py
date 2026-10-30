@@ -101,6 +101,7 @@ class CAskCapsule(QWidget):
         self.input_bar.submitted.connect(self._handle_submit)
         self.input_bar.cancelled.connect(lambda: self.close_requested.emit(self))
         self.input_bar.height_changed.connect(lambda _: self.size_changed.emit(self))
+        self.input_bar.reorder_requested.connect(lambda direction: self.reorder_requested.emit(self, direction))
         self.stack.addWidget(self.input_bar)
 
         # 1. Loading View

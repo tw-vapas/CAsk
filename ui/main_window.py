@@ -457,8 +457,8 @@ class MainWindow(QWidget):
         key = event.key()
         modifiers = event.modifiers()
 
-        # Window reorder shortcuts: Shift + Left / Shift + Right
-        if modifiers & Qt.KeyboardModifier.ShiftModifier:
+        # Window reorder shortcuts: Alt + Left / Alt + Right
+        if modifiers & Qt.KeyboardModifier.AltModifier:
             if key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
                 # Find focused capsule
                 focused_capsule = None

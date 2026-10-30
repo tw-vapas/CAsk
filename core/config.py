@@ -19,6 +19,7 @@ class Config:
     groq_model: str = "openai/gpt-oss-120b"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash-lite"
+    max_tokens: int = 4096
     prompt_file: Optional[Path] = None
     config_dir: Path = Path.home() / ".config" / "cask"
     script_dir: Path = Path(__file__).resolve().parent.parent
@@ -145,6 +146,10 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
     groq_model = get_val("GROQ_MODEL", "openai/gpt-oss-120b")
     gemini_api_key = get_val("GEMINI_API_KEY", "")
     gemini_model = get_val("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    try:
+        max_tokens = int(get_val("MAX_TOKENS", "4096"))
+    except (ValueError, TypeError):
+        max_tokens = 4096
 
     # Resolve default AI assistant prompt file:
     # 1. $PROMPT_FILE override (if explicitly set in config/env)
@@ -182,6 +187,7 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
         groq_model=groq_model,
         gemini_api_key=gemini_api_key,
         gemini_model=gemini_model,
+        max_tokens=max_tokens,
         prompt_file=prompt_file,
         config_dir=config_dir,
         script_dir=script_dir,

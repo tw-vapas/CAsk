@@ -45,7 +45,7 @@ class APIClient:
                 {"role": "user", "content": user_prompt_content},
             ],
             "temperature": 0.2,
-            "max_tokens": 1000,
+            "max_tokens": config.max_tokens,
         }
 
         req = urllib.request.Request(
@@ -98,7 +98,11 @@ class APIClient:
                         {"text": gemini_text}
                     ]
                 }
-            ]
+            ],
+            "generationConfig": {
+                "maxOutputTokens": config.max_tokens,
+                "temperature": 0.2,
+            },
         }
 
         url = (

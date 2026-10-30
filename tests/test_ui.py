@@ -17,6 +17,7 @@ from core.command_loader import load_commands
 from ui.input_bar import InputBar
 from ui.loading_indicator import LoadingIndicator
 from ui.result_view import ResultView
+from ui.capsule import CAskCapsule
 from ui.main_window import MainWindow
 from ui.app import load_stylesheet
 
@@ -499,11 +500,24 @@ class TestUIComponents(unittest.TestCase):
         self.assertAlmostEqual(w_s1 / total, 0.40, delta=0.03)
         self.assertAlmostEqual(w_s2 / total, 0.30, delta=0.03)
 
-        # Test key event interception via MainWindow keyPressEvent
-        shift_right_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.ShiftModifier)
-        window.keyPressEvent(shift_right_event)
+        # Test key event interception via MainWindow keyPressEvent with AltModifier
+        alt_right_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.AltModifier)
+        window.keyPressEvent(alt_right_event)
         # w1 was at slot 0, should now be at slot 1
         self.assertEqual(window.get_capsule_slot_index(w1), 1)
+
+        # Test reordering directly from InputBar via Alt+Left / Alt+Right
+        w1.switch_state(CAskCapsule.STATE_INPUT)
+        w1.input_bar.setText("Some query text to highlight")
+        # Ensure text is not selected by Alt+Left/Right and reorders smoothly
+        alt_left_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Left, Qt.KeyboardModifier.AltModifier)
+        w1.input_bar.keyPressEvent(alt_left_event)
+        # w1 was at slot 1, should now be back at slot 0
+        self.assertEqual(window.get_capsule_slot_index(w1), 0)
+
+        # Verify tooltip on drag handle
+        w1.switch_state(CAskCapsule.STATE_RESULT)
+        self.assertIn("Alt + ← / →", w1.result_view.drag_handle.toolTip())
 
     def test_drag_reorder_and_ghost_indicator(self):
         """Test drag handle and drop ghost indicator reordering."""

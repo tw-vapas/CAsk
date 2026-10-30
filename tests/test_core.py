@@ -14,6 +14,7 @@ class TestCoreConfig(unittest.TestCase):
         self.assertIsInstance(config, Config)
         self.assertEqual(config.groq_model, "openai/gpt-oss-120b")
         self.assertEqual(config.gemini_model, "gemini-3.5-flash-lite")
+        self.assertEqual(config.max_tokens, 4096)
         self.assertTrue(config.default_execution_dir.is_dir())
         self.assertTrue(config.default_commands_dir.is_dir())
 

@@ -49,6 +49,7 @@ class InputBar(QTextEdit):
     submitted = pyqtSignal(str)
     cancelled = pyqtSignal()
     height_changed = pyqtSignal(int)
+    reorder_requested = pyqtSignal(int)  # -1 for left, +1 for right
 
     def __init__(
         self,
@@ -231,6 +232,13 @@ class InputBar(QTextEdit):
                 self._completer.popup().hide()
                 event.accept()
                 return
+
+        # Window reorder shortcuts: Alt + Left / Right
+        if (event.modifiers() & Qt.KeyboardModifier.AltModifier) and event.key() in (Qt.Key.Key_Left, Qt.Key.Key_Right):
+            direction = -1 if event.key() == Qt.Key.Key_Left else 1
+            self.reorder_requested.emit(direction)
+            event.accept()
+            return
 
         # Prevent Up/Down arrow from scrolling single line when completer is not open
         if event.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down):
