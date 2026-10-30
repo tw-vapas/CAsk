@@ -28,3 +28,7 @@ agent.md
 # Bug reports and screenshots
 bug_screenshots/
 /bug_screenshots/
+
+# Knowledge graph artifacts
+graphify-out/
+/graphify-out/
