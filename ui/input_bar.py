@@ -67,6 +67,7 @@ class InputBar(QTextEdit):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled, True)
+        self.setInputMethodHints(Qt.InputMethodHint.ImhNone)
 
         self._max_length: int = 500
         self._completer: Optional[QCompleter] = None
@@ -276,3 +277,11 @@ class InputBar(QTextEdit):
                 return
 
         super().keyPressEvent(event)
+
+    def inputMethodEvent(self, event) -> None:
+        """Handle IME composition and commit events for Vietnamese and CJK input methods."""
+        super().inputMethodEvent(event)
+
+    def inputMethodQuery(self, query) -> object:
+        """Provide accurate geometry and surrounding context queries to IME engine."""
+        return super().inputMethodQuery(query)
