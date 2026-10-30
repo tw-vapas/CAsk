@@ -118,7 +118,7 @@ Pressing the shortcut multiple times can open up to **3 concurrent side-by-side 
 | Input | Mode | Description |
 |---|---|---|
 | `<prompt or text>` | **Default Assistant** | Direct execution with customizable default persona (`execution/DEFAULT.md`). |
-| `/help` or `/` | **Command Help** | Displays the interactive catalog of all available commands and their line 1 metadata. |
+| `/help` or `/` | **Command Help** | Displays the interactive catalog of all available commands, keyboard shortcuts, and usage guide. |
 | `/ask <topic>` | **Concept Explainer** | Clear, concise concept explanation with core intuition and real-world application. |
 | `/eva <sentence>` | **Language Coach** | Sentence evaluation, grammar critique, and native rephrasing suggestions. |
 | `/trans <sentence>` | **Bilingual Translator** | High-density bidirectional translation (English <-> Vietnamese). |
