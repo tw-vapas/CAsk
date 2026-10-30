@@ -58,11 +58,11 @@ class CommandCatalog:
         return sorted(self._commands.keys())
 
     def generate_help_text(self) -> str:
-        """Format dynamic commands catalog displaying available commands and their features."""
+        """Format dynamic commands catalog displaying available commands, keyboard shortcuts, and features."""
         lines = [
             "### CAsk - Available Commands",
             "",
-            "- <b style=\"color: #f9e2af;\">/help</b> — Show available commands and usage guide",
+            "- <b style=\"color: #f9e2af;\">/help</b> — Show available commands and keyboard shortcuts",
         ]
 
         for name in sorted(self._commands.keys()):
@@ -73,9 +73,24 @@ class CommandCatalog:
 
         lines.extend([
             "",
+            "### Keyboard Shortcuts",
+            "",
+            "| Shortcut | Context | Description |",
+            "| :--- | :--- | :--- |",
+            "| `Alt + ← / →` | Global | Swap active capsule slot left or right (or drag `⋮⋮` handle) |",
+            "| `Alt + H` | Global | Toggle Always-on-Top (bring to front / send behind other windows) |",
+            "| `Shift + Enter` | Input Bar | Insert a newline without submitting |",
+            "| `Enter` | Input Bar | Submit prompt to AI |",
+            "| `Esc` | Input Bar | Cancel and dismiss card |",
+            "| `Shift + A` | Result Box | **Ask** — Return to input bar to refine query or ask new question |",
+            "| `Shift + C` | Result Box | **Copy** — Copy markdown response to clipboard |",
+            "| `Shift + P` | Result Box | **Pin** — Pin card permanently (prevents outside-click / Esc / Enter dismissal) |",
+            "| `Esc` / `Enter` | Result Box | **Exit** — Dismiss card (if unpinned) |",
+            "",
             "**Quick Tips:**",
             "- Type any prompt without a leading slash to run the default assistant.",
-            "- Press Enter, Esc, or click outside this card to dismiss.",
+            "- Launch multiple times (e.g. via global hotkey or terminal) to open up to 3 side-by-side capsules.",
+            "- Pinned cards stay permanently visible and can be reordered at any time.",
         ])
 
         return "\n".join(lines)

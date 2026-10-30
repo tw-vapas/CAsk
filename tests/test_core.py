@@ -61,6 +61,10 @@ class TestCoreCommandLoader(unittest.TestCase):
         self.assertIn("/ask &lt;topic&gt;", help_text)
         self.assertIn("/eva &lt;sentence&gt;", help_text)
         self.assertNotIn("/default", help_text)
+        self.assertIn("Keyboard Shortcuts", help_text)
+        self.assertIn("Alt + ← / →", help_text)
+        self.assertIn("Alt + H", help_text)
+        self.assertIn("Shift + P", help_text)
 
 
 class TestCoreRouter(unittest.TestCase):
