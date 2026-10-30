@@ -579,18 +579,16 @@ class TestUIComponents(unittest.TestCase):
         """Verify Alt + H toggles window on-top state across MainWindow, InputBar, and ResultView."""
         window = MainWindow(config=self.config, catalog=self.catalog)
         self.assertTrue(window._is_always_on_top)
-        self.assertTrue(bool(window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint))
 
-        # Direct toggle
+        # Direct toggle to False (send to back / lower layer)
         res = window.toggle_always_on_top()
         self.assertFalse(res)
         self.assertFalse(window._is_always_on_top)
-        self.assertFalse(bool(window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint))
 
+        # Direct toggle back to True (bring to front / on-top)
         res = window.toggle_always_on_top()
         self.assertTrue(res)
         self.assertTrue(window._is_always_on_top)
-        self.assertTrue(bool(window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint))
 
         # Alt + H key event on MainWindow
         event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_H, Qt.KeyboardModifier.AltModifier)

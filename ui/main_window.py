@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import List, Optional
 
@@ -110,11 +113,78 @@ class MainWindow(QWidget):
         self.setProperty("kwin_blur", True)
         self._is_always_on_top: bool = True
 
+    def _set_kwin_layer(self, keep_above: bool) -> bool:
+        """Dynamically switch KWin window layer between Keep Above and Keep Below via DBus scripting."""
+        target_above = "true" if keep_above else "false"
+        target_below = "false" if keep_above else "true"
+        js_code = f"""
+        var windows = workspace.windowList();
+        for (var i = 0; i < windows.length; i++) {{
+            var w = windows[i];
+            if (w.caption === "CAsk" || w.resourceClass === "cask") {{
+                w.keepAbove = {target_above};
+                w.keepBelow = {target_below};
+            }}
+        }}
+        """
+        f_path = ""
+        try:
+            with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as f:
+                f.write(js_code)
+                f_path = f.name
+            out = subprocess.check_output(
+                f"busctl --user call org.kde.KWin /Scripting org.kde.kwin.Scripting loadScript s \"{f_path}\"",
+                shell=True,
+                stderr=subprocess.DEVNULL,
+            ).decode()
+            script_num = out.strip().split()[-1]
+            subprocess.run(
+                f"busctl --user call org.kde.KWin /Scripting/Script{script_num} org.kde.kwin.Script run",
+                shell=True,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            subprocess.run(
+                f"busctl --user call org.kde.KWin /Scripting/Script{script_num} org.kde.kwin.Script stop",
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except Exception:
+            return False
+        finally:
+            if f_path and os.path.exists(f_path):
+                try:
+                    os.unlink(f_path)
+                except OSError:
+                    pass
+
     def toggle_always_on_top(self) -> bool:
-        """Toggle WindowStaysOnTopHint flag and re-stack window."""
+        """Toggle window between Keep Above (on-top) and Keep Below (behind other windows)."""
         self._is_always_on_top = not getattr(self, "_is_always_on_top", True)
-        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self._is_always_on_top)
+
+        # 1. Primary path for KWin/KDE: switch layer directly without surface recreation or fade
+        if self._set_kwin_layer(self._is_always_on_top):
+            if self._is_always_on_top:
+                try:
+                    self.raise_()
+                except Exception:
+                    pass
+                self.activateWindow()
+            return self._is_always_on_top
+
+        # 2. Universal fallback for other compositors/X11
+        if self._is_always_on_top:
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnBottomHint, False)
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        else:
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnBottomHint, True)
+
         self.show()
+        self._recompute_layout()
         if self._is_always_on_top:
             try:
                 self.raise_()
@@ -157,6 +227,8 @@ class MainWindow(QWidget):
 
     def handle_external_launch(self, initial_input: str = "") -> None:
         """Launch another capsule (up to 3) or focus newest active capsule."""
+        if not getattr(self, "_is_always_on_top", True):
+            self.toggle_always_on_top()
         self.show()
         try:
             self.raise_()

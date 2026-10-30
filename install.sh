@@ -143,23 +143,12 @@ EOF
 chmod +x "$DESKTOP_FILE"
 echo "  ✓ Created desktop entry at $DESKTOP_FILE"
 
-# 5. Optional KWin window effects & rules for KDE Plasma
+# 5. Optional KWin window effects for KDE Plasma
 if command -v kwriteconfig6 >/dev/null 2>&1 && [ "$XDG_CURRENT_DESKTOP" = "KDE" ]; then
-    echo "🎨 Configuring KDE KWin window rules and effects (Keep Above & Background Blur)..."
-    kwriteconfig6 --file kwinrulesrc --group General --key count 2 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group General --key rules "cask-hud-class,cask-hud-title" 2>/dev/null || true
-
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud-class" --key Description "CAsk HUD Class Keep Above" 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud-class" --key wmclass "cask" 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud-class" --key wmclassmatch 2 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud-class" --key above true 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud-class" --key aboverule 3 2>/dev/null || true
-
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud-title" --key Description "CAsk HUD Title Keep Above" 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud-title" --key title "CAsk" 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud-title" --key titlematch 2 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud-title" --key above true 2>/dev/null || true
-    kwriteconfig6 --file kwinrulesrc --group "cask-hud-title" --key aboverule 3 2>/dev/null || true
+    echo "🎨 Configuring KDE KWin window effects (Background Blur & Smooth Fading)..."
+    # Ensure no stale forced above rules override dynamic runtime layering
+    kwriteconfig6 --file kwinrulesrc --group General --key count 0 2>/dev/null || true
+    kwriteconfig6 --file kwinrulesrc --group General --key rules "" 2>/dev/null || true
 
     kwriteconfig6 --file kwinrc --group Plugins --key scaleEnabled false 2>/dev/null || true
     kwriteconfig6 --file kwinrc --group Plugins --key fadeEnabled true 2>/dev/null || true
@@ -169,6 +158,8 @@ if command -v kwriteconfig6 >/dev/null 2>&1 && [ "$XDG_CURRENT_DESKTOP" = "KDE" 
         qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect "fade" 2>/dev/null || true
         qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect "blur" 2>/dev/null || true
         qdbus-qt6 org.kde.KWin /KWin org.kde.KWin.reconfigure 2>/dev/null || true
+    elif command -v busctl >/dev/null 2>&1; then
+        busctl --user call org.kde.KWin /KWin org.kde.KWin reconfigure 2>/dev/null || true
     fi
 fi
 
