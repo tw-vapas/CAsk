@@ -195,6 +195,8 @@ cask --help
 
 ```
 cask/
+├── assets/                    # Application icons & branding assets
+│   └── logo.png               # CAsk official logo (desktop & window icon)
 ├── cask.py                    # Main executable entrypoint (PyQt6 HUD / CLI)
 ├── core/                      # Application core engine
 │   ├── __init__.py            # Core exports

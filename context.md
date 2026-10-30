@@ -140,6 +140,8 @@ stateDiagram-v2
 
 ```
 cask/
+├── assets/                    # Project visual assets & branding
+│   └── logo.png               # Official CAsk application logo
 ├── cask.py                    # Main executable entrypoint (CLI & PyQt6 HUD)
 ├── core/                      # Application core logic & network engine
 │   ├── __init__.py            # Core package exports
