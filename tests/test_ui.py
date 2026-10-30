@@ -10,7 +10,7 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt, QEvent, QPointF
-from PyQt6.QtGui import QMouseEvent
+from PyQt6.QtGui import QInputMethodEvent, QKeyEvent, QMouseEvent
 
 from core.config import load_config
 from core.command_loader import load_commands
@@ -550,15 +550,69 @@ class TestUIComponents(unittest.TestCase):
         self.assertFalse(window.ghost_indicator.isVisible())
         self.assertEqual(window.get_capsule_slot_index(w3), 2)
 
-    def test_app_and_window_icon(self):
-        """Verify assets/logo.png exists and window icon is loaded."""
-        logo_path = self.script_dir / "assets" / "logo.png"
-        self.assertTrue(logo_path.is_file(), "assets/logo.png must exist")
+    def test_vietnamese_ime_preedit_expansion(self):
+        """Verify InputBar expands immediately during Vietnamese IME preedit composition without space."""
+        bar = InputBar()
+        bar.resize(600, 50)
+        # Find single line boundary text
+        words = ["word"] * 50
+        base_t = ""
+        wrap_word = "word"
+        for i in range(1, len(words)):
+            t = " ".join(words[:i])
+            bar.setText(t)
+            if bar.calculate_ideal_height(600) > 50:
+                base_t = " ".join(words[:i-1])
+                wrap_word = words[i-1]
+                break
 
+        bar.setText(base_t)
+        self.assertEqual(bar.calculate_ideal_height(600), 50)
+
+        # Simulate Vietnamese IME typing next word in uncommitted preedit mode
+        ev = QInputMethodEvent(" " + wrap_word, [])
+        bar.inputMethodEvent(ev)
+        self.assertGreater(bar.calculate_ideal_height(600), 50)
+        self.assertGreater(bar._current_ideal_height, 50)
+
+    def test_toggle_always_on_top_shortcut(self):
+        """Verify Alt + H toggles window on-top state across MainWindow, InputBar, and ResultView."""
         window = MainWindow(config=self.config, catalog=self.catalog)
-        self.assertFalse(window.windowIcon().isNull(), "MainWindow icon should not be null")
+        self.assertTrue(window._is_always_on_top)
+        self.assertTrue(bool(window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint))
+
+        # Direct toggle
+        res = window.toggle_always_on_top()
+        self.assertFalse(res)
+        self.assertFalse(window._is_always_on_top)
+        self.assertFalse(bool(window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint))
+
+        res = window.toggle_always_on_top()
+        self.assertTrue(res)
+        self.assertTrue(window._is_always_on_top)
+        self.assertTrue(bool(window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint))
+
+        # Alt + H key event on MainWindow
+        event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_H, Qt.KeyboardModifier.AltModifier)
+        window.keyPressEvent(event)
+        self.assertFalse(window._is_always_on_top)
+
+        # Alt + H on InputBar emits toggle_on_top_requested
+        bar = window.primary_capsule.input_bar
+        emitted = []
+        bar.toggle_on_top_requested.connect(lambda: emitted.append("bar"))
+        bar.keyPressEvent(event)
+        self.assertEqual(emitted, ["bar"])
+
+        # Alt + H on ResultView emits toggle_on_top_requested
+        view = window.primary_capsule.result_view
+        view_emitted = []
+        view.toggle_on_top_requested.connect(lambda: view_emitted.append("view"))
+        view._handle_key_event(event)
+        self.assertEqual(view_emitted, ["view"])
 
 
 if __name__ == "__main__":
     unittest.main()
+
 

@@ -108,6 +108,25 @@ class MainWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self.setAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled, True)
         self.setProperty("kwin_blur", True)
+        self._is_always_on_top: bool = True
+
+    def toggle_always_on_top(self) -> bool:
+        """Toggle WindowStaysOnTopHint flag and re-stack window."""
+        self._is_always_on_top = not getattr(self, "_is_always_on_top", True)
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self._is_always_on_top)
+        self.show()
+        if self._is_always_on_top:
+            try:
+                self.raise_()
+            except Exception:
+                pass
+            self.activateWindow()
+        else:
+            try:
+                self.lower()
+            except Exception:
+                pass
+        return self._is_always_on_top
 
     def _get_target_screen(self):
         """Identify the screen under current mouse pointer."""
@@ -129,6 +148,7 @@ class MainWindow(QWidget):
         capsule.size_changed.connect(lambda _: self._recompute_layout())
         capsule.state_changed.connect(lambda *_: self._recompute_layout())
         capsule.reorder_requested.connect(self.swap_capsule_slot)
+        capsule.toggle_on_top_requested.connect(self.toggle_always_on_top)
         capsule.drag_started.connect(self._handle_capsule_drag_start)
         capsule.drag_moved.connect(self._handle_capsule_drag_move)
         capsule.drag_ended.connect(self._handle_capsule_drag_end)
@@ -479,6 +499,10 @@ class MainWindow(QWidget):
                     if self.swap_capsule_slot(target, direction):
                         event.accept()
                         return
+            elif key == Qt.Key.Key_H:
+                self.toggle_always_on_top()
+                event.accept()
+                return
 
         if key in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
             # Find focused capsule

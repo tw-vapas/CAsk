@@ -50,6 +50,7 @@ class InputBar(QTextEdit):
     cancelled = pyqtSignal()
     height_changed = pyqtSignal(int)
     reorder_requested = pyqtSignal(int)  # -1 for left, +1 for right
+    toggle_on_top_requested = pyqtSignal()
 
     def __init__(
         self,
@@ -72,6 +73,7 @@ class InputBar(QTextEdit):
         self._max_length: int = 500
         self._completer: Optional[QCompleter] = None
         self._current_ideal_height: int = 50
+        self._preedit_text: str = ""
 
         # Set placeholder text color to rgba(255, 255, 255, 0.55)
         palette = self.palette()
@@ -87,19 +89,26 @@ class InputBar(QTextEdit):
         self.textChanged.connect(self._handle_text_changed)
 
     def calculate_ideal_height(self, available_width: Optional[int] = None) -> int:
-        """Calculate dynamic height based on text content and line wrapping."""
+        """Calculate dynamic height based on committed text, IME preedit text, and line wrapping."""
         width = available_width if available_width is not None else self.width()
         if width <= 0:
             width = 600
         content_width = max(200, width - 36)
         raw_text = self.toPlainText()
-        if not raw_text.strip():
+        preedit = getattr(self, "_preedit_text", "")
+        if not raw_text.strip() and not preedit.strip():
             return 50
 
         doc = self.document().clone()
         doc.setTextWidth(content_width)
+        if preedit:
+            cursor = QTextCursor(doc)
+            pos = min(self.textCursor().position(), max(0, doc.characterCount() - 1))
+            cursor.setPosition(pos)
+            cursor.insertText(preedit)
+
         doc_height = doc.size().height()
-        if doc.lineCount() <= 1 and "\n" not in raw_text and doc_height <= 32:
+        if doc.lineCount() <= 1 and "\n" not in raw_text and "\n" not in preedit and doc_height <= 32:
             return 50
 
         computed = int(doc_height + 24)
@@ -115,6 +124,7 @@ class InputBar(QTextEdit):
         return self.toPlainText()
 
     def setText(self, text: str) -> None:
+        self._preedit_text = ""
         self.setPlainText(text)
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
@@ -241,6 +251,12 @@ class InputBar(QTextEdit):
             event.accept()
             return
 
+        # Toggle always-on-top shortcut: Alt + H
+        if (event.modifiers() & Qt.KeyboardModifier.AltModifier) and event.key() == Qt.Key.Key_H:
+            self.toggle_on_top_requested.emit()
+            event.accept()
+            return
+
         # Prevent Up/Down arrow from scrolling single line when completer is not open
         if event.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down):
             event.accept()
@@ -278,9 +294,15 @@ class InputBar(QTextEdit):
 
         super().keyPressEvent(event)
 
+    def focusOutEvent(self, event) -> None:
+        self._preedit_text = ""
+        super().focusOutEvent(event)
+
     def inputMethodEvent(self, event) -> None:
         """Handle IME composition and commit events for Vietnamese and CJK input methods."""
+        self._preedit_text = event.preeditString() if hasattr(event, "preeditString") else ""
         super().inputMethodEvent(event)
+        self._handle_text_changed()
 
     def inputMethodQuery(self, query) -> object:
         """Provide accurate geometry and surrounding context queries to IME engine."""

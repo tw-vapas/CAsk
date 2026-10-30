@@ -28,6 +28,7 @@ class ResultView(QFrame):
     pin_toggled = pyqtSignal(bool)
     return_to_input_requested = pyqtSignal()
     reorder_requested = pyqtSignal(int)  # -1 for left, +1 for right
+    toggle_on_top_requested = pyqtSignal()
     drag_started = pyqtSignal(object)  # Emits QPoint global position
     drag_moved = pyqtSignal(object)    # Emits QPoint global position
     drag_ended = pyqtSignal(object)    # Emits QPoint global position
@@ -189,6 +190,12 @@ class ResultView(QFrame):
         if (modifiers & Qt.KeyboardModifier.AltModifier) and key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
             direction = -1 if key == Qt.Key.Key_Left else 1
             self.reorder_requested.emit(direction)
+            event.accept()
+            return True
+
+        # Shortcut Alt + H: Toggle always-on-top
+        if (modifiers & Qt.KeyboardModifier.AltModifier) and key == Qt.Key.Key_H:
+            self.toggle_on_top_requested.emit()
             event.accept()
             return True
 

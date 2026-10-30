@@ -37,6 +37,7 @@ class CAskCapsule(QWidget):
     size_changed = pyqtSignal(object)    # Emits self
     state_changed = pyqtSignal(object, int)  # Emits (self, state)
     reorder_requested = pyqtSignal(object, int)  # Emits (self, direction: -1 or +1)
+    toggle_on_top_requested = pyqtSignal()
     drag_started = pyqtSignal(object, object)  # Emits (self, QPoint global pos)
     drag_moved = pyqtSignal(object, object)    # Emits (self, QPoint global pos)
     drag_ended = pyqtSignal(object, object)    # Emits (self, QPoint global pos)
@@ -102,6 +103,7 @@ class CAskCapsule(QWidget):
         self.input_bar.cancelled.connect(lambda: self.close_requested.emit(self))
         self.input_bar.height_changed.connect(lambda _: self.size_changed.emit(self))
         self.input_bar.reorder_requested.connect(lambda direction: self.reorder_requested.emit(self, direction))
+        self.input_bar.toggle_on_top_requested.connect(self.toggle_on_top_requested)
         self.stack.addWidget(self.input_bar)
 
         # 1. Loading View
@@ -113,6 +115,7 @@ class CAskCapsule(QWidget):
         self.result_view.dismiss_requested.connect(lambda: self.close_requested.emit(self))
         self.result_view.return_to_input_requested.connect(self._handle_return_to_input)
         self.result_view.reorder_requested.connect(lambda direction: self.reorder_requested.emit(self, direction))
+        self.result_view.toggle_on_top_requested.connect(self.toggle_on_top_requested)
         self.result_view.drag_started.connect(lambda pt: self.drag_started.emit(self, pt))
         self.result_view.drag_moved.connect(lambda pt: self.drag_moved.emit(self, pt))
         self.result_view.drag_ended.connect(lambda pt: self.drag_ended.emit(self, pt))
