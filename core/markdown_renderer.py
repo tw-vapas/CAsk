@@ -56,27 +56,32 @@ td {
 tr:nth-child(even) td {
     background-color: rgba(255, 255, 255, 0.03);
 }
-code {
+table.code-block {
+    background-color: #11111b;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    margin: 10px 0;
+    width: 100%;
+}
+table.code-block td {
+    padding: 10px 14px;
+    background-color: #11111b;
+    border: none;
+}
+pre {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    color: #f9e2af;
+    font-family: 'JetBrainsMono Nerd Font', 'JetBrains Mono', monospace;
+    white-space: pre-wrap;
+}
+.inline-code, code {
     background-color: rgba(255, 255, 255, 0.08);
     color: #f9e2af;
     padding: 2px 5px;
     border-radius: 4px;
     font-family: 'JetBrainsMono Nerd Font', 'JetBrains Mono', monospace;
-}
-pre {
-    background-color: rgba(18, 21, 26, 0.90);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 8px;
-    padding: 10px 14px;
-    margin: 10px 0;
-    color: #f9e2af;
-    font-family: 'JetBrainsMono Nerd Font', 'JetBrains Mono', monospace;
-    white-space: pre-wrap;
-}
-pre code {
-    background: transparent;
-    padding: 0;
-    border: none;
 }
 blockquote {
     border-left: 3px solid #89b4fa;
@@ -161,7 +166,7 @@ def _fallback_render_markdown(text: str) -> str:
     def _format_inlines(s: str) -> str:
         s = re.sub(r"\*\*(.*?)\*\*", r"<strong>\1</strong>", s)
         s = re.sub(r"\*(.*?)\*", r"<em>\1</em>", s)
-        s = re.sub(r"`(.*?)`", r"<code>\1</code>", s)
+        s = re.sub(r"`(.*?)`", r'<span class="inline-code">\1</span>', s)
         return s
 
     for line in lines:
@@ -171,7 +176,10 @@ def _fallback_render_markdown(text: str) -> str:
         if stripped.startswith("```"):
             if in_code_block:
                 escaped_code = html.escape("\n".join(code_lines))
-                html_out.append(f"<pre><code>{escaped_code}</code></pre>")
+                html_out.append(
+                    '<table class="code-block" width="100%" cellpadding="8" cellspacing="0" bgcolor="#11111b">'
+                    f'<tr><td bgcolor="#11111b"><pre>{escaped_code}</pre></td></tr></table>'
+                )
                 code_lines = []
                 in_code_block = False
             else:
@@ -273,5 +281,20 @@ def render_markdown_to_html(content: str) -> str:
     except Exception:
         body_html = _fallback_render_markdown(formatted_math)
 
-    # Step 3: Wrap with CSS theme
+    # Step 3: Transform code blocks into solid table boxes for unified Qt rendering
+    def _wrap_code_block(match: re.Match) -> str:
+        code_content = match.group(1)
+        return (
+            '<table class="code-block" width="100%" cellpadding="8" cellspacing="0" bgcolor="#11111b">'
+            f'<tr><td bgcolor="#11111b"><pre>{code_content}</pre></td></tr></table>'
+        )
+
+    # Convert fenced code blocks
+    body_html = re.sub(r"<pre><code[^>]*>(.*?)</code></pre>", _wrap_code_block, body_html, flags=re.DOTALL)
+    # Convert standalone <pre> tags not yet wrapped inside code-block tables
+    body_html = re.sub(r'(?<!<td bgcolor="#11111b">)<pre>(.*?)</pre>', _wrap_code_block, body_html, flags=re.DOTALL)
+    # Convert remaining <code> tags to inline-code spans
+    body_html = re.sub(r"<code>(.*?)</code>", r'<span class="inline-code">\1</span>', body_html, flags=re.DOTALL)
+
+    # Step 4: Wrap with CSS theme
     return f"{CSS_THEME}<body>{body_html}</body>"
