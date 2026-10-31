@@ -829,6 +829,7 @@ class TestUIComponents(unittest.TestCase):
     def test_worker_cancellation_and_stop_worker(self):
         """Verify stop_worker cancels active worker and detaches signals cleanly."""
         from core.api_client import APIWorker
+        from ui.capsule import is_worker_active
 
         worker = APIWorker(
             system_prompt="sys",
@@ -840,6 +841,35 @@ class TestUIComponents(unittest.TestCase):
         self.assertFalse(worker._is_cancelled)
         worker.cancel()
         self.assertTrue(worker._is_cancelled)
+
+        # Verify is_worker_active handles None cleanly
+        self.assertFalse(is_worker_active(None))
+
+        # Verify stop_worker does not crash when called multiple times or when worker is None
+        capsule = CAskCapsule(config=self.config, catalog=self.catalog)
+        capsule._worker = None
+        capsule.stop_worker()
+        self.assertIsNone(capsule._worker)
+
+    def test_enter_key_in_followup_input_does_not_dismiss_window(self):
+        """Verify pressing Enter in follow-up input bar submits query without closing unpinned window."""
+        window = MainWindow(config=self.config, catalog=self.catalog)
+        self.assertEqual(len(window.capsules), 1)
+        capsule = window.primary_capsule
+        capsule.switch_state(CAskCapsule.STATE_RESULT)
+        self.assertFalse(capsule.is_pinned)
+
+        view = capsule.result_view
+        view.followup_input.setText("Follow-up question")
+        view.followup_input.setFocus()
+
+        # Simulate Enter key event filtered on followup_input
+        enter_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier)
+        handled = view.eventFilter(view.followup_input, enter_event)
+        self.assertTrue(handled)
+
+        # Capsule remains open
+        self.assertEqual(len(window.capsules), 1)
 
 
 if __name__ == "__main__":
