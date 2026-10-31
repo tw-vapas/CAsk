@@ -101,6 +101,9 @@ GROQ_MODEL="openai/gpt-oss-120b"
 # Gemini API Key (Fallback)
 GEMINI_API_KEY="your_gemini_api_key_here"
 GEMINI_MODEL="gemini-3.5-flash-lite"
+
+# Multi-turn Follow-up Interaction (1-10 turns, default 3)
+MAX_FOLLOWUP_TURNS="3"
 ```
 
 ### 4. Run CAsk
@@ -123,17 +126,25 @@ Pressing the shortcut multiple times can open up to **3 concurrent side-by-side 
 | `/eva <sentence>` | **Language Coach** | Sentence evaluation, grammar critique, and native rephrasing suggestions. |
 | `/trans <sentence>` | **Bilingual Translator** | High-density bidirectional translation (English <-> Vietnamese). |
 
+### 💬 Multi-Turn Follow-Up Interaction
+
+Each result capsule features a built-in follow-up input bar and turn counter badge `(X/N)`:
+- **Thread Continuity:** Ask clarifying questions or request code refinements directly in the active capsule. The complete conversation thread is serialized to Groq / Gemini.
+- **Turn Limits:** Limited to 3 turns by default (configurable from 1 to 10 via `MAX_FOLLOWUP_TURNS`). When the limit is reached, the input bar locks and prompts you to start a new card.
+- **Focus Safety:** Typing in the follow-up input bar safely permits uppercase letters (`Shift + A`, `Shift + P`, `Shift + C`) without accidentally triggering window shortcuts.
+- **Fresh Threads:** Pressing <kbd>Shift</kbd> + <kbd>A</kbd> returns to the main input bar and resets the capsule's history.
+
 ### Keyboard Shortcuts in Response Box:
 
 | Key | Action | Description |
 |---|---|---|
-| <kbd>Shift</kbd> + <kbd>A</kbd> | **Ask** | Return to the input bar to refine query or enter a new prompt. |
+| <kbd>Shift</kbd> + <kbd>A</kbd> | **Ask** | Return to the input bar to refine query or enter a new prompt (clears thread history). |
 | <kbd>Shift</kbd> + <kbd>C</kbd> | **Copy** | Copy response markdown to clipboard. |
 | <kbd>Shift</kbd> + <kbd>P</kbd> | **Pin** | Pin window permanently; suppresses Esc, Enter, and outside-click dismissal. |
 | <kbd>Alt</kbd> + <kbd>←</kbd> | **Move Left** | Swap active capsule with adjacent left slot (works in both Input Bar and Result Box, preserving slot ratios). |
 | <kbd>Alt</kbd> + <kbd>→</kbd> | **Move Right** | Swap active capsule with adjacent right slot (works in both Input Bar and Result Box, preserving slot ratios). |
 | <kbd>Alt</kbd> + <kbd>H</kbd> | **Toggle On-Top** | Toggle Always-on-Top mode (unhide / hide from top layer across both Input Bar and Result Box). |
-| <kbd>Esc</kbd> | **Exit** | Close the card (if unpinned). |
+| <kbd>Esc</kbd> | **Exit** | Close the card (if unpinned; clears input text if typing in follow-up bar). |
 
 > **Tip:** You can also drag the grip handle `⋮⋮` in the capsule header (tooltip shows `[Alt + ← / →]`) to reorder windows interactively with live drop preview.
 
