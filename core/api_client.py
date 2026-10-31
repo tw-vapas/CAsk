@@ -10,7 +10,7 @@ import json
 import socket
 import urllib.error
 import urllib.request
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .config import Config
 
@@ -33,17 +33,20 @@ class APIClient:
         system_prompt: str,
         user_prompt_content: str,
         config: Config,
+        history: Optional[List[Dict[str, str]]] = None,
     ) -> Tuple[str, Optional[str]]:
-        """Execute request to Groq Cloud API."""
+        """Execute request to Groq Cloud API with optional conversation history."""
         if not config.groq_api_key:
             return "", "Groq API key not configured."
 
+        messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
+        if history:
+            messages.extend(history)
+        messages.append({"role": "user", "content": user_prompt_content})
+
         payload = {
             "model": config.groq_model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt_content},
-            ],
+            "messages": messages,
             "temperature": 0.2,
             "max_tokens": config.max_tokens,
         }
@@ -85,25 +88,49 @@ class APIClient:
         system_prompt: str,
         user_prompt_content: str,
         config: Config,
+        history: Optional[List[Dict[str, str]]] = None,
     ) -> Tuple[str, Optional[str]]:
-        """Execute request to Google Gemini API."""
+        """Execute request to Google Gemini API with optional conversation history."""
         if not config.gemini_api_key:
             return "", "Gemini API key not configured."
 
-        gemini_text = f"{system_prompt}\n\nUser Query:\n{user_prompt_content}"
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {"text": gemini_text}
-                    ]
-                }
-            ],
-            "generationConfig": {
-                "maxOutputTokens": config.max_tokens,
-                "temperature": 0.2,
-            },
-        }
+        if history:
+            contents = []
+            for turn in history:
+                role = "user" if turn.get("role") == "user" else "model"
+                contents.append({
+                    "role": role,
+                    "parts": [{"text": turn.get("content", "")}]
+                })
+            contents.append({
+                "role": "user",
+                "parts": [{"text": user_prompt_content}]
+            })
+            payload = {
+                "systemInstruction": {
+                    "parts": [{"text": system_prompt}]
+                },
+                "contents": contents,
+                "generationConfig": {
+                    "maxOutputTokens": config.max_tokens,
+                    "temperature": 0.2,
+                },
+            }
+        else:
+            gemini_text = f"{system_prompt}\n\nUser Query:\n{user_prompt_content}"
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": gemini_text}
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "maxOutputTokens": config.max_tokens,
+                    "temperature": 0.2,
+                },
+            }
 
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
@@ -149,6 +176,7 @@ class APIClient:
         system_prompt: str,
         user_prompt_content: str,
         config: Config,
+        history: Optional[List[Dict[str, str]]] = None,
     ) -> Tuple[str, Optional[str]]:
         """Perform hybrid request: Groq primary with Gemini fallback."""
         if not config.has_any_api_key:
@@ -163,7 +191,7 @@ class APIClient:
 
         # 1. Try Primary: Groq API
         if config.groq_api_key:
-            content, err = cls.call_groq(system_prompt, user_prompt_content, config)
+            content, err = cls.call_groq(system_prompt, user_prompt_content, config, history=history)
             if content:
                 return content, None
             if err:
@@ -171,7 +199,7 @@ class APIClient:
 
         # 2. Try Fallback: Gemini API
         if config.gemini_api_key:
-            content, err = cls.call_gemini(system_prompt, user_prompt_content, config)
+            content, err = cls.call_gemini(system_prompt, user_prompt_content, config, history=history)
             if content:
                 return content, None
             if err:
@@ -196,18 +224,21 @@ try:
             system_prompt: str,
             user_prompt_content: str,
             config: Config,
+            history: Optional[List[Dict[str, str]]] = None,
             parent=None,
         ) -> None:
             super().__init__(parent)
             self.system_prompt = system_prompt
             self.user_prompt_content = user_prompt_content
             self.config = config
+            self.history = history
 
         def run(self) -> None:
             content, err = APIClient.request(
                 self.system_prompt,
                 self.user_prompt_content,
                 self.config,
+                history=self.history,
             )
             if content:
                 self.finished.emit(content)
