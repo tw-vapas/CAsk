@@ -16,7 +16,7 @@ This document details the software architecture, design principles, technical so
   - **Primary:** Groq Cloud API (default model: `openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) for sub-second responses (~0.5s - 0.8s).
   - **Fallback:** Google Gemini API (`gemini-3.5-flash-lite`), automatically triggered if Groq fails, times out, or lacks an API key.
 - **Network Layer:** Python standard library `urllib.request` with forced IPv4 resolution (avoiding Wayland/systemd IPv6 DNS lookup latency).
-- **Execution Concurrency:** Non-blocking asynchronous Qt worker thread (`APIWorker` in `QThread`) emitting signals (`finished`, `error`) to preserve 60fps UI responsiveness.
+- **Execution Concurrency:** Non-blocking asynchronous Qt worker (`APIWorker` in `QObject` with daemon `threading.Thread`) emitting signals (`finished`, `error`) to preserve 60fps UI responsiveness.
 - **Multi-Turn Conversation Engine:**
   - `core/api_client.py`: Request payloads serialize conversational `history` into Groq (OpenAI-compatible) and Gemini (`contents`) schemas.
   - `core/config.py`: Configurable `MAX_FOLLOWUP_TURNS` (default: 3, clamped 1–10).
@@ -159,8 +159,8 @@ stateDiagram-v2
 - **Solution:** 
   - **Isolated Thread State:** Maintained per-capsule `_chat_history` in `CAskCapsule`. Opening card 2 or 3 retains separate independent contexts.
   - **In-Place Progress State:** During follow-up query execution, the card remains in `STATE_RESULT`, disabling `#FollowUpInput` and setting `#TurnBadge` to `(thinking)`. Previous conversation text remains fully visible and legible, eliminating height collapsing.
-  - **Thread Safety & Crash Elimination:** Decoupled `APIWorker` from widget hierarchy (`parent=None`), cleared `self._worker = None` on completion, and added `is_worker_active()` with `sip.isdeleted()` checks and `RuntimeError` guards to prevent invoking methods on reaped C++ objects. Controlled thread joining (`stop_worker()`) terminates running workers safely on capsule close or query reset.
-  - **Enter Key Filtering:** Consumed `Key_Return` / `Key_Enter` directly inside `ResultView.eventFilter` for `#FollowUpInput` and added input field guards (`QLineEdit`, `QTextEdit`) in `MainWindow.keyPressEvent` to prevent follow-up submissions from dismissing unpinned cards.
+  - **Thread Safety & Crash Elimination (QObject Daemon Worker):** Refactored `APIWorker` from a `QThread` subclass to a `QObject` with Qt signals running on a Python daemon `threading.Thread(daemon=True)`. Eliminated Qt C++ fatal crashes (`qFatal("QThread: Destroyed while thread is still running")` / `_ZN10sipQThreadD0Ev` / `SIGABRT`) when workers are overwritten or deallocated during prompt submissions or follow-ups. Added `is_worker_active()` with `sip.isdeleted()` checks and `RuntimeError` guards. Controlled joining (`stop_worker()`) terminates running workers safely on capsule close or query reset.
+  - **Enter Key Decoupling from Window Dismissal:** Completely eradicated <kbd>Enter</kbd> / <kbd>Return</kbd> from closing or dismissing CAsk across `InputBar` (empty Enter does not emit `cancelled`), `MainWindow.keyPressEvent`, and `ResultView.keyPressEvent`. Only the <kbd>Esc</kbd> key or the exit button `✕` can dismiss unpinned cards.
   - **Full Slash Command Support in Follow-Up Bar:** Integrated `CommandCatalog` and `QCompleter` into `ResultView`'s `#FollowUpInput`. Routed follow-up inputs through `route_input`: dynamically adopting command system prompts (e.g. `/trans`, `/eva`), providing instant token-free `/help`, and highlighting active command tokens (`is_command="true"`).
   - **Yellow Follow-up Turn Highlighting:** Formatted user follow-up questions with Catppuccin Yellow `.user-turn` (`#f9e2af`) with left accent border and translucent backdrop, while preserving standard clean markdown formatting when copying to the system clipboard.
   - **Cross-Backend Serialization:** `core/api_client.py` serializes `history` seamlessly into Groq's OpenAI-compatible message list (`[{"role": "user"|"assistant", "content": ...}]`) and Gemini's hierarchical `contents` (`[{"role": "user"|"model", "parts": [...]}]`).
@@ -181,7 +181,7 @@ cask/
 │   ├── command_loader.py      # Modular slash command scanner & parser
 │   ├── router.py              # Deterministic regex router & argument validator
 │   ├── math_formatter.py      # LaTeX mathematical formula to Unicode converter
-│   └── api_client.py          # Groq primary & Gemini fallback HTTP client + QThread worker
+│   └── api_client.py          # Groq primary & Gemini fallback HTTP client + QObject daemon worker
 ├── ui/                        # PyQt6 user interface layer
 │   ├── __init__.py            # UI package exports
 │   ├── app.py                 # QApplication lifecycle, fonts, stylesheet loader
