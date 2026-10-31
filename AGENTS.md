@@ -22,3 +22,9 @@
    - Clearly convey the intent and scope of each change.
 4. **Auto-push after requirement completion:**
    - Automatically execute `git push` to push all committed changes to the remote repository immediately upon completing each user requirement or task session.
+
+## 3. Session Management & Context Preservation
+- **Session Transition Recommendation:**
+  - Upon completing a major requirement or milestone (where all code is tested, atomically committed, and pushed), recommend transitioning to a new session to preserve a clean context window and avoid token bloat.
+- **Handoff Documentation:**
+  - Before closing a session, always ensure `context.md` is updated with all newly introduced architectural patterns, components, configuration options, and technical solutions so the subsequent session has immediate, full situational context without relying on conversational history.
