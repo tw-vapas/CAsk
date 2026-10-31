@@ -596,12 +596,7 @@ class MainWindow(QWidget):
                 event.accept()
                 return
 
-        if key in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
-            focus_widget = self.focusWidget()
-            if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and isinstance(focus_widget, (QLineEdit, QTextEdit)):
-                super().keyPressEvent(event)
-                return
-
+        if key == Qt.Key.Key_Escape:
             # Find focused capsule
             focused_capsule = None
             for c in self.capsules:
@@ -612,7 +607,7 @@ class MainWindow(QWidget):
             target = focused_capsule or (self.capsules[-1] if self.capsules else None)
             if target:
                 if target.is_pinned:
-                    # Pinned capsule ignores Esc/Enter
+                    # Pinned capsule ignores Esc
                     event.accept()
                     return
                 # Unpinned capsule is dismissed

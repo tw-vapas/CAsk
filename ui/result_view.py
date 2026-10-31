@@ -387,8 +387,8 @@ class ResultView(QFrame):
                 event.accept()
                 return True
 
-        # Shortcut Esc / Enter: Dismiss
-        if key in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
+        # Shortcut Esc: Dismiss
+        if key == Qt.Key.Key_Escape:
             if self.is_pinned:
                 event.accept()
                 return True

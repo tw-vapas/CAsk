@@ -281,8 +281,6 @@ class InputBar(QTextEdit):
             text = self.text().strip()
             if text:
                 self.submitted.emit(text)
-            else:
-                self.cancelled.emit()
             event.accept()
             return
 
