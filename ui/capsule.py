@@ -115,7 +115,7 @@ class CAskCapsule(QWidget):
         self.stack.addWidget(self.loading_widget)
 
         # 2. Result View
-        self.result_view = ResultView(parent=self)
+        self.result_view = ResultView(catalog=self.catalog, parent=self)
         self.result_view.dismiss_requested.connect(lambda: self.close_requested.emit(self))
         self.result_view.return_to_input_requested.connect(self._handle_return_to_input)
         self.result_view.reorder_requested.connect(lambda direction: self.reorder_requested.emit(self, direction))
@@ -128,8 +128,36 @@ class CAskCapsule(QWidget):
 
         layout.addWidget(self.container)
 
+    def stop_worker(self) -> None:
+        """Safely detach, cancel, and terminate any background worker thread."""
+        if self._worker:
+            worker = self._worker
+            self._worker = None
+            try:
+                worker.cancel()
+            except Exception:
+                pass
+            try:
+                worker.finished.disconnect()
+            except Exception:
+                pass
+            try:
+                worker.error.disconnect()
+            except Exception:
+                pass
+            if worker.isRunning():
+                worker.quit()
+                worker.wait(400)
+            worker.deleteLater()
+
+    def closeEvent(self, event) -> None:
+        """Reap active threads before widget destruction."""
+        self.stop_worker()
+        super().closeEvent(event)
+
     def _handle_return_to_input(self) -> None:
         """Switch from Result state back to Input state and focus input bar."""
+        self.stop_worker()
         self._chat_history = []
         self._turn_count = 1
         self._current_system_prompt = ""
@@ -195,6 +223,9 @@ class CAskCapsule(QWidget):
             self._show_result("Config Error", no_key_msg, is_error=True)
             return
 
+        # Stop any existing worker safely
+        self.stop_worker()
+
         # Switch to Loading State
         self.loading_widget.set_loading_text(route.loading_label)
         self.switch_state(self.STATE_LOADING)
@@ -206,48 +237,99 @@ class CAskCapsule(QWidget):
         self._current_badge = f"/{route.command}" if route.command else "Assistant"
         badge_name = self._current_badge
 
-        # Launch background API request
-        self._worker = APIWorker(
+        # Launch background API request (parent=None prevents Qt deleteChildren race)
+        worker = APIWorker(
             system_prompt=route.system_prompt,
             user_prompt_content=route.user_prompt_content,
             config=self.config,
             history=None,
-            parent=self,
+            parent=None,
         )
+        self._worker = worker
 
         def _on_initial_finish(res: str) -> None:
             self._chat_history.append({"role": "user", "content": route.user_prompt_content})
             self._chat_history.append({"role": "assistant", "content": res})
             self._show_result(badge_name, res, is_error=False)
+            worker.deleteLater()
 
-        self._worker.finished.connect(_on_initial_finish)
-        self._worker.error.connect(
-            lambda err: self._show_result(f"Error [{badge_name}]", f"### Request Failed\n\n{err}", is_error=True)
-        )
-        self._worker.start()
+        def _on_initial_error(err: str) -> None:
+            self._show_result(f"Error [{badge_name}]", f"### Request Failed\n\n{err}", is_error=True)
+            worker.deleteLater()
+
+        worker.finished.connect(_on_initial_finish)
+        worker.error.connect(_on_initial_error)
+        worker.start()
 
     def _handle_followup_submit(self, followup_text: str) -> None:
-        """Submit a follow-up prompt within the current conversation thread."""
+        """Submit a follow-up prompt within the current conversation thread, supporting slash commands."""
         if self._turn_count >= self.config.max_followup_turns:
             return
         if self._worker and self._worker.isRunning():
             return
 
+        self.stop_worker()
+
+        # Parse follow-up query with command router
+        route = route_input(followup_text, self.catalog, self.config)
+
+        if route.route_type == RouteType.HELP:
+            self.result_view.append_turn(
+                user_query=followup_text,
+                ai_response=route.display_text or "",
+                current_turn=self._turn_count,
+                max_turns=self.config.max_followup_turns,
+            )
+            self.size_changed.emit(self)
+            return
+
+        if route.route_type in (RouteType.MISSING_ARG, RouteType.UNKNOWN_COMMAND):
+            self.result_view.append_turn(
+                user_query=followup_text,
+                ai_response=f"⚠️ {route.display_text}",
+                current_turn=self._turn_count,
+                max_turns=self.config.max_followup_turns,
+            )
+            self.size_changed.emit(self)
+            return
+
+        if not self.config.has_any_api_key:
+            self.result_view.append_turn(
+                user_query=followup_text,
+                ai_response="⚠️ **Error:** No API key configured in `config.env`.",
+                current_turn=self._turn_count,
+                max_turns=self.config.max_followup_turns,
+            )
+            self.size_changed.emit(self)
+            return
+
+        # Adopt command system prompt if a slash command was used, otherwise retain active persona
+        if route.route_type == RouteType.COMMAND:
+            system_prompt = route.system_prompt
+            prompt_content = route.user_prompt_content
+            self._current_system_prompt = route.system_prompt
+            self._current_badge = f"/{route.command}"
+        else:
+            system_prompt = self._current_system_prompt
+            prompt_content = followup_text
+
         # Disable input while waiting for model response
         self.result_view.followup_input.setEnabled(False)
-        self.result_view.followup_input.setPlaceholderText("Thinking...")
+        loading_hint = f"Thinking [{route.loading_label}]..." if route.loading_label else "Thinking..."
+        self.result_view.followup_input.setPlaceholderText(loading_hint)
         self.result_view.turn_badge.setText(f"{self._turn_count}/{self.config.max_followup_turns} (thinking)")
 
-        self._worker = APIWorker(
-            system_prompt=self._current_system_prompt,
-            user_prompt_content=followup_text,
+        worker = APIWorker(
+            system_prompt=system_prompt,
+            user_prompt_content=prompt_content,
             config=self.config,
             history=list(self._chat_history),
-            parent=self,
+            parent=None,
         )
+        self._worker = worker
 
         def _on_followup_finish(res: str) -> None:
-            self._chat_history.append({"role": "user", "content": followup_text})
+            self._chat_history.append({"role": "user", "content": prompt_content})
             self._chat_history.append({"role": "assistant", "content": res})
             self._turn_count += 1
             self.result_view.append_turn(
@@ -257,6 +339,7 @@ class CAskCapsule(QWidget):
                 max_turns=self.config.max_followup_turns,
             )
             self.size_changed.emit(self)
+            worker.deleteLater()
 
         def _on_followup_error(err: str) -> None:
             error_msg = f"⚠️ **Request Failed:** {err}"
@@ -267,10 +350,11 @@ class CAskCapsule(QWidget):
                 max_turns=self.config.max_followup_turns,
             )
             self.size_changed.emit(self)
+            worker.deleteLater()
 
-        self._worker.finished.connect(_on_followup_finish)
-        self._worker.error.connect(_on_followup_error)
-        self._worker.start()
+        worker.finished.connect(_on_followup_finish)
+        worker.error.connect(_on_followup_error)
+        worker.start()
 
     def _show_result(self, badge: str, content: str, is_error: bool = False) -> None:
         """Render response with elastic dynamic auto-expansion."""

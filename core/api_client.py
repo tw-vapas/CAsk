@@ -232,6 +232,11 @@ try:
             self.user_prompt_content = user_prompt_content
             self.config = config
             self.history = history
+            self._is_cancelled: bool = False
+
+        def cancel(self) -> None:
+            """Flag worker as cancelled to suppress further signal emissions."""
+            self._is_cancelled = True
 
         def run(self) -> None:
             content, err = APIClient.request(
@@ -240,6 +245,9 @@ try:
                 self.config,
                 history=self.history,
             )
+            if self._is_cancelled:
+                return
+
             if content:
                 self.finished.emit(content)
             else:

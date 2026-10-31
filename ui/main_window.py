@@ -271,6 +271,8 @@ class MainWindow(QWidget):
     def _handle_capsule_close(self, capsule: CAskCapsule) -> None:
         """Close an individual capsule and recompute layout for remaining capsules."""
         if capsule in self.capsules:
+            if hasattr(capsule, "stop_worker"):
+                capsule.stop_worker()
             self.capsules.remove(capsule)
             capsule.setParent(None)
             capsule.deleteLater()
