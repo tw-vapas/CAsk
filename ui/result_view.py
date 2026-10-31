@@ -406,6 +406,9 @@ class ResultView(QFrame):
 
         if hasattr(self, "followup_input") and obj == self.followup_input:
             if event.type() == QEvent.Type.KeyPress:
+                if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                    self._handle_followup_submit()
+                    return True
                 if event.key() == Qt.Key.Key_Escape:
                     if self.followup_input.text():
                         self.followup_input.clear()

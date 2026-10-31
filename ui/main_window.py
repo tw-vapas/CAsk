@@ -11,7 +11,7 @@ from typing import List, Optional
 try:
     from PyQt6.QtCore import QEvent, QPoint, QRect, QSize, Qt, QTimer
     from PyQt6.QtGui import QCursor, QGuiApplication, QIcon, QKeyEvent, QMouseEvent, QRegion
-    from PyQt6.QtWidgets import QFrame, QWidget
+    from PyQt6.QtWidgets import QFrame, QLineEdit, QTextEdit, QWidget
 except ImportError:
     pass
 
@@ -597,6 +597,11 @@ class MainWindow(QWidget):
                 return
 
         if key in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            focus_widget = self.focusWidget()
+            if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and isinstance(focus_widget, (QLineEdit, QTextEdit)):
+                super().keyPressEvent(event)
+                return
+
             # Find focused capsule
             focused_capsule = None
             for c in self.capsules:

@@ -26,6 +26,22 @@ from ui.loading_indicator import LoadingIndicator
 from ui.result_view import ResultView
 
 
+def is_worker_active(worker) -> bool:
+    """Safely check if an APIWorker thread is active without raising on deleted C++ objects."""
+    if worker is None:
+        return False
+    try:
+        from PyQt6 import sip
+        if sip.isdeleted(worker):
+            return False
+    except Exception:
+        pass
+    try:
+        return worker.isRunning()
+    except (RuntimeError, Exception):
+        return False
+
+
 class CAskCapsule(QWidget):
     """Independent CAsk interactive card holding input, loading, and result states."""
 
@@ -130,25 +146,39 @@ class CAskCapsule(QWidget):
 
     def stop_worker(self) -> None:
         """Safely detach, cancel, and terminate any background worker thread."""
-        if self._worker:
-            worker = self._worker
-            self._worker = None
-            try:
-                worker.cancel()
-            except Exception:
-                pass
-            try:
-                worker.finished.disconnect()
-            except Exception:
-                pass
-            try:
-                worker.error.disconnect()
-            except Exception:
-                pass
+        worker = self._worker
+        self._worker = None
+        if worker is None:
+            return
+
+        try:
+            from PyQt6 import sip
+            if sip.isdeleted(worker):
+                return
+        except Exception:
+            pass
+
+        try:
+            worker.cancel()
+        except (RuntimeError, Exception):
+            pass
+
+        try:
+            worker.finished.disconnect()
+        except (RuntimeError, Exception):
+            pass
+
+        try:
+            worker.error.disconnect()
+        except (RuntimeError, Exception):
+            pass
+
+        try:
             if worker.isRunning():
                 worker.quit()
                 worker.wait(400)
-            worker.deleteLater()
+        except (RuntimeError, Exception):
+            pass
 
     def closeEvent(self, event) -> None:
         """Reap active threads before widget destruction."""
@@ -248,14 +278,14 @@ class CAskCapsule(QWidget):
         self._worker = worker
 
         def _on_initial_finish(res: str) -> None:
+            self._worker = None
             self._chat_history.append({"role": "user", "content": route.user_prompt_content})
             self._chat_history.append({"role": "assistant", "content": res})
             self._show_result(badge_name, res, is_error=False)
-            worker.deleteLater()
 
         def _on_initial_error(err: str) -> None:
+            self._worker = None
             self._show_result(f"Error [{badge_name}]", f"### Request Failed\n\n{err}", is_error=True)
-            worker.deleteLater()
 
         worker.finished.connect(_on_initial_finish)
         worker.error.connect(_on_initial_error)
@@ -265,7 +295,7 @@ class CAskCapsule(QWidget):
         """Submit a follow-up prompt within the current conversation thread, supporting slash commands."""
         if self._turn_count >= self.config.max_followup_turns:
             return
-        if self._worker and self._worker.isRunning():
+        if is_worker_active(self._worker):
             return
 
         self.stop_worker()
@@ -329,6 +359,7 @@ class CAskCapsule(QWidget):
         self._worker = worker
 
         def _on_followup_finish(res: str) -> None:
+            self._worker = None
             self._chat_history.append({"role": "user", "content": prompt_content})
             self._chat_history.append({"role": "assistant", "content": res})
             self._turn_count += 1
@@ -339,9 +370,9 @@ class CAskCapsule(QWidget):
                 max_turns=self.config.max_followup_turns,
             )
             self.size_changed.emit(self)
-            worker.deleteLater()
 
         def _on_followup_error(err: str) -> None:
+            self._worker = None
             error_msg = f"⚠️ **Request Failed:** {err}"
             self.result_view.append_turn(
                 user_query=followup_text,
@@ -350,7 +381,6 @@ class CAskCapsule(QWidget):
                 max_turns=self.config.max_followup_turns,
             )
             self.size_changed.emit(self)
-            worker.deleteLater()
 
         worker.finished.connect(_on_followup_finish)
         worker.error.connect(_on_followup_error)
