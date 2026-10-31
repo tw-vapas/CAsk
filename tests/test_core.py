@@ -181,5 +181,95 @@ class TestMathFormatter(unittest.TestCase):
         self.assertIn("Cost is $50.", processed)
 
 
+class TestMultiTurnPayloadSerialization(unittest.TestCase):
+    def setUp(self):
+        from core.config import Config
+        self.config = Config(
+            groq_api_key="mock_groq_key",
+            gemini_api_key="mock_gemini_key",
+        )
+
+    def test_groq_multiturn_payload(self):
+        from unittest.mock import patch, MagicMock
+        from core.api_client import APIClient
+
+        history = [
+            {"role": "user", "content": "What is Python?"},
+            {"role": "assistant", "content": "Python is a programming language."},
+        ]
+
+        captured_req = {}
+
+        def mock_urlopen(req, timeout=15):
+            captured_req["url"] = req.full_url
+            captured_req["data"] = req.data
+            mock_resp = MagicMock()
+            mock_resp.read.return_value = b'{"choices": [{"message": {"content": "Followup answer"}}]}'
+            mock_resp.__enter__.return_value = mock_resp
+            return mock_resp
+
+        with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+            res, err = APIClient.call_groq(
+                system_prompt="System instructions",
+                user_prompt_content="Give me an example",
+                config=self.config,
+                history=history,
+            )
+
+        self.assertEqual(res, "Followup answer")
+        self.assertIsNone(err)
+
+        import json
+        payload = json.loads(captured_req["data"].decode("utf-8"))
+        messages = payload["messages"]
+        self.assertEqual(len(messages), 4)
+        self.assertEqual(messages[0], {"role": "system", "content": "System instructions"})
+        self.assertEqual(messages[1], {"role": "user", "content": "What is Python?"})
+        self.assertEqual(messages[2], {"role": "assistant", "content": "Python is a programming language."})
+        self.assertEqual(messages[3], {"role": "user", "content": "Give me an example"})
+
+    def test_gemini_multiturn_payload(self):
+        from unittest.mock import patch, MagicMock
+        from core.api_client import APIClient
+
+        history = [
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi there!"},
+        ]
+
+        captured_req = {}
+
+        def mock_urlopen(req, timeout=45):
+            captured_req["url"] = req.full_url
+            captured_req["data"] = req.data
+            mock_resp = MagicMock()
+            mock_resp.read.return_value = b'{"candidates": [{"content": {"parts": [{"text": "Gemini answer"}]}}]}'
+            mock_resp.__enter__.return_value = mock_resp
+            return mock_resp
+
+        with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+            res, err = APIClient.call_gemini(
+                system_prompt="System instructions",
+                user_prompt_content="Tell me more",
+                config=self.config,
+                history=history,
+            )
+
+        self.assertEqual(res, "Gemini answer")
+        self.assertIsNone(err)
+
+        import json
+        payload = json.loads(captured_req["data"].decode("utf-8"))
+        self.assertEqual(payload["systemInstruction"]["parts"][0]["text"], "System instructions")
+        contents = payload["contents"]
+        self.assertEqual(len(contents), 3)
+        self.assertEqual(contents[0]["role"], "user")
+        self.assertEqual(contents[0]["parts"][0]["text"], "Hello")
+        self.assertEqual(contents[1]["role"], "model")
+        self.assertEqual(contents[1]["parts"][0]["text"], "Hi there!")
+        self.assertEqual(contents[2]["role"], "user")
+        self.assertEqual(contents[2]["parts"][0]["text"], "Tell me more")
+
+
 if __name__ == "__main__":
     unittest.main()
