@@ -257,7 +257,9 @@ class TestUIComponents(unittest.TestCase):
         esc_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Escape, Qt.KeyboardModifier.NoModifier)
         enter_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier)
 
-        # Unpinned: Esc emits dismiss_requested
+        # Unpinned: Esc emits dismiss_requested, Enter does NOT emit dismiss_requested
+        view.keyPressEvent(enter_event)
+        self.assertEqual(len(dismissed), 0)
         view.keyPressEvent(esc_event)
         self.assertEqual(len(dismissed), 1)
 
@@ -409,23 +411,32 @@ class TestUIComponents(unittest.TestCase):
         self.assertIs(slots_after[0][0], window.capsules[0])
         self.assertIs(slots_after[1][0], window.capsules[1])
 
-    def test_enter_key_dismissal(self):
-        # Empty input bar cancels on Enter
+    def test_enter_key_does_not_dismiss(self):
+        # Empty input bar does NOT cancel on Enter
         bar = InputBar(catalog=self.catalog)
         cancelled = []
         bar.cancelled.connect(lambda: cancelled.append(True))
         from PyQt6.QtGui import QKeyEvent
         enter_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier)
+        esc_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Escape, Qt.KeyboardModifier.NoModifier)
         bar.keyPressEvent(enter_event)
-        self.assertTrue(cancelled)
+        self.assertEqual(len(cancelled), 0)
 
-        # MainWindow dismisses on Enter in Loading state
+        # Escape cancels input bar
+        bar.keyPressEvent(esc_event)
+        self.assertEqual(len(cancelled), 1)
+
+        # MainWindow does NOT dismiss on Enter in Loading state
         window = MainWindow(config=self.config, catalog=self.catalog)
         window._switch_state(MainWindow.STATE_LOADING, 600, 54)
         closed = []
         window.close = lambda: closed.append(True)
         window.keyPressEvent(enter_event)
-        self.assertTrue(closed)
+        self.assertEqual(len(closed), 0)
+
+        # MainWindow dismisses on Escape in Loading state
+        window.keyPressEvent(esc_event)
+        self.assertEqual(len(closed), 1)
 
     def test_single_instance_manager(self):
         from ui.single_instance import SingleInstanceManager
@@ -842,12 +853,16 @@ class TestUIComponents(unittest.TestCase):
         worker.cancel()
         self.assertTrue(worker._is_cancelled)
 
-        # Verify is_worker_active handles None cleanly
-        self.assertFalse(is_worker_active(None))
+        # Verify worker isRunning and thread management
+        self.assertFalse(worker.isRunning())
+        with patch.object(APIWorker, "_run", return_value=None):
+            worker.start()
+            # Wait for short daemon thread
+            worker.wait(100)
 
         # Verify stop_worker does not crash when called multiple times or when worker is None
         capsule = CAskCapsule(config=self.config, catalog=self.catalog)
-        capsule._worker = None
+        capsule._worker = worker
         capsule.stop_worker()
         self.assertIsNone(capsule._worker)
 
