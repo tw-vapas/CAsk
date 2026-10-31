@@ -271,5 +271,21 @@ class TestMultiTurnPayloadSerialization(unittest.TestCase):
         self.assertEqual(contents[2]["parts"][0]["text"], "Tell me more")
 
 
+class TestCoreMarkdownRenderer(unittest.TestCase):
+    def test_render_code_block_as_table(self):
+        from core.markdown_renderer import render_markdown_to_html
+        md = "```cpp\n#include <iostream>\nint main() { return 0; }\n```"
+        html_out = render_markdown_to_html(md)
+        self.assertIn('<table class="code-block"', html_out)
+        self.assertIn('<pre>#include &lt;iostream&gt;', html_out)
+        self.assertIn('bgcolor="#11111b"', html_out)
+
+    def test_render_inline_code(self):
+        from core.markdown_renderer import render_markdown_to_html
+        md = "Use `printf` function."
+        html_out = render_markdown_to_html(md)
+        self.assertIn('<span class="inline-code">printf</span>', html_out)
+
+
 if __name__ == "__main__":
     unittest.main()

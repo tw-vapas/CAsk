@@ -134,7 +134,7 @@ class TestUIComponents(unittest.TestCase):
     def test_main_window_state_machine(self):
         window = MainWindow(config=self.config, catalog=self.catalog)
         self.assertEqual(window.stack.currentIndex(), MainWindow.STATE_INPUT)
-        self.assertIsNotNone(window.container.graphicsEffect())
+        self.assertTrue(window.primary_capsule.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
         self.assertEqual(window.windowType(), Qt.WindowType.Window)
         self.assertTrue(window.testAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled))
 
@@ -885,6 +885,28 @@ class TestUIComponents(unittest.TestCase):
 
         # Capsule remains open
         self.assertEqual(len(window.capsules), 1)
+
+    def test_enter_key_focuses_followup_input(self):
+        """Verify pressing Enter while viewing results focuses the follow-up input bar."""
+        window = MainWindow(config=self.config, catalog=self.catalog)
+        capsule = window.primary_capsule
+        capsule.switch_state(CAskCapsule.STATE_RESULT)
+        view = capsule.result_view
+
+        # Set focus to text_browser (browsing mode)
+        view.text_browser.setFocus()
+        self.assertIs(window.focusWidget(), view.text_browser)
+
+        # Press Enter on text_browser -> should focus followup_input
+        enter_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier)
+        handled = view._handle_key_event(enter_event)
+        self.assertTrue(handled)
+        self.assertIs(window.focusWidget(), view.followup_input)
+
+        # Press Enter globally in MainWindow -> should maintain or request focus on followup_input
+        view.text_browser.setFocus()
+        window.keyPressEvent(enter_event)
+        self.assertIs(window.focusWidget(), view.followup_input)
 
 
 if __name__ == "__main__":
