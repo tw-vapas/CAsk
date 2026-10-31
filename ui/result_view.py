@@ -387,6 +387,13 @@ class ResultView(QFrame):
                 event.accept()
                 return True
 
+        # Shortcut Enter / Return: Focus follow-up input bar
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if hasattr(self, "followup_input") and self.followup_input.isEnabled():
+                self.followup_input.setFocus()
+                event.accept()
+                return True
+
         # Shortcut Esc: Dismiss
         if key == Qt.Key.Key_Escape:
             if self.is_pinned:

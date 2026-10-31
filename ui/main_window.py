@@ -503,8 +503,7 @@ class MainWindow(QWidget):
             rel_y = y - screen_geo.y()
             capsule.setGeometry(rel_x, rel_y, w, h)
             capsule.container.setFixedSize(w, h)
-            # Expand mask slightly to encompass shadow / glow
-            card_rect = QRect(rel_x - 12, rel_y - 12, w + 24, h + 24)
+            card_rect = QRect(rel_x, rel_y, w, h)
             total_mask = total_mask.united(QRegion(card_rect))
 
         # Set transparent click-through mask
@@ -595,6 +594,30 @@ class MainWindow(QWidget):
                 self.toggle_always_on_top()
                 event.accept()
                 return
+
+        # Enter / Return: Focus active input bar if not already typing in an editable input
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            focus_widget = self.focusWidget()
+            is_editable = (isinstance(focus_widget, QLineEdit) and not focus_widget.isReadOnly()) or (
+                isinstance(focus_widget, QTextEdit) and not focus_widget.isReadOnly()
+            )
+            if not is_editable:
+                focused_capsule = None
+                for c in self.capsules:
+                    if c.hasFocus() or c.isAncestorOf(focus_widget):
+                        focused_capsule = c
+                        break
+                target = focused_capsule or (self.capsules[-1] if self.capsules else None)
+                if target:
+                    if target.state == CAskCapsule.STATE_RESULT:
+                        if target.result_view and target.result_view.followup_input.isEnabled():
+                            target.result_view.followup_input.setFocus()
+                            event.accept()
+                            return
+                    elif target.state == CAskCapsule.STATE_INPUT:
+                        target.input_bar.setFocus()
+                        event.accept()
+                        return
 
         if key == Qt.Key.Key_Escape:
             # Find focused capsule
