@@ -609,8 +609,148 @@ class TestUIComponents(unittest.TestCase):
         view._handle_key_event(event)
         self.assertEqual(view_emitted, ["view"])
 
+    def test_result_view_followup_input_and_turn_status(self):
+        """Verify ResultView follow-up footer visibility, turn badge, and turn limit clamping."""
+        view = ResultView()
+        view.show()
+        self.assertTrue(view.footer_widget.isVisible())
+
+        # Render normal response: footer visible, turn 1 of 3
+        view.set_content("Assistant", "Initial response content", current_turn=1, max_turns=3)
+        self.assertTrue(view.footer_widget.isVisible())
+        self.assertEqual(view.turn_badge.text(), "1/3")
+        self.assertTrue(view.followup_input.isEnabled())
+        self.assertFalse(view.turn_badge.property("limit_reached"))
+
+        # Advance to turn limit (3 of 3)
+        view.update_turn_status(3, 3)
+        self.assertEqual(view.turn_badge.text(), "3/3")
+        self.assertFalse(view.followup_input.isEnabled())
+        self.assertTrue(view.turn_badge.property("limit_reached"))
+        self.assertIn("limit reached", view.followup_input.placeholderText().lower())
+
+        # Error response: footer should be hidden
+        view.set_content("Error [Assistant]", "Error description", is_error=True)
+        self.assertFalse(view.footer_widget.isVisible())
+
+    def test_result_view_append_turn(self):
+        """Verify ResultView appends Q&A markdown turns and updates turn status."""
+        view = ResultView()
+        view.set_content("Assistant", "First response", current_turn=1, max_turns=3)
+        self.assertEqual(view._raw_content, "First response")
+
+        # Append turn 2
+        view.append_turn("Can you give an example?", "Here is an example: `code`", current_turn=2, max_turns=3)
+        self.assertIn("First response", view._raw_content)
+        self.assertIn("**User:** Can you give an example?", view._raw_content)
+        self.assertIn("Here is an example: `code`", view._raw_content)
+        self.assertEqual(view.turn_badge.text(), "2/3")
+        self.assertTrue(view.followup_input.isEnabled())
+
+    def test_result_view_keyboard_guards_in_followup(self):
+        """Verify keyboard shortcuts (Shift+A, Shift+P) do not trigger when typing in follow-up input."""
+        view = ResultView()
+        view.show()
+        self.app.setActiveWindow(view)
+        view.followup_input.setFocus()
+        self.assertTrue(view.followup_input.hasFocus())
+
+        # Shift + A (user typing 'A'): should not trigger return_to_input_requested
+        return_emitted = []
+        view.return_to_input_requested.connect(lambda: return_emitted.append(True))
+        event_a = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_A, Qt.KeyboardModifier.ShiftModifier)
+        handled = view._handle_key_event(event_a)
+        self.assertFalse(handled)
+        self.assertEqual(len(return_emitted), 0)
+
+        # Shift + P (user typing 'P'): should not toggle pin
+        pin_emitted = []
+        view.pin_toggled.connect(lambda val: pin_emitted.append(val))
+        event_p = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_P, Qt.KeyboardModifier.ShiftModifier)
+        handled = view._handle_key_event(event_p)
+        self.assertFalse(handled)
+        self.assertEqual(len(pin_emitted), 0)
+
+        # Esc in follow-up input: clears input first
+        view.followup_input.setText("incomplete query")
+        event_esc = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Escape, Qt.KeyboardModifier.NoModifier)
+        self.assertTrue(view.eventFilter(view.followup_input, event_esc))
+        self.assertEqual(view.followup_input.text(), "")
+
+    def test_capsule_multiturn_thread_management(self):
+        """Verify CAskCapsule tracks multi-turn history, limits turns, and resets on return to input."""
+        import dataclasses
+        from unittest.mock import MagicMock, patch
+
+        with patch("ui.capsule.APIWorker") as MockWorker:
+            mock_worker = MagicMock()
+            mock_worker.isRunning.return_value = False
+            MockWorker.return_value = mock_worker
+
+            # Ensure config has dummy key and max_turns=3
+            cfg = dataclasses.replace(
+                self.config,
+                groq_api_key="dummy_key",
+                gemini_api_key="dummy_gemini",
+                max_followup_turns=3,
+            )
+
+            capsule = CAskCapsule(config=cfg, catalog=self.catalog)
+            self.assertEqual(capsule._chat_history, [])
+            self.assertEqual(capsule._turn_count, 1)
+
+            # Turn 1: Initial query
+            capsule._handle_submit("First question")
+            self.assertEqual(capsule.state, CAskCapsule.STATE_LOADING)
+
+            # Simulate worker response for turn 1
+            callbacks = [call[0][0] for call in mock_worker.finished.connect.call_args_list]
+            callbacks[-1]("First answer from AI")
+
+            self.assertEqual(capsule.state, CAskCapsule.STATE_RESULT)
+            self.assertEqual(len(capsule._chat_history), 2)
+            self.assertEqual(capsule._chat_history[0], {"role": "user", "content": "First question"})
+            self.assertEqual(capsule._chat_history[1], {"role": "assistant", "content": "First answer from AI"})
+            self.assertEqual(capsule._turn_count, 1)
+
+            # Turn 2: Follow-up query
+            capsule._handle_followup_submit("Second follow-up question")
+            # Verify MockWorker received history with the previous turn
+            last_kwargs = MockWorker.call_args[1]
+            self.assertEqual(len(last_kwargs["history"]), 2)
+            self.assertEqual(last_kwargs["user_prompt_content"], "Second follow-up question")
+
+            # Simulate worker response for turn 2
+            callbacks = [call[0][0] for call in mock_worker.finished.connect.call_args_list]
+            callbacks[-1]("Second answer from AI")
+
+            self.assertEqual(capsule._turn_count, 2)
+            self.assertEqual(len(capsule._chat_history), 4)
+            self.assertEqual(capsule._chat_history[2], {"role": "user", "content": "Second follow-up question"})
+            self.assertEqual(capsule._chat_history[3], {"role": "assistant", "content": "Second answer from AI"})
+
+            # Turn 3: Follow-up query reaching limit
+            capsule._handle_followup_submit("Third question reaching limit")
+            callbacks = [call[0][0] for call in mock_worker.finished.connect.call_args_list]
+            callbacks[-1]("Third answer")
+
+            self.assertEqual(capsule._turn_count, 3)
+            self.assertFalse(capsule.result_view.followup_input.isEnabled())
+
+            # Attempting Turn 4: Should be blocked by turn limit
+            call_count_before = MockWorker.call_count
+            capsule._handle_followup_submit("Fourth question should be rejected")
+            self.assertEqual(MockWorker.call_count, call_count_before)
+
+            # Returning to input (Shift + A) must reset conversation history
+            capsule._handle_return_to_input()
+            self.assertEqual(capsule.state, CAskCapsule.STATE_INPUT)
+            self.assertEqual(capsule._chat_history, [])
+            self.assertEqual(capsule._turn_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 
