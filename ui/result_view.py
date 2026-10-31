@@ -1,11 +1,12 @@
-"""Markdown result viewer widget with header bar, action buttons, and keyboard shortcuts."""
-
-from __future__ import annotations
+import html
+import re
+from typing import Optional
 
 try:
-    from PyQt6.QtCore import QEvent, Qt, QTimer, pyqtSignal
+    from PyQt6.QtCore import QEvent, QStringListModel, Qt, QTimer, pyqtSignal
     from PyQt6.QtGui import QGuiApplication, QKeyEvent, QTextCursor
     from PyQt6.QtWidgets import (
+        QCompleter,
         QFrame,
         QHBoxLayout,
         QLabel,
@@ -18,6 +19,7 @@ try:
 except ImportError:
     pass
 
+from core.command_loader import CommandCatalog
 from core.markdown_renderer import render_markdown_to_html
 from ui.icons import get_copy_icon, get_exit_icon, get_grip_icon, get_pin_icon, get_search_icon
 
@@ -35,11 +37,13 @@ class ResultView(QFrame):
     drag_moved = pyqtSignal(object)    # Emits QPoint global position
     drag_ended = pyqtSignal(object)    # Emits QPoint global position
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, catalog: Optional[CommandCatalog] = None, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("ResultViewWidget")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
+        self.catalog = catalog
+        self._completer: Optional[QCompleter] = None
         self._raw_content = ""
         self.is_pinned: bool = False
         self._drag_active: bool = False
@@ -131,8 +135,12 @@ class ResultView(QFrame):
         self.followup_input.setObjectName("FollowUpInput")
         self.followup_input.setPlaceholderText("Ask follow-up... (Enter to send)")
         self.followup_input.returnPressed.connect(self._handle_followup_submit)
+        self.followup_input.textChanged.connect(self._handle_followup_text_changed)
         self.followup_input.installEventFilter(self)
         footer_layout.addWidget(self.followup_input)
+
+        if self.catalog:
+            self._setup_completer(self.catalog)
 
         self.turn_badge = QLabel("1/3", self.footer_widget)
         self.turn_badge.setObjectName("TurnBadge")
@@ -140,6 +148,63 @@ class ResultView(QFrame):
         footer_layout.addWidget(self.turn_badge)
 
         main_layout.addWidget(self.footer_widget)
+
+    def _setup_completer(self, catalog: CommandCatalog) -> None:
+        """Setup command autocomplete dropdown popup for follow-up input bar."""
+        completions = ["/help"] + [f"/{name}" for name in catalog.list_names()]
+        model = QStringListModel(completions, self)
+
+        completer = QCompleter(model, self.followup_input)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        completer.setFilterMode(Qt.MatchFlag.MatchStartsWith)
+
+        popup = completer.popup()
+        if popup:
+            popup.setObjectName("CompleterPopup")
+            popup.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+            popup.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+            if popup.viewport():
+                popup.viewport().setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+            popup.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        completer.activated.connect(self._insert_completion)
+        self.followup_input.setCompleter(completer)
+        self._completer = completer
+
+    def _insert_completion(self, completion: str) -> None:
+        """Replace leading command token with selected completion."""
+        current = self.followup_input.text()
+        parts = current.split(" ", 1)
+        if len(parts) > 1:
+            new_text = f"{completion} {parts[1]}"
+        else:
+            new_text = f"{completion} "
+        self.followup_input.setText(new_text)
+
+    def _handle_followup_text_changed(self, text: str) -> None:
+        """Trigger autocomplete when typing slash commands and update visual styling."""
+        stripped = text.strip()
+        is_cmd = bool(stripped.startswith("/"))
+        if self.followup_input.property("is_command") != is_cmd:
+            self.followup_input.setProperty("is_command", is_cmd)
+            style = self.followup_input.style()
+            if style:
+                style.unpolish(self.followup_input)
+                style.polish(self.followup_input)
+
+        if not self._completer:
+            return
+
+        if stripped.startswith("/") and " " not in text:
+            self._completer.setCompletionPrefix(stripped)
+            popup = self._completer.popup()
+            if popup:
+                self._completer.complete()
+        else:
+            popup = self._completer.popup()
+            if popup and popup.isVisible():
+                popup.hide()
 
     def _handle_followup_submit(self) -> None:
         """Process entered follow-up query."""
@@ -206,7 +271,8 @@ class ResultView(QFrame):
         max_turns: int,
     ) -> None:
         """Append a follow-up conversation turn and refresh view and turn counter."""
-        turn_markdown = f"\n\n---\n\n**User:** {user_query}\n\n{ai_response}"
+        escaped_query = html.escape(user_query)
+        turn_markdown = f"\n\n---\n\n<div class=\"user-turn\"><strong>User:</strong> {escaped_query}</div>\n\n{ai_response}"
         self._raw_content += turn_markdown
         rendered_html = render_markdown_to_html(self._raw_content)
         self.text_browser.setHtml(rendered_html)
@@ -240,7 +306,12 @@ class ResultView(QFrame):
 
         clipboard = QGuiApplication.clipboard()
         if clipboard:
-            clipboard.setText(self._raw_content)
+            clean_text = re.sub(
+                r'<div class="user-turn"><strong>User:</strong> (.*?)</div>',
+                r'**User:** \1',
+                self._raw_content,
+            )
+            clipboard.setText(clean_text)
 
         self.copy_button.setText("✓ Copied!")
         QTimer.singleShot(1500, lambda: self.copy_button.setText("Copy"))

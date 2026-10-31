@@ -240,6 +240,11 @@ QScrollBar::sub-page:vertical {
     background-color: rgba(35, 41, 52, 0.80);
 }
 
+#FollowUpInput[is_command="true"] {
+    border: 1px solid rgba(249, 226, 175, 0.65);
+    color: #f9e2af;
+}
+
 #FollowUpInput:disabled {
     background-color: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.06);

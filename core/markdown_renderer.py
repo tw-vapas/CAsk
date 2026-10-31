@@ -101,6 +101,19 @@ hr {
     border-top: 1px solid rgba(255, 255, 255, 0.15);
     margin: 14px 0;
 }
+.user-turn {
+    background-color: rgba(249, 226, 175, 0.12);
+    border-left: 3px solid #f9e2af;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 14px 0 10px 0;
+    color: #f9e2af;
+    font-weight: 600;
+}
+.user-turn strong {
+    color: #f9e2af;
+    font-weight: bold;
+}
 </style>
 """
 
@@ -222,6 +235,13 @@ def _fallback_render_markdown(text: str) -> str:
                 html_out.append("<ol>")
                 in_ol = True
             html_out.append(f"<li>{_format_inlines(m_ol.group(2))}</li>")
+            continue
+
+        # Raw HTML block pass-through (e.g. user-turn highlight)
+        if stripped.startswith("<div") or stripped.startswith("</div"):
+            flush_list()
+            flush_table()
+            html_out.append(stripped)
             continue
 
         # Normal text / paragraph
