@@ -643,10 +643,15 @@ class TestUIComponents(unittest.TestCase):
         # Append turn 2
         view.append_turn("Can you give an example?", "Here is an example: `code`", current_turn=2, max_turns=3)
         self.assertIn("First response", view._raw_content)
-        self.assertIn("**User:** Can you give an example?", view._raw_content)
+        self.assertIn('<div class="user-turn"><strong>User:</strong> Can you give an example?</div>', view._raw_content)
         self.assertIn("Here is an example: `code`", view._raw_content)
         self.assertEqual(view.turn_badge.text(), "2/3")
         self.assertTrue(view.followup_input.isEnabled())
+
+        # Test clipboard copy cleanses HTML tags into standard Markdown
+        view._copy_to_clipboard()
+        clipboard_text = self.app.clipboard().text()
+        self.assertIn("**User:** Can you give an example?", clipboard_text)
 
     def test_result_view_keyboard_guards_in_followup(self):
         """Verify keyboard shortcuts (Shift+A, Shift+P) do not trigger when typing in follow-up input."""
@@ -775,6 +780,66 @@ class TestUIComponents(unittest.TestCase):
             with patch.object(window, "_apply_initial_layer") as mock_apply_launch:
                 window.handle_external_launch()
                 mock_apply_launch.assert_any_call(retries=2)
+
+    def test_followup_slash_command_routing_and_completer(self):
+        """Verify ResultView follow-up input supports command completer and routes slash commands."""
+        import dataclasses
+        from unittest.mock import MagicMock, patch
+
+        cfg = dataclasses.replace(
+            self.config,
+            groq_api_key="dummy_key",
+            gemini_api_key="dummy_gemini",
+            max_followup_turns=5,
+        )
+
+        capsule = CAskCapsule(config=cfg, catalog=self.catalog)
+        view = capsule.result_view
+
+        # 1. Verify completer is registered on followup_input
+        self.assertIsNotNone(view._completer)
+        view.followup_input.setText("/t")
+        self.assertTrue(view.followup_input.property("is_command"))
+
+        with patch("ui.capsule.APIWorker") as MockWorker:
+            mock_worker = MagicMock()
+            mock_worker.isRunning.return_value = False
+            MockWorker.return_value = mock_worker
+
+            # Simulate initial response
+            capsule._handle_submit("Initial prompt")
+            callbacks = [call[0][0] for call in mock_worker.finished.connect.call_args_list]
+            callbacks[0]("Initial AI response")
+            self.assertEqual(capsule.state, CAskCapsule.STATE_RESULT)
+
+            # 2. Follow-up with /help: zero API calls, instantly appends turn
+            MockWorker.reset_mock()
+            capsule._handle_followup_submit("/help")
+            MockWorker.assert_not_called()
+            self.assertIn("Available Commands", view._raw_content)
+
+            # 3. Follow-up with registered command /trans
+            MockWorker.reset_mock()
+            capsule._handle_followup_submit("/trans Dịch câu này sang tiếng Anh")
+            MockWorker.assert_called_once()
+            call_kwargs = MockWorker.call_args[1]
+            self.assertEqual(call_kwargs["user_prompt_content"], "Dịch câu này sang tiếng Anh")
+            self.assertIn("translation", call_kwargs["system_prompt"].lower())
+
+    def test_worker_cancellation_and_stop_worker(self):
+        """Verify stop_worker cancels active worker and detaches signals cleanly."""
+        from core.api_client import APIWorker
+
+        worker = APIWorker(
+            system_prompt="sys",
+            user_prompt_content="usr",
+            config=self.config,
+            history=None,
+            parent=None,
+        )
+        self.assertFalse(worker._is_cancelled)
+        worker.cancel()
+        self.assertTrue(worker._is_cancelled)
 
 
 if __name__ == "__main__":
