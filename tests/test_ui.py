@@ -4,6 +4,7 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 # Run tests headlessly
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
@@ -747,6 +748,33 @@ class TestUIComponents(unittest.TestCase):
             self.assertEqual(capsule.state, CAskCapsule.STATE_INPUT)
             self.assertEqual(capsule._chat_history, [])
             self.assertEqual(capsule._turn_count, 1)
+
+    def test_initial_launch_enforces_kwin_layer(self):
+        """Verify that window display and external launch proactively enforce KWin Keep Above layer."""
+        window = MainWindow(config=self.config, catalog=self.catalog)
+        self.assertTrue(window._is_always_on_top)
+
+        with patch.object(window, "_set_kwin_layer") as mock_set_layer:
+            # 1. When window is shown, showEvent invokes _apply_initial_layer
+            with patch.object(window, "_apply_initial_layer") as mock_apply:
+                window.showEvent(None)
+                mock_apply.assert_called_once()
+
+            # 2. _apply_initial_layer calls _set_kwin_layer(True) when on-top is active
+            window._apply_initial_layer(retries=0)
+            mock_set_layer.assert_called_with(True)
+
+            mock_set_layer.reset_mock()
+            # 3. When on-top is disabled, _apply_initial_layer does not force keep-above
+            window._is_always_on_top = False
+            window._apply_initial_layer(retries=0)
+            mock_set_layer.assert_not_called()
+
+            # 4. handle_external_launch re-enforces on-top layer
+            window._is_always_on_top = True
+            with patch.object(window, "_apply_initial_layer") as mock_apply_launch:
+                window.handle_external_launch()
+                mock_apply_launch.assert_any_call(retries=2)
 
 
 if __name__ == "__main__":

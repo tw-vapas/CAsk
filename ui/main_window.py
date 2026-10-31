@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Optional
 
 try:
-    from PyQt6.QtCore import QEvent, QPoint, QRect, QSize, Qt
+    from PyQt6.QtCore import QEvent, QPoint, QRect, QSize, Qt, QTimer
     from PyQt6.QtGui import QCursor, QGuiApplication, QIcon, QKeyEvent, QMouseEvent, QRegion
     from PyQt6.QtWidgets import QFrame, QWidget
 except ImportError:
@@ -121,7 +121,7 @@ class MainWindow(QWidget):
         var windows = workspace.windowList();
         for (var i = 0; i < windows.length; i++) {{
             var w = windows[i];
-            if (w.caption === "CAsk" || w.resourceClass === "cask") {{
+            if (w.caption === "CAsk" || w.resourceClass === "cask" || w.resourceName === "cask" || w.desktopFileName === "cask") {{
                 w.keepAbove = {target_above};
                 w.keepBelow = {target_below};
             }}
@@ -160,6 +160,22 @@ class MainWindow(QWidget):
                     os.unlink(f_path)
                 except OSError:
                     pass
+
+    def _apply_initial_layer(self, retries: int = 5) -> None:
+        """Ensure initial Always-On-Top / Keep Above status is enforced by KWin on Wayland."""
+        if not getattr(self, "_is_always_on_top", True):
+            return
+
+        self._set_kwin_layer(True)
+        if retries > 0:
+            delays = [40, 80, 160, 300, 500]
+            delay = delays[5 - retries] if (5 - retries) < len(delays) else 100
+            QTimer.singleShot(delay, lambda: self._apply_initial_layer(retries - 1))
+
+    def showEvent(self, event) -> None:
+        """Handle window display event and enforce compositor layer policies."""
+        super().showEvent(event)
+        self._apply_initial_layer()
 
     def toggle_always_on_top(self) -> bool:
         """Toggle window between Keep Above (on-top) and Keep Below (behind other windows)."""
@@ -229,6 +245,8 @@ class MainWindow(QWidget):
         """Launch another capsule (up to 3) or focus newest active capsule."""
         if not getattr(self, "_is_always_on_top", True):
             self.toggle_always_on_top()
+        else:
+            self._apply_initial_layer(retries=2)
         self.show()
         try:
             self.raise_()
