@@ -4,11 +4,12 @@ from __future__ import annotations
 
 try:
     from PyQt6.QtCore import QEvent, Qt, QTimer, pyqtSignal
-    from PyQt6.QtGui import QGuiApplication, QKeyEvent
+    from PyQt6.QtGui import QGuiApplication, QKeyEvent, QTextCursor
     from PyQt6.QtWidgets import (
         QFrame,
         QHBoxLayout,
         QLabel,
+        QLineEdit,
         QPushButton,
         QTextBrowser,
         QVBoxLayout,
@@ -29,6 +30,7 @@ class ResultView(QFrame):
     return_to_input_requested = pyqtSignal()
     reorder_requested = pyqtSignal(int)  # -1 for left, +1 for right
     toggle_on_top_requested = pyqtSignal()
+    followup_submitted = pyqtSignal(str)
     drag_started = pyqtSignal(object)  # Emits QPoint global position
     drag_moved = pyqtSignal(object)    # Emits QPoint global position
     drag_ended = pyqtSignal(object)    # Emits QPoint global position
@@ -118,17 +120,77 @@ class ResultView(QFrame):
         self.text_browser.installEventFilter(self)
         main_layout.addWidget(self.text_browser)
 
-    def set_content(self, badge: str, content: str, is_error: bool = False) -> None:
+        # Multi-turn Follow-up Footer Bar
+        self.footer_widget = QWidget(self)
+        self.footer_widget.setObjectName("FollowUpFooter")
+        footer_layout = QHBoxLayout(self.footer_widget)
+        footer_layout.setContentsMargins(0, 0, 0, 0)
+        footer_layout.setSpacing(8)
+
+        self.followup_input = QLineEdit(self.footer_widget)
+        self.followup_input.setObjectName("FollowUpInput")
+        self.followup_input.setPlaceholderText("Ask follow-up... (Enter to send)")
+        self.followup_input.returnPressed.connect(self._handle_followup_submit)
+        self.followup_input.installEventFilter(self)
+        footer_layout.addWidget(self.followup_input)
+
+        self.turn_badge = QLabel("1/3", self.footer_widget)
+        self.turn_badge.setObjectName("TurnBadge")
+        self.turn_badge.setToolTip("Conversation turn count (Current / Max)")
+        footer_layout.addWidget(self.turn_badge)
+
+        main_layout.addWidget(self.footer_widget)
+
+    def _handle_followup_submit(self) -> None:
+        """Process entered follow-up query."""
+        text = self.followup_input.text().strip()
+        if not text:
+            return
+        self.followup_input.clear()
+        self.followup_submitted.emit(text)
+
+    def update_turn_status(self, current_turn: int, max_turns: int) -> None:
+        """Update turn badge and toggle input bar availability when max turns reached."""
+        self.turn_badge.setText(f"{current_turn}/{max_turns}")
+        if current_turn >= max_turns:
+            self.followup_input.setEnabled(False)
+            self.followup_input.setPlaceholderText("Turn limit reached for this card (Shift + A to start new)")
+            self.turn_badge.setProperty("limit_reached", True)
+        else:
+            self.followup_input.setEnabled(True)
+            self.followup_input.setPlaceholderText("Ask follow-up... (Enter to send)")
+            self.turn_badge.setProperty("limit_reached", False)
+
+        style = self.turn_badge.style()
+        if style:
+            style.unpolish(self.turn_badge)
+            style.polish(self.turn_badge)
+
+    def set_content(
+        self,
+        badge: str,
+        content: str,
+        is_error: bool = False,
+        current_turn: int = 1,
+        max_turns: int = 3,
+    ) -> None:
         """Render markdown content with math formula parsing and set badge indicator."""
         self._raw_content = content
         self.badge_label.setText(badge)
         if is_error:
             self.badge_label.setStyleSheet("color: #f87171; background-color: rgba(248, 113, 113, 0.15); border: 1px solid rgba(248, 113, 113, 0.35); border-radius: 6px; padding: 3px 8px; font-weight: bold;")
+            self.footer_widget.setVisible(False)
         elif badge.startswith("/"):
             # Command mode: bold yellow badge styling
             self.badge_label.setStyleSheet("color: #f9e2af; background-color: rgba(249, 226, 175, 0.15); border: 1px solid rgba(249, 226, 175, 0.35); border-radius: 6px; padding: 3px 8px; font-weight: bold;")
+            self.footer_widget.setVisible(True)
+            self.update_turn_status(current_turn, max_turns)
         else:
             self.badge_label.setStyleSheet("")
+            self.footer_widget.setVisible(True)
+            self.update_turn_status(current_turn, max_turns)
+
+        self.followup_input.clear()
 
         # Render rich HTML with full GFM tables, lists, and LaTeX math formulas
         rendered_html = render_markdown_to_html(content)
@@ -136,13 +198,35 @@ class ResultView(QFrame):
         self.copy_button.setText("Copy")
         self.copy_button.setIcon(get_copy_icon())
 
+    def append_turn(
+        self,
+        user_query: str,
+        ai_response: str,
+        current_turn: int,
+        max_turns: int,
+    ) -> None:
+        """Append a follow-up conversation turn and refresh view and turn counter."""
+        turn_markdown = f"\n\n---\n\n**User:** {user_query}\n\n{ai_response}"
+        self._raw_content += turn_markdown
+        rendered_html = render_markdown_to_html(self._raw_content)
+        self.text_browser.setHtml(rendered_html)
+
+        cursor = self.text_browser.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        self.text_browser.setTextCursor(cursor)
+
+        self.update_turn_status(current_turn, max_turns)
+        if self.followup_input.isEnabled():
+            self.followup_input.clear()
+            self.followup_input.setFocus()
+
     def calculate_ideal_height(self, available_width: int = 760) -> int:
         """Calculate desired container height based on natural markdown document dimensions."""
         content_width = max(300, available_width - 44)
         doc = self.text_browser.document().clone()
         doc.setTextWidth(content_width)
         doc_height = int(doc.size().height())
-        overhead = 85
+        overhead = 125 if hasattr(self, "footer_widget") and self.footer_widget.isVisible() else 85
         return doc_height + overhead
 
     def get_document_ideal_height(self) -> int:
@@ -179,6 +263,19 @@ class ResultView(QFrame):
         """Process keyboard shortcuts (A, P, C, Esc, Enter)."""
         key = event.key()
         modifiers = event.modifiers()
+
+        # If user is typing in followup_input, preserve typing and delegate
+        if hasattr(self, "followup_input") and self.followup_input.hasFocus():
+            if (modifiers & Qt.KeyboardModifier.AltModifier) and key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
+                direction = -1 if key == Qt.Key.Key_Left else 1
+                self.reorder_requested.emit(direction)
+                event.accept()
+                return True
+            if (modifiers & Qt.KeyboardModifier.AltModifier) and key == Qt.Key.Key_H:
+                self.toggle_on_top_requested.emit()
+                event.accept()
+                return True
+            return False
 
         # Shortcut Shift + A: Return to input bar
         if key == Qt.Key.Key_A and (modifiers & Qt.KeyboardModifier.ShiftModifier):
@@ -231,10 +328,20 @@ class ResultView(QFrame):
         return False
 
     def eventFilter(self, obj, event) -> bool:
-        """Intercept key events from text browser and mouse drag events on drag_handle."""
+        """Intercept key events from text browser, follow-up input, and mouse drag events."""
         if obj == self.text_browser and event.type() == QEvent.Type.KeyPress:
             if self._handle_key_event(event):
                 return True
+
+        if hasattr(self, "followup_input") and obj == self.followup_input:
+            if event.type() == QEvent.Type.KeyPress:
+                if event.key() == Qt.Key.Key_Escape:
+                    if self.followup_input.text():
+                        self.followup_input.clear()
+                        return True
+                    else:
+                        self.text_browser.setFocus()
+                        return True
 
         if obj == self.drag_handle:
             event_type = event.type()
