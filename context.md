@@ -17,6 +17,11 @@ This document details the software architecture, design principles, technical so
   - **Fallback:** Google Gemini API (`gemini-3.5-flash-lite`), automatically triggered if Groq fails, times out, or lacks an API key.
 - **Network Layer:** Python standard library `urllib.request` with forced IPv4 resolution (avoiding Wayland/systemd IPv6 DNS lookup latency).
 - **Execution Concurrency:** Non-blocking asynchronous Qt worker thread (`APIWorker` in `QThread`) emitting signals (`finished`, `error`) to preserve 60fps UI responsiveness.
+- **Multi-Turn Conversation Engine:**
+  - `core/api_client.py`: Request payloads serialize conversational `history` into Groq (OpenAI-compatible) and Gemini (`contents`) schemas.
+  - `core/config.py`: Configurable `MAX_FOLLOWUP_TURNS` (default: 3, clamped 1–10).
+  - `ui/capsule.py`: Thread state isolation per capsule (`_chat_history`, `_turn_count`).
+  - `ui/result_view.py`: Dedicated follow-up input bar (`#FollowUpInput`), turn counter badge (`#TurnBadge`), and shortcut isolation preventing collision between letter typing and action shortcuts.
 - **Decoupled System Prompts (`execution/DEFAULT.md` & `execution/commands/*.md`):**
   - All AI personas are externalized markdown files with frontmatter-style metadata.
   - `execution/DEFAULT.md` configures the default behavior when no slash command is used.
