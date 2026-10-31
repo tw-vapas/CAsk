@@ -93,6 +93,7 @@ class CAskCapsule(QWidget):
         return False
 
     def _setup_ui(self) -> None:
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -100,15 +101,7 @@ class CAskCapsule(QWidget):
         # Container frame
         self.container = QFrame(self)
         self.container.setObjectName("CentralContainer")
-
-        try:
-            shadow = QGraphicsDropShadowEffect(self.container)
-            shadow.setBlurRadius(36)
-            shadow.setOffset(0, 6)
-            shadow.setColor(QColor(0, 0, 0, 160))
-            self.container.setGraphicsEffect(shadow)
-        except Exception:
-            pass
+        self.container.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         container_layout = QVBoxLayout(self.container)
         container_layout.setContentsMargins(0, 0, 0, 0)
