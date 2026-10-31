@@ -15,8 +15,30 @@ class TestCoreConfig(unittest.TestCase):
         self.assertEqual(config.groq_model, "openai/gpt-oss-120b")
         self.assertEqual(config.gemini_model, "gemini-3.5-flash-lite")
         self.assertEqual(config.max_tokens, 4096)
+        self.assertEqual(config.max_followup_turns, 3)
         self.assertTrue(config.default_execution_dir.is_dir())
         self.assertTrue(config.default_commands_dir.is_dir())
+
+    def test_max_followup_turns_clamping(self):
+        import os
+        from unittest.mock import patch
+        script_dir = Path(__file__).resolve().parent.parent
+
+        with patch.dict(os.environ, {"MAX_FOLLOWUP_TURNS": "5"}):
+            cfg = load_config(script_dir=script_dir)
+            self.assertEqual(cfg.max_followup_turns, 5)
+
+        with patch.dict(os.environ, {"MAX_FOLLOWUP_TURNS": "999"}):
+            cfg = load_config(script_dir=script_dir)
+            self.assertEqual(cfg.max_followup_turns, 10)
+
+        with patch.dict(os.environ, {"MAX_FOLLOWUP_TURNS": "-5"}):
+            cfg = load_config(script_dir=script_dir)
+            self.assertEqual(cfg.max_followup_turns, 1)
+
+        with patch.dict(os.environ, {"MAX_FOLLOWUP_TURNS": "invalid"}):
+            cfg = load_config(script_dir=script_dir)
+            self.assertEqual(cfg.max_followup_turns, 3)
 
     def test_placeholder_key_detection(self):
         from core.config import is_placeholder_key
