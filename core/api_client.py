@@ -211,10 +211,11 @@ class APIClient:
 
 # Optional PyQt6 worker thread integration
 try:
-    from PyQt6.QtCore import QThread, pyqtSignal
+    import threading
+    from PyQt6.QtCore import QObject, pyqtSignal
 
-    class APIWorker(QThread):
-        """Asynchronous QThread worker for non-blocking API calls."""
+    class APIWorker(QObject):
+        """Asynchronous QObject worker with a daemon thread for non-blocking API calls."""
 
         finished = pyqtSignal(str)
         error = pyqtSignal(str)
@@ -233,12 +234,34 @@ try:
             self.config = config
             self.history = history
             self._is_cancelled: bool = False
+            self._thread: Optional[threading.Thread] = None
+
+        def start(self) -> None:
+            """Start background API request on a daemon thread."""
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
+
+        def isRunning(self) -> bool:
+            """Return True if background thread is still executing."""
+            return self._thread is not None and self._thread.is_alive()
 
         def cancel(self) -> None:
             """Flag worker as cancelled to suppress further signal emissions."""
             self._is_cancelled = True
 
-        def run(self) -> None:
+        def quit(self) -> None:
+            """Compatibility method matching QThread interface."""
+            self.cancel()
+
+        def wait(self, timeout_ms: int = 0) -> bool:
+            """Wait for worker thread termination."""
+            if self._thread and self._thread.is_alive():
+                timeout_s = (timeout_ms / 1000.0) if timeout_ms > 0 else None
+                self._thread.join(timeout=timeout_s)
+                return not self._thread.is_alive()
+            return True
+
+        def _run(self) -> None:
             content, err = APIClient.request(
                 self.system_prompt,
                 self.user_prompt_content,
@@ -248,10 +271,13 @@ try:
             if self._is_cancelled:
                 return
 
-            if content:
-                self.finished.emit(content)
-            else:
-                self.error.emit(err or "Unknown error occurred.")
+            try:
+                if content:
+                    self.finished.emit(content)
+                else:
+                    self.error.emit(err or "Unknown error occurred.")
+            except (RuntimeError, Exception):
+                pass
 
 except ImportError:
     class APIWorker:  # type: ignore[no-redef]
