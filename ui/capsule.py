@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Dict, List, Optional
 
 try:
     from PyQt6.QtCore import QRect, Qt, pyqtSignal
@@ -55,6 +55,10 @@ class CAskCapsule(QWidget):
         self.initial_input = initial_input
         self._worker: Optional[APIWorker] = None
         self._state: int = self.STATE_INPUT
+        self._chat_history: List[Dict[str, str]] = []
+        self._turn_count: int = 1
+        self._current_system_prompt: str = ""
+        self._current_badge: str = ""
 
         self._setup_ui()
 
@@ -119,12 +123,16 @@ class CAskCapsule(QWidget):
         self.result_view.drag_started.connect(lambda pt: self.drag_started.emit(self, pt))
         self.result_view.drag_moved.connect(lambda pt: self.drag_moved.emit(self, pt))
         self.result_view.drag_ended.connect(lambda pt: self.drag_ended.emit(self, pt))
+        self.result_view.followup_submitted.connect(self._handle_followup_submit)
         self.stack.addWidget(self.result_view)
 
         layout.addWidget(self.container)
 
     def _handle_return_to_input(self) -> None:
         """Switch from Result state back to Input state and focus input bar."""
+        self._chat_history = []
+        self._turn_count = 1
+        self._current_system_prompt = ""
         self.switch_state(self.STATE_INPUT)
         self.input_bar.selectAll()
         self.input_bar.setFocus()
@@ -191,23 +199,87 @@ class CAskCapsule(QWidget):
         self.loading_widget.set_loading_text(route.loading_label)
         self.switch_state(self.STATE_LOADING)
 
+        # Reset conversation thread state
+        self._chat_history = []
+        self._turn_count = 1
+        self._current_system_prompt = route.system_prompt
+        self._current_badge = f"/{route.command}" if route.command else "Assistant"
+        badge_name = self._current_badge
+
         # Launch background API request
-        badge_name = f"/{route.command}" if route.command else "Assistant"
         self._worker = APIWorker(
             system_prompt=route.system_prompt,
             user_prompt_content=route.user_prompt_content,
             config=self.config,
+            history=None,
             parent=self,
         )
-        self._worker.finished.connect(
-            lambda res: self._show_result(badge_name, res, is_error=False)
-        )
+
+        def _on_initial_finish(res: str) -> None:
+            self._chat_history.append({"role": "user", "content": route.user_prompt_content})
+            self._chat_history.append({"role": "assistant", "content": res})
+            self._show_result(badge_name, res, is_error=False)
+
+        self._worker.finished.connect(_on_initial_finish)
         self._worker.error.connect(
             lambda err: self._show_result(f"Error [{badge_name}]", f"### Request Failed\n\n{err}", is_error=True)
         )
         self._worker.start()
 
+    def _handle_followup_submit(self, followup_text: str) -> None:
+        """Submit a follow-up prompt within the current conversation thread."""
+        if self._turn_count >= self.config.max_followup_turns:
+            return
+        if self._worker and self._worker.isRunning():
+            return
+
+        # Disable input while waiting for model response
+        self.result_view.followup_input.setEnabled(False)
+        self.result_view.followup_input.setPlaceholderText("Thinking...")
+        self.result_view.turn_badge.setText(f"{self._turn_count}/{self.config.max_followup_turns} (thinking)")
+
+        self._worker = APIWorker(
+            system_prompt=self._current_system_prompt,
+            user_prompt_content=followup_text,
+            config=self.config,
+            history=list(self._chat_history),
+            parent=self,
+        )
+
+        def _on_followup_finish(res: str) -> None:
+            self._chat_history.append({"role": "user", "content": followup_text})
+            self._chat_history.append({"role": "assistant", "content": res})
+            self._turn_count += 1
+            self.result_view.append_turn(
+                user_query=followup_text,
+                ai_response=res,
+                current_turn=self._turn_count,
+                max_turns=self.config.max_followup_turns,
+            )
+            self.size_changed.emit(self)
+
+        def _on_followup_error(err: str) -> None:
+            error_msg = f"⚠️ **Request Failed:** {err}"
+            self.result_view.append_turn(
+                user_query=followup_text,
+                ai_response=error_msg,
+                current_turn=self._turn_count,
+                max_turns=self.config.max_followup_turns,
+            )
+            self.size_changed.emit(self)
+
+        self._worker.finished.connect(_on_followup_finish)
+        self._worker.error.connect(_on_followup_error)
+        self._worker.start()
+
     def _show_result(self, badge: str, content: str, is_error: bool = False) -> None:
         """Render response with elastic dynamic auto-expansion."""
-        self.result_view.set_content(badge, content, is_error=is_error)
+        self.result_view.set_content(
+            badge,
+            content,
+            is_error=is_error,
+            current_turn=self._turn_count,
+            max_turns=self.config.max_followup_turns,
+        )
         self.switch_state(self.STATE_RESULT)
+
