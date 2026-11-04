@@ -63,6 +63,7 @@ class TestCoreCommandLoader(unittest.TestCase):
         names = self.catalog.list_names()
         self.assertIn("ask", names)
         self.assertIn("eva", names)
+        self.assertIn("check", names)
         self.assertNotIn("guide", names)
         self.assertNotIn("readme", names)
         self.assertNotIn("default", names)
@@ -76,11 +77,21 @@ class TestCoreCommandLoader(unittest.TestCase):
         self.assertEqual(ask.example, "/ask Quantum computing")
         self.assertIn("Output Structure:", ask.prompt)
 
+    def test_check_command_metadata(self):
+        check = self.catalog.get("check")
+        self.assertIsNotNone(check)
+        self.assertEqual(check.name, "check")
+        self.assertEqual(check.signature, "/check <statement>")
+        self.assertIn("Objective fact-checking", check.description)
+        self.assertEqual(check.example, "/check AI will completely replace software engineers within five years")
+        self.assertIn("Output Structure", check.prompt)
+
     def test_help_text_generation(self):
         help_text = self.catalog.generate_help_text()
         self.assertIn("CAsk - Available Commands", help_text)
         self.assertIn("/help", help_text)
         self.assertIn("/ask &lt;topic&gt;", help_text)
+        self.assertIn("/check &lt;statement&gt;", help_text)
         self.assertIn("/eva &lt;sentence&gt;", help_text)
         self.assertNotIn("/default", help_text)
         self.assertIn("Keyboard Shortcuts", help_text)
@@ -116,6 +127,15 @@ class TestCoreRouter(unittest.TestCase):
         self.assertEqual(res.user_prompt_content, "What is entropy?")
         self.assertEqual(res.loading_label, "processing /ask...")
         self.assertIn("Output Structure:", res.system_prompt)
+
+    def test_check_routing(self):
+        res = route_input("/check The earth is flat", self.catalog, self.config)
+        self.assertEqual(res.route_type, RouteType.COMMAND)
+        self.assertEqual(res.command, "check")
+        self.assertEqual(res.payload, "The earth is flat")
+        self.assertEqual(res.user_prompt_content, "The earth is flat")
+        self.assertEqual(res.loading_label, "processing /check...")
+        self.assertIn("Output Structure", res.system_prompt)
 
     def test_missing_argument(self):
         res = route_input("/ask", self.catalog, self.config)
