@@ -85,6 +85,9 @@ if [ -L "$PROMPT_TARGET" ] || [ -f "$PROMPT_TARGET" ]; then
 fi
 
 # Setup execution templates: DEFAULT.md and GUIDE.md
+# Clean up dangling symlinks if present in execution dir
+find "$EXECUTION_DIR" -maxdepth 1 -xtype l -delete 2>/dev/null || true
+
 # Only copy DEFAULT.md if user has not already customized it in ~/.config/cask/execution/DEFAULT.md
 if [ -f "$SCRIPT_DIR/execution/DEFAULT.md" ]; then
     if [ ! -f "$EXECUTION_DIR/DEFAULT.md" ]; then
