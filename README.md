@@ -123,6 +123,7 @@ Pressing the shortcut multiple times can open up to **3 concurrent side-by-side 
 | `<prompt or text>` | **Default Assistant** | Direct execution with customizable default persona (`execution/DEFAULT.md`). |
 | `/help` or `/` | **Command Help** | Displays the interactive catalog of all available commands, keyboard shortcuts, and usage guide. |
 | `/ask <topic>` | **Concept Explainer** | Clear, concise concept explanation with core intuition and real-world application. |
+| `/check <statement>` | **Fact-Checker & Critic** | Objective fact-checking, logical critique, and counter-argument analysis. |
 | `/eva <sentence>` | **Language Coach** | Sentence evaluation, grammar critique, and native rephrasing suggestions. |
 | `/trans <sentence>` | **Bilingual Translator** | High-density bidirectional translation (English <-> Vietnamese). |
 
@@ -233,6 +234,7 @@ cask/
 │   ├── GUIDE.md               # Command authoring specifications
 │   └── commands/              # Modular slash command prompts
 │       ├── ask.md             # /ask concept explanation prompt
+│       ├── check.md           # /check objective critique and counter-argument prompt
 │       ├── eva.md             # /eva grammar and phrasing critique prompt
 │       └── trans.md           # /trans bilingual translation prompt
 ├── tests/                     # Automated test suite

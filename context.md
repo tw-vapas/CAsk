@@ -83,7 +83,7 @@ stateDiagram-v2
    - **Dynamic Height Auto-Expansion:** Minimum 50px (single line baseline) up to 220px (clamped max height). Automatically resizes to fit multiple lines and wrapped text.
    - **Multiline Editing:** Pressing <kbd>Shift</kbd>+<kbd>Enter</kbd> inserts a newline. Pressing <kbd>Enter</kbd> submits.
    - **Scrollbar Behavior:** Scrollbar is strictly hidden on single lines and empty text (`ScrollBarAlwaysOff`), activating as needed only when reaching 220px.
-   - **Autocomplete:** Typing `/` opens a `QCompleter` dropdown displaying registered commands (`/help`, `/ask`, `/eva`, `/trans`).
+   - **Autocomplete:** Typing `/` opens a `QCompleter` dropdown displaying registered commands (`/help`, `/ask`, `/check`, `/eva`, `/trans`).
    - **Focus Retention:** Persistent across focus loss; users can click background windows without dismissing the input bar.
 
 2. **State 1: Loading State (`STATE_LOADING`)**
@@ -95,7 +95,7 @@ stateDiagram-v2
    - **Dimensions:** Elastic height calculated from markdown document geometry (min 190px up to 840px max).
    - **Header Action Bar:**
      - **Drag Handle (`#DragHandle`):** SVG 6-dot grip icon `⋮⋮` allowing drag-and-drop window reordering with live drop preview and tooltip indicating `[Alt + ← / →]`.
-     - **Status Badge:** Identifies result type (e.g. `Help`, `/ask`, `/eva`, `/trans`, `Assistant`).
+     - **Status Badge:** Identifies result type (e.g. `Help`, `/ask`, `/check`, `/eva`, `/trans`, `Assistant`).
      - **Ask (`#AskButton`):** SVG magnifying glass icon + `Ask` (Shortcut: <kbd>Shift</kbd> + <kbd>A</kbd>). Switches back to the input bar to refine or submit a new query.
      - **Copy (`#CopyButton`):** SVG clipboard icon + `Copy` (Shortcut: <kbd>Shift</kbd> + <kbd>C</kbd> / <kbd>Ctrl</kbd> + <kbd>C</kbd>). Copies full markdown to clipboard with temporary `✓ Copied!` confirmation.
      - **Pin (`#PinButton`):** SVG pushpin icon + `Pin` / `Pinned` (Shortcut: <kbd>Shift</kbd> + <kbd>P</kbd>). Toggles window pinning.
@@ -174,6 +174,13 @@ stateDiagram-v2
   - **Solid Code Block Container (`core/markdown_renderer.py`):** Transformed fenced and block code into single-cell `<table class="code-block" ... bgcolor="#11111b">` wrappers containing `<pre>`. Qt renders the table cell as a single cohesive solid background with rounded borders and padding. Converted inline code to `<span class="inline-code">`, keeping inline code backgrounds distinct from block code.
   - **Corner Artifact Elimination (`ui/capsule.py` & `ui/main_window.py`):** Identified `QGraphicsDropShadowEffect(self.container)` as the root cause of the square gray corner protrusion, where Qt computed an offscreen blur convolution against the rectangular bounding frame of `QFrame`. Removed the shadow effect and enforced `WA_TranslucentBackground` on `CAskCapsule` and `CentralContainer`. Tightened `card_rect` mask bounds in `MainWindow._recompute_layout` to produce crisp, anti-aliased rounded corners without rectangular bleeding.
 
+### 📌 Solution 10: Objective Verification & Counter-Argument Command (`/check`)
+- **Requirement:** Introduce a dedicated `/check <statement>` command to critically challenge premises, verify factual accuracy, and expose logical fallacies, unstated assumptions, and edge cases.
+- **Implementation:**
+  - **Template Specification (`execution/commands/check.md`):** Configured modular prompt with dual-language structure (Vietnamese and English) matching the user input language. Instructs the LLM to deliver zero conversational fluff, an objective preliminary verdict, categorized logical flaws/fallacies, empirical counter-examples, and a calibrated refined proposition.
+  - **Dynamic Routing & Loading:** Registered seamlessly into `CommandCatalog`, `core/router.py`, and `QCompleter` autocompletion without code modifications to core routing logic.
+  - **Symlink Management (`install.sh`):** Added dangling symlink pruning (`find ... -xtype l -delete`) before copying or symlinking execution templates to guarantee idempotent installation across renames or directory changes.
+
 ---
 
 ## 5. Project Directory Layout
@@ -206,6 +213,7 @@ cask/
 │   ├── GUIDE.md               # Command authoring guide and best practices
 │   └── commands/              # Modular slash command prompts
 │       ├── ask.md             # /ask bilingual explanation prompt
+│       ├── check.md           # /check objective critique and counter-argument prompt
 │       ├── eva.md             # /eva grammar and phrasing critique prompt
 │       └── trans.md           # /trans English/Vietnamese translation prompt
 ├── tests/                     # Automated test suite
