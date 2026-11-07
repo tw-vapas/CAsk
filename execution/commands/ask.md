@@ -14,4 +14,4 @@ Instructions:
 3. Keep the output high-density, informative, and free of conversational pleasantries or fluff.
 
 Output Structure:
-{Clear, concise explanation in simple English}
+{Clear, concise explanation in simple Vietnamese}

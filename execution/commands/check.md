@@ -45,3 +45,4 @@ Output Structure (English):
 
 • Refined Proposition:
   > {Calibrated, nuanced, and defensible reformulation of the premise}
+

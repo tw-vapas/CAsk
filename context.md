@@ -69,6 +69,8 @@ Each capsule (`CAskCapsule`) operates its own isolated state machine:
 stateDiagram-v2
     [*] --> InputState: Launch capsule
     InputState --> LoadingState: Submit query / command
+    InputState --> SettingsState: Settings button ⚙ / [Ctrl + ,]
+    SettingsState --> InputState: Save & Apply / Close / Esc
     InputState --> ResultState: /help, invalid cmd, missing arg (0ms token-free)
     InputState --> [*]: Escape / Empty input
     LoadingState --> ResultState: API response (Groq / Gemini)
@@ -84,6 +86,7 @@ stateDiagram-v2
    - **Multiline Editing:** Pressing <kbd>Shift</kbd>+<kbd>Enter</kbd> inserts a newline. Pressing <kbd>Enter</kbd> submits.
    - **Scrollbar Behavior:** Scrollbar is strictly hidden on single lines and empty text (`ScrollBarAlwaysOff`), activating as needed only when reaching 220px.
    - **Autocomplete:** Typing `/` opens a `QCompleter` dropdown displaying registered commands (`/help`, `/ask`, `/check`, `/eva`, `/trans`).
+   - **Settings Shortcut & Button:** Integrated gear button `⚙` on the right side and <kbd>Ctrl</kbd> + <kbd>,</kbd> shortcut triggers `STATE_SETTINGS`.
    - **Focus Retention:** Persistent across focus loss; users can click background windows without dismissing the input bar.
 
 2. **State 1: Loading State (`STATE_LOADING`)**
@@ -107,6 +110,13 @@ stateDiagram-v2
      - **Shortcut Guarding:** When focused in the follow-up input bar, typing uppercase letters (<kbd>Shift</kbd> + <kbd>A</kbd>, <kbd>Shift</kbd> + <kbd>P</kbd>, <kbd>Shift</kbd> + <kbd>C</kbd>) is safely preserved without triggering window shortcuts.
    - **Window Reordering Shortcuts:** <kbd>Alt</kbd> + <kbd>←</kbd> and <kbd>Alt</kbd> + <kbd>→</kbd> swap the focused capsule with its adjacent left/right slot while preserving predefined slot geometry ratios (e.g., 30 : 40 : 30). This functions seamlessly in both the **Input Bar** (without conflicting with text selection/highlighting) and the **Result Box**.
    - **Pinning Rules:** When pinned (`is_pinned == True`), the card **cannot** be dismissed by clicking outside, pressing <kbd>Esc</kbd>, or pressing <kbd>Enter</kbd>. It can only be dismissed via the Exit button or by unpinning.
+
+4. **State 3: Settings State (`STATE_SETTINGS`)**
+   - **Dimensions:** Smooth 460px height.
+   - **Model Pipeline Cards:** Modular cards representing Groq Cloud, Google Gemini, and 9Router / Custom OpenAI.
+   - **Reordering & Priority:** Interactive Up/Down buttons (`▲` `▼`) configure primary and fallback fallback ranking.
+   - **Live Connectivity Test:** `⚡ Test` button pings the provider asynchronously and reports latency without blocking the UI.
+   - **Hot-Reloading:** Saving writes atomically to `~/.config/cask/config.env` and instantly updates runtime configuration across active capsules.
 
 ---
 
@@ -181,6 +191,14 @@ stateDiagram-v2
   - **Dynamic Routing & Loading:** Registered seamlessly into `CommandCatalog`, `core/router.py`, and `QCompleter` autocompletion without code modifications to core routing logic.
   - **Symlink Management (`install.sh`):** Added dangling symlink pruning (`find ... -xtype l -delete`) before copying or symlinking execution templates to guarantee idempotent installation across renames or directory changes.
 
+### 📌 Solution 11: In-HUD Model Settings Panel & Provider Pipeline (`STATE_SETTINGS`)
+- **Requirement:** Allow users to interactively configure, test, enable/disable, and reorder response models via GUI without manually editing `config.env`.
+- **Implementation:**
+  - **In-Capsule State Transition (`STATE_SETTINGS`):** Flipped active capsule to settings mode upon clicking the input bar gear icon `⚙` or pressing <kbd>Ctrl</kbd> + <kbd>,</kbd>. Preserves single-window geometry and Wayland `setMask` bounds without secondary popup dialog issues.
+  - **Modular Model Cards (`ui/settings_view.py`):** Configured cards for Groq Cloud, Google Gemini, and 9Router / Custom OpenAI (`http://localhost:20128/v1`). Supports active toggles, priority reordering with Up/Down buttons (`▲` `▼`), editable model combos, and password reveal toggles (`👁`).
+  - **Asynchronous Live Ping Test (`⚡ Test`):** Runs minimal ping prompt in daemon thread to measure roundtrip latency in real-time (`✓ 0.62s`) without blocking the Qt event loop.
+  - **Persistence & Hot-Reloading (`core/config.py`):** `save_config_file()` atomically writes key updates to `~/.config/cask/config.env` while preserving comments, immediately hot-reloading runtime `Config` across all active capsules.
+
 ---
 
 ## 5. Project Directory Layout
@@ -192,21 +210,22 @@ cask/
 ├── cask.py                    # Main executable entrypoint (CLI & PyQt6 HUD)
 ├── core/                      # Application core logic & network engine
 │   ├── __init__.py            # Core package exports
-│   ├── config.py              # Environment configuration loader
+│   ├── config.py              # Environment configuration loader & atomic env writer
 │   ├── command_loader.py      # Modular slash command scanner & parser
 │   ├── router.py              # Deterministic regex router & argument validator
 │   ├── math_formatter.py      # LaTeX mathematical formula to Unicode converter
-│   └── api_client.py          # Groq primary & Gemini fallback HTTP client + QObject daemon worker
+│   └── api_client.py          # Groq, Gemini & Custom OpenAI client with pipeline fallback
 ├── ui/                        # PyQt6 user interface layer
 │   ├── __init__.py            # UI package exports
 │   ├── app.py                 # QApplication lifecycle, fonts, stylesheet loader
-│   ├── capsule.py             # Independent CAsk interactive card (Input, Loading, Result)
-│   ├── icons.py               # SVG vector icon generators (Ask, Copy, Pin, Exit)
+│   ├── capsule.py             # Independent CAsk interactive card (Input, Loading, Result, Settings)
+│   ├── icons.py               # SVG vector icon generators (Ask, Copy, Pin, Exit, Gear, Arrows, Test)
 │   ├── single_instance.py     # Kernel file lock & QLocalServer IPC manager
 │   ├── main_window.py         # Multi-capsule orchestrator, slot layout, setMask
-│   ├── input_bar.py           # Auto-expanding dynamic input bar with token highlighting
+│   ├── input_bar.py           # Auto-expanding dynamic input bar with settings button & token highlighting
 │   ├── loading_indicator.py   # Animated request indicator
 │   ├── result_view.py         # Markdown browser with action buttons & keyboard shortcuts
+│   ├── settings_view.py       # Model pipeline settings HUD with live ping test & reordering
 │   └── styles.qss             # Glassmorphism dark stylesheet
 ├── execution/                 # Prompt definitions & command templates
 │   ├── DEFAULT.md             # Customizable default prompt (used when no slash command is given)

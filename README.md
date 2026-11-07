@@ -139,15 +139,30 @@ Each result capsule features a built-in follow-up input bar and turn counter bad
 
 | Key | Action | Description |
 |---|---|---|
+| <kbd>Ctrl</kbd> + <kbd>,</kbd> | **Settings** | Open Response Model Settings HUD to configure, test, and reorder AI providers. |
 | <kbd>Shift</kbd> + <kbd>A</kbd> | **Ask** | Return to the input bar to refine query or enter a new prompt (clears thread history). |
 | <kbd>Shift</kbd> + <kbd>C</kbd> | **Copy** | Copy response markdown to clipboard. |
 | <kbd>Shift</kbd> + <kbd>P</kbd> | **Pin** | Pin window permanently; suppresses Esc, Enter, and outside-click dismissal. |
 | <kbd>Alt</kbd> + <kbd>←</kbd> | **Move Left** | Swap active capsule with adjacent left slot (works in both Input Bar and Result Box, preserving slot ratios). |
 | <kbd>Alt</kbd> + <kbd>→</kbd> | **Move Right** | Swap active capsule with adjacent right slot (works in both Input Bar and Result Box, preserving slot ratios). |
 | <kbd>Alt</kbd> + <kbd>H</kbd> | **Toggle On-Top** | Toggle Always-on-Top mode (unhide / hide from top layer across both Input Bar and Result Box). |
-| <kbd>Esc</kbd> | **Exit** | Close the card (if unpinned; clears input text if typing in follow-up bar). |
+| <kbd>Esc</kbd> | **Exit** | Close the card (if unpinned; clears input text if typing in follow-up bar; returns to input if in settings). |
 
 > **Tip:** You can also drag the grip handle `⋮⋮` in the capsule header (tooltip shows `[Alt + ← / →]`) to reorder windows interactively with live drop preview.
+
+---
+
+### ⚙️ In-HUD Model Settings & Provider Pipeline (<kbd>Ctrl</kbd> + <kbd>,</kbd>)
+
+Click the gear icon `⚙` on the input bar or press <kbd>Ctrl</kbd> + <kbd>,</kbd> to open the interactive **Response Model Pipeline** settings:
+- **Priority Pipeline Reordering:** Use arrow buttons (`▲` / `▼`) to arrange providers into your preferred primary and fallback order.
+- **Toggle Providers:** Check or uncheck providers to include or exclude them from the active fallback chain (`PROVIDER_ORDER`).
+- **Built-in Presets:** Pre-configured with recommended models:
+  - **Groq Cloud:** `qwen/qwen3.8-27b` (Instant ~0.6s), `openai/gpt-oss-120b`, `openai/gpt-oss-20b`.
+  - **Google Gemini:** `gemini-flash-lite-latest`, `gemini-3.5-flash-lite`, `gemini-3.5-flash`, `gemini-3.8-flash`.
+  - **9Router / Custom OpenAI:** `http://localhost:20128/v1` for `claude-3-5-sonnet`, `gpt-4o`, `deepseek-chat`, or local Ollama.
+- **Live Latency & Ping Test (`⚡ Test`):** Real-time connectivity test button measuring roundtrip latency (e.g. `✓ 0.62s`) before saving.
+- **Hot-Reloading:** Saving writes atomically to `~/.config/cask/config.env` and immediately updates active capsules without restarting CAsk.
 
 ---
 
@@ -227,6 +242,7 @@ cask/
 │   ├── main_window.py         # Multi-capsule orchestrator, slot layout, setMask
 │   ├── input_bar.py           # Auto-expanding dynamic input bar with token highlighting
 │   ├── result_view.py         # QTextBrowser with action buttons & keyboard shortcuts
+│   ├── settings_view.py       # Model pipeline settings HUD with live ping test
 │   ├── loading_indicator.py   # Subtle animated request indicator
 │   └── styles.qss             # Translucent Glassmorphism QSS stylesheet
 ├── execution/                 # Prompt definitions & command templates
