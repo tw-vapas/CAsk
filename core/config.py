@@ -17,8 +17,13 @@ class Config:
     """Application configuration parameters."""
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash-lite"
+    custom_openai_base_url: str = "http://localhost:20128/v1"
+    custom_openai_api_key: str = ""
+    custom_openai_model: str = "claude-3-5-sonnet"
+    provider_order: tuple[str, ...] = ("groq", "gemini")
     max_tokens: int = 4096
     max_followup_turns: int = 3
     prompt_file: Optional[Path] = None
@@ -31,8 +36,20 @@ class Config:
 
     @property
     def has_any_api_key(self) -> bool:
-        """Return True if at least one AI provider API key is present."""
-        return bool(self.groq_api_key.strip() or self.gemini_api_key.strip())
+        """Return True if at least one AI provider has valid configuration in the active pipeline."""
+        for p in self.provider_order:
+            if p == "groq" and self.groq_api_key.strip():
+                return True
+            if p == "gemini" and self.gemini_api_key.strip():
+                return True
+            if p == "custom_openai" and (self.custom_openai_base_url.strip() or self.custom_openai_api_key.strip()):
+                return True
+        return bool(
+            self.groq_api_key.strip()
+            or self.gemini_api_key.strip()
+            or self.custom_openai_api_key.strip()
+            or self.custom_openai_base_url.strip()
+        )
 
 
 def parse_env_file(path: Path) -> dict[str, str]:
@@ -145,8 +162,26 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
 
     groq_api_key = get_val("GROQ_API_KEY", "")
     groq_model = get_val("GROQ_MODEL", "openai/gpt-oss-120b")
+    groq_base_url = get_val("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
     gemini_api_key = get_val("GEMINI_API_KEY", "")
     gemini_model = get_val("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    custom_openai_base_url = get_val("CUSTOM_OPENAI_BASE_URL", "http://localhost:20128/v1")
+    custom_openai_api_key = get_val("CUSTOM_OPENAI_API_KEY", "")
+    custom_openai_model = get_val("CUSTOM_OPENAI_MODEL", "claude-3-5-sonnet")
+
+    order_str = get_val("PROVIDER_ORDER", "")
+    if order_str:
+        provider_order = tuple(p.strip().lower() for p in order_str.split(",") if p.strip())
+    else:
+        order = []
+        if groq_api_key:
+            order.append("groq")
+        if gemini_api_key:
+            order.append("gemini")
+        if custom_openai_api_key or custom_openai_base_url:
+            order.append("custom_openai")
+        provider_order = tuple(order) if order else ("groq", "gemini")
+
     try:
         max_tokens = int(get_val("MAX_TOKENS", "4096"))
     except (ValueError, TypeError):
@@ -192,8 +227,13 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
     return Config(
         groq_api_key=groq_api_key,
         groq_model=groq_model,
+        groq_base_url=groq_base_url,
         gemini_api_key=gemini_api_key,
         gemini_model=gemini_model,
+        custom_openai_base_url=custom_openai_base_url,
+        custom_openai_api_key=custom_openai_api_key,
+        custom_openai_model=custom_openai_model,
+        provider_order=provider_order,
         max_tokens=max_tokens,
         max_followup_turns=max_followup_turns,
         prompt_file=prompt_file,
@@ -204,3 +244,43 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
         default_execution_dir=default_execution_dir,
         default_commands_dir=default_commands_dir,
     )
+
+
+def save_config_file(updates: dict[str, str], config_path: Optional[Path] = None) -> Path:
+    """Atomically write updated key-value configuration to config.env preserving comments."""
+    path = config_path or (resolve_config_dir() / "config.env")
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    lines: list[str] = []
+    if path.is_file():
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            lines = []
+
+    line_pattern = re.compile(r"^\s*(?:export\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*=")
+    handled_keys: set[str] = set()
+    new_lines: list[str] = []
+
+    for line in lines:
+        match = line_pattern.match(line)
+        if match:
+            k = match.group(1)
+            if k in updates:
+                new_lines.append(f'{k}="{updates[k]}"')
+                handled_keys.add(k)
+                continue
+        new_lines.append(line)
+
+    remaining_keys = [k for k in updates if k not in handled_keys]
+    if remaining_keys:
+        if new_lines and new_lines[-1].strip():
+            new_lines.append("")
+        for k in remaining_keys:
+            new_lines.append(f'{k}="{updates[k]}"')
+
+    content = "\n".join(new_lines) + "\n"
+    temp_path = path.with_suffix(".tmp")
+    temp_path.write_text(content, encoding="utf-8")
+    temp_path.replace(path)
+    return path

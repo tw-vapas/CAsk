@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import socket
+import time
 import urllib.error
 import urllib.request
 from typing import Dict, List, Optional, Tuple
@@ -29,15 +30,25 @@ class APIClient:
     """Synchronous hybrid API client."""
 
     @staticmethod
-    def call_groq(
+    def call_openai_compatible(
+        base_url: str,
+        api_key: str,
+        model: str,
         system_prompt: str,
         user_prompt_content: str,
-        config: Config,
+        max_tokens: int = 4096,
         history: Optional[List[Dict[str, str]]] = None,
+        provider_name: str = "OpenAI",
+        timeout: int = 15,
     ) -> Tuple[str, Optional[str]]:
-        """Execute request to Groq Cloud API with optional conversation history."""
-        if not config.groq_api_key:
-            return "", "Groq API key not configured."
+        """Execute request to any OpenAI-compatible API endpoint (Groq, 9Router, Ollama, etc.)."""
+        clean_base = (base_url or "https://api.groq.com/openai/v1").rstrip("/")
+        if clean_base.endswith("/chat/completions"):
+            endpoint_url = clean_base
+        elif clean_base.endswith("/v1"):
+            endpoint_url = f"{clean_base}/chat/completions"
+        else:
+            endpoint_url = f"{clean_base}/v1/chat/completions"
 
         messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
         if history:
@@ -45,43 +56,93 @@ class APIClient:
         messages.append({"role": "user", "content": user_prompt_content})
 
         payload = {
-            "model": config.groq_model,
+            "model": model,
             "messages": messages,
             "temperature": 0.2,
-            "max_tokens": config.max_tokens,
+            "max_tokens": max_tokens,
         }
 
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "CAsk/2.0",
+        }
+        if api_key.strip():
+            headers["Authorization"] = f"Bearer {api_key.strip()}"
+
         req = urllib.request.Request(
-            url="https://api.groq.com/openai/v1/chat/completions",
+            url=endpoint_url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {config.groq_api_key}",
-                "User-Agent": "CAsk/2.0",
-            },
+            headers=headers,
             method="POST",
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 choices = data.get("choices", [])
                 if choices and "message" in choices[0]:
                     content = choices[0]["message"].get("content", "")
                     if content:
                         return content.strip(), None
-                return "", "Empty response received from Groq."
+                return "", f"Empty response received from {provider_name}."
         except urllib.error.HTTPError as e:
             try:
                 err_data = json.loads(e.read().decode("utf-8"))
                 err_msg = err_data.get("error", {}).get("message", str(e))
             except Exception:
                 err_msg = str(e)
-            return "", f"Groq HTTP Error {e.code}: {err_msg}"
+            return "", f"{provider_name} HTTP Error {e.code}: {err_msg}"
         except urllib.error.URLError as e:
-            return "", f"Groq Connection Error: {e.reason}"
+            return "", f"{provider_name} Connection Error: {e.reason}"
         except Exception as e:
-            return "", f"Groq Unexpected Error: {str(e)}"
+            return "", f"{provider_name} Unexpected Error: {str(e)}"
+
+    @classmethod
+    def call_groq(
+        cls,
+        system_prompt: str,
+        user_prompt_content: str,
+        config: Config,
+        history: Optional[List[Dict[str, str]]] = None,
+        timeout: int = 15,
+    ) -> Tuple[str, Optional[str]]:
+        """Execute request to Groq Cloud API with optional conversation history."""
+        if not config.groq_api_key:
+            return "", "Groq API key not configured."
+        return cls.call_openai_compatible(
+            base_url=config.groq_base_url,
+            api_key=config.groq_api_key,
+            model=config.groq_model,
+            system_prompt=system_prompt,
+            user_prompt_content=user_prompt_content,
+            max_tokens=config.max_tokens,
+            history=history,
+            provider_name="Groq",
+            timeout=timeout,
+        )
+
+    @classmethod
+    def call_custom_openai(
+        cls,
+        system_prompt: str,
+        user_prompt_content: str,
+        config: Config,
+        history: Optional[List[Dict[str, str]]] = None,
+        timeout: int = 15,
+    ) -> Tuple[str, Optional[str]]:
+        """Execute request to 9Router or custom OpenAI-compatible endpoint."""
+        base_url = config.custom_openai_base_url or "http://localhost:20128/v1"
+        return cls.call_openai_compatible(
+            base_url=base_url,
+            api_key=config.custom_openai_api_key,
+            model=config.custom_openai_model or "claude-3-5-sonnet",
+            system_prompt=system_prompt,
+            user_prompt_content=user_prompt_content,
+            max_tokens=config.max_tokens,
+            history=history,
+            provider_name="Custom OpenAI",
+            timeout=timeout,
+        )
 
     @staticmethod
     def call_gemini(
@@ -89,6 +150,7 @@ class APIClient:
         user_prompt_content: str,
         config: Config,
         history: Optional[List[Dict[str, str]]] = None,
+        timeout: int = 15,
     ) -> Tuple[str, Optional[str]]:
         """Execute request to Google Gemini API with optional conversation history."""
         if not config.gemini_api_key:
@@ -148,7 +210,7 @@ class APIClient:
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=45) as resp:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 candidates = data.get("candidates", [])
                 if candidates:
@@ -178,35 +240,98 @@ class APIClient:
         config: Config,
         history: Optional[List[Dict[str, str]]] = None,
     ) -> Tuple[str, Optional[str]]:
-        """Perform hybrid request: Groq primary with Gemini fallback."""
+        """Perform request across configured provider pipeline with automatic fallback."""
         if not config.has_any_api_key:
             return "", (
                 "API Key not configured!\n\n"
-                f"Please configure GROQ_API_KEY or GEMINI_API_KEY in:\n"
+                f"Please configure your AI provider in the Settings panel [Ctrl+,] or in:\n"
                 f"{config.config_dir / 'config.env'}\n"
                 "(See .env.example for template)"
             )
 
-        last_error = ""
+        errors: List[str] = []
+        pipeline = config.provider_order if config.provider_order else ("groq", "gemini")
 
-        # 1. Try Primary: Groq API
-        if config.groq_api_key:
-            content, err = cls.call_groq(system_prompt, user_prompt_content, config, history=history)
-            if content:
-                return content, None
-            if err:
-                last_error = err
+        for provider in pipeline:
+            if provider == "groq" and config.groq_api_key:
+                content, err = cls.call_groq(system_prompt, user_prompt_content, config, history=history)
+                if content:
+                    return content, None
+                if err:
+                    errors.append(f"Groq: {err}")
+            elif provider == "gemini" and config.gemini_api_key:
+                content, err = cls.call_gemini(system_prompt, user_prompt_content, config, history=history)
+                if content:
+                    return content, None
+                if err:
+                    errors.append(f"Gemini: {err}")
+            elif provider == "custom_openai" and (config.custom_openai_base_url or config.custom_openai_api_key):
+                content, err = cls.call_custom_openai(system_prompt, user_prompt_content, config, history=history)
+                if content:
+                    return content, None
+                if err:
+                    errors.append(f"Custom OpenAI: {err}")
 
-        # 2. Try Fallback: Gemini API
-        if config.gemini_api_key:
-            content, err = cls.call_gemini(system_prompt, user_prompt_content, config, history=history)
-            if content:
-                return content, None
-            if err:
-                last_error = err
+        # If none succeeded, try any remaining provider that has keys configured but wasn't in pipeline
+        if not errors:
+            if config.groq_api_key and "groq" not in pipeline:
+                content, err = cls.call_groq(system_prompt, user_prompt_content, config, history=history)
+                if content:
+                    return content, None
+                if err:
+                    errors.append(f"Groq: {err}")
+            elif config.gemini_api_key and "gemini" not in pipeline:
+                content, err = cls.call_gemini(system_prompt, user_prompt_content, config, history=history)
+                if content:
+                    return content, None
+                if err:
+                    errors.append(f"Gemini: {err}")
 
-        final_err = last_error or "No response received from AI API (timeout or unstable network)."
+        final_err = " | ".join(errors) if errors else "No response received from any configured AI provider."
         return "", final_err
+
+    @classmethod
+    def test_provider_connection(
+        cls,
+        provider_type: str,
+        model: str,
+        api_key: str,
+        base_url: str = "",
+        timeout: int = 8,
+    ) -> Tuple[bool, float, str]:
+        """Test provider connectivity with a minimal prompt, returning (success, latency_seconds, message)."""
+        t0 = time.time()
+        provider_lower = provider_type.lower()
+        try:
+            if "gemini" in provider_lower:
+                if not api_key.strip():
+                    return False, 0.0, "Missing API Key"
+                test_cfg = Config(gemini_api_key=api_key.strip(), gemini_model=model.strip(), max_tokens=10)
+                res, err = cls.call_gemini("You are a test assistant.", "ping", test_cfg, timeout=timeout)
+            else:
+                target_base = (
+                    base_url.strip()
+                    if base_url.strip()
+                    else ("https://api.groq.com/openai/v1" if "groq" in provider_lower else "http://localhost:20128/v1")
+                )
+                res, err = cls.call_openai_compatible(
+                    base_url=target_base,
+                    api_key=api_key.strip(),
+                    model=model.strip(),
+                    system_prompt="You are a test assistant.",
+                    user_prompt_content="ping",
+                    max_tokens=10,
+                    provider_name=provider_type,
+                    timeout=timeout,
+                )
+
+            dt = time.time() - t0
+            if res:
+                return True, round(dt, 2), "Connected"
+            return False, round(dt, 2), err or "Empty response"
+        except Exception as e:
+            dt = time.time() - t0
+            return False, round(dt, 2), str(e)
 
 
 # Optional PyQt6 worker thread integration

@@ -291,6 +291,86 @@ class TestMultiTurnPayloadSerialization(unittest.TestCase):
         self.assertEqual(contents[2]["parts"][0]["text"], "Tell me more")
 
 
+class TestConfigPersistenceAndMultiProvider(unittest.TestCase):
+    def test_save_and_reload_config(self):
+        import tempfile
+        from core.config import save_config_file, load_config
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmppath = Path(tmpdir) / "config.env"
+            tmppath.write_text("GROQ_API_KEY=initial_key\nGROQ_MODEL=old_model\n", encoding="utf-8")
+
+            updates = {
+                "PROVIDER_ORDER": "custom_openai,groq",
+                "GROQ_MODEL": "qwen/qwen3.8-27b",
+                "CUSTOM_OPENAI_BASE_URL": "http://localhost:20128/v1",
+                "CUSTOM_OPENAI_MODEL": "claude-3-5-sonnet",
+            }
+            res_path = save_config_file(updates, config_path=tmppath)
+            self.assertEqual(res_path, tmppath)
+
+            content = tmppath.read_text(encoding="utf-8")
+            self.assertIn('GROQ_MODEL="qwen/qwen3.8-27b"', content)
+            self.assertIn('PROVIDER_ORDER="custom_openai,groq"', content)
+            self.assertIn('CUSTOM_OPENAI_BASE_URL="http://localhost:20128/v1"', content)
+
+    def test_custom_openai_compatible_call(self):
+        from unittest.mock import patch, MagicMock
+        from core.api_client import APIClient
+
+        captured_req = {}
+
+        def mock_urlopen(req, timeout=15):
+            captured_req["url"] = req.full_url
+            captured_req["headers"] = dict(req.headers)
+            mock_resp = MagicMock()
+            mock_resp.read.return_value = b'{"choices": [{"message": {"content": "9Router answer"}}]}'
+            mock_resp.__enter__.return_value = mock_resp
+            return mock_resp
+
+        with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+            res, err = APIClient.call_openai_compatible(
+                base_url="http://localhost:20128/v1",
+                api_key="local-test-key",
+                model="claude-3-5-sonnet",
+                system_prompt="System",
+                user_prompt_content="Hello",
+            )
+
+        self.assertEqual(res, "9Router answer")
+        self.assertIsNone(err)
+        self.assertEqual(captured_req["url"], "http://localhost:20128/v1/chat/completions")
+        self.assertIn("Bearer local-test-key", captured_req["headers"].get("Authorization", ""))
+
+    def test_provider_order_fallback_priority(self):
+        from unittest.mock import patch, MagicMock
+        from core.api_client import APIClient
+        from core.config import Config
+
+        cfg = Config(
+            groq_api_key="mock_groq",
+            gemini_api_key="mock_gemini",
+            provider_order=("gemini", "groq"),
+        )
+
+        call_sequence = []
+
+        def mock_gemini(*args, **kwargs):
+            call_sequence.append("gemini")
+            return "Gemini first", None
+
+        def mock_groq(*args, **kwargs):
+            call_sequence.append("groq")
+            return "Groq response", None
+
+        with patch.object(APIClient, "call_gemini", side_effect=mock_gemini), \
+             patch.object(APIClient, "call_groq", side_effect=mock_groq):
+            res, err = APIClient.request("sys", "user", cfg)
+
+        self.assertEqual(res, "Gemini first")
+        self.assertEqual(call_sequence, ["gemini"])
+
+
 class TestCoreMarkdownRenderer(unittest.TestCase):
     def test_render_code_block_as_table(self):
         from core.markdown_renderer import render_markdown_to_html
