@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from .model_config import ModelEntry, load_models_config, save_models_config
+
 
 @dataclass(frozen=True)
 class Config:
@@ -24,6 +26,7 @@ class Config:
     custom_openai_api_key: str = ""
     custom_openai_model: str = "claude-3-5-sonnet"
     provider_order: tuple[str, ...] = ("groq", "gemini")
+    models: tuple[ModelEntry, ...] = ()
     max_tokens: int = 4096
     max_followup_turns: int = 3
     prompt_file: Optional[Path] = None
@@ -37,6 +40,13 @@ class Config:
     @property
     def has_any_api_key(self) -> bool:
         """Return True if at least one AI provider has valid configuration in the active pipeline."""
+        if self.models:
+            for m in self.models:
+                if m.enabled:
+                    if m.api_key.strip():
+                        return True
+                    if "localhost" in m.base_url or "127.0.0.1" in m.base_url:
+                        return True
         for p in self.provider_order:
             if p == "groq" and self.groq_api_key.strip():
                 return True
@@ -63,9 +73,7 @@ def parse_env_file(path: Path) -> dict[str, str]:
     except OSError:
         return env_vars
 
-    line_pattern = re.compile(
-        r"^\s*(?:export\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$"
-    )
+    line_pattern = re.compile(r"^\s*(?:export\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$")
 
     for line in content.splitlines():
         line = line.strip()
@@ -224,6 +232,8 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
                 prompt_file = candidate
                 break
 
+    models = tuple(load_models_config(config_dir, env_vars=file_vars))
+
     return Config(
         groq_api_key=groq_api_key,
         groq_model=groq_model,
@@ -234,6 +244,7 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
         custom_openai_api_key=custom_openai_api_key,
         custom_openai_model=custom_openai_model,
         provider_order=provider_order,
+        models=models,
         max_tokens=max_tokens,
         max_followup_turns=max_followup_turns,
         prompt_file=prompt_file,
@@ -258,7 +269,7 @@ def save_config_file(updates: dict[str, str], config_path: Optional[Path] = None
         except OSError:
             lines = []
 
-    line_pattern = re.compile(r"^\s*(?:export\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*=")
+    line_pattern = re.compile(r"^\s*(?:export\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$")
     handled_keys: set[str] = set()
     new_lines: list[str] = []
 

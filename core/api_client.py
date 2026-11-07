@@ -250,6 +250,40 @@ class APIClient:
             )
 
         errors: List[str] = []
+
+        # 1. Primary path: Dynamic Model Entries (models.json)
+        if config.models:
+            for entry in config.models:
+                if not entry.enabled:
+                    continue
+                is_local = "localhost" in entry.base_url or "127.0.0.1" in entry.base_url
+                if not entry.api_key.strip() and not is_local:
+                    continue
+
+                if entry.protocol == "gemini":
+                    test_cfg = Config(gemini_api_key=entry.api_key, gemini_model=entry.model, max_tokens=entry.max_tokens)
+                    content, err = cls.call_gemini(system_prompt, user_prompt_content, test_cfg, history=history)
+                else:
+                    content, err = cls.call_openai_compatible(
+                        base_url=entry.base_url,
+                        api_key=entry.api_key,
+                        model=entry.model,
+                        system_prompt=system_prompt,
+                        user_prompt_content=user_prompt_content,
+                        max_tokens=entry.max_tokens,
+                        history=history,
+                        provider_name=entry.name,
+                    )
+
+                if content:
+                    return content, None
+                if err:
+                    errors.append(f"{entry.name}: {err}")
+
+            if errors:
+                return "", " | ".join(errors)
+
+        # 2. Fallback path: Legacy provider_order pipeline
         pipeline = config.provider_order if config.provider_order else ("groq", "gemini")
 
         for provider in pipeline:

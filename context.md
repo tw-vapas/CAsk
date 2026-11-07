@@ -192,12 +192,21 @@ stateDiagram-v2
   - **Symlink Management (`install.sh`):** Added dangling symlink pruning (`find ... -xtype l -delete`) before copying or symlinking execution templates to guarantee idempotent installation across renames or directory changes.
 
 ### 📌 Solution 11: In-HUD Model Settings Panel & Provider Pipeline (`STATE_SETTINGS`)
-- **Requirement:** Allow users to interactively configure, test, enable/disable, and reorder response models via GUI without manually editing `config.env`.
+- **Requirement:** Allow users to interactively configure, test, enable/disable, reorder, create, and delete response models via GUI without manually editing `config.env`.
 - **Implementation:**
   - **In-Capsule State Transition (`STATE_SETTINGS`):** Flipped active capsule to settings mode upon clicking the input bar gear icon `⚙` or pressing <kbd>Ctrl</kbd> + <kbd>,</kbd>. Preserves single-window geometry and Wayland `setMask` bounds without secondary popup dialog issues.
-  - **Modular Model Cards (`ui/settings_view.py`):** Configured cards for Groq Cloud, Google Gemini, and 9Router / Custom OpenAI (`http://localhost:20128/v1`). Supports active toggles, priority reordering with Up/Down buttons (`▲` `▼`), editable model combos, and password reveal toggles (`👁`).
+  - **Dynamic Model Cards (`ui/settings_view.py`):** Each `ModelCardWidget` encapsulates a complete AI endpoint configuration: display name, protocol (`openai_compatible` / `gemini`), base URL, model ID, API key, enabled toggle, and temperature/max_tokens settings. Cards support:
+    - **Add:** `+ Add Model Card` button creates new cards from preset templates (Groq, 9Router, Gemini, DeepSeek, Ollama, Custom Endpoint).
+    - **Delete:** Trash button removes cards (disabled when only 1 card remains).
+    - **Reorder:** Up/Down arrow buttons (`▲` `▼`) configure primary and fallback ranking with live priority badge refresh (`[Primary]`, `[Fallback N]`, `[Inactive]`).
+    - **Edit:** Inline name editing, protocol selector, editable model combo with preset suggestions, and password reveal toggle (`👁`).
   - **Asynchronous Live Ping Test (`⚡ Test`):** Runs minimal ping prompt in daemon thread to measure roundtrip latency in real-time (`✓ 0.62s`) without blocking the Qt event loop.
-  - **Persistence & Hot-Reloading (`core/config.py`):** `save_config_file()` atomically writes key updates to `~/.config/cask/config.env` while preserving comments, immediately hot-reloading runtime `Config` across all active capsules.
+  - **Structured Persistence (`core/model_config.py`):**
+    - **`models.json`:** Primary configuration file at `~/.config/cask/models.json` storing the full model pipeline as a JSON array of `ModelEntry` objects.
+    - **Migration Fallback:** When `models.json` does not exist, entries are auto-synthesized from legacy `config.env` variables (`GROQ_API_KEY`, `GEMINI_API_KEY`, `CUSTOM_OPENAI_*`, `PROVIDER_ORDER`).
+    - **Backward Compatibility Sync:** On save, primary keys (`GROQ_MODEL`, `GEMINI_MODEL`, `PROVIDER_ORDER`, etc.) are written back to `config.env` for legacy compatibility.
+  - **Hot-Reloading (`core/config.py`):** `save_config_file()` atomically writes key updates to `~/.config/cask/config.env` while preserving comments, immediately hot-reloading runtime `Config` across all active capsules.
+  - **Built-in Presets (`core/model_config.py` → `PRESETS`):** Catalog of provider templates (Groq Cloud, 9Router, Google Gemini, DeepSeek API, Ollama Local, Custom) with default URLs, model IDs, and suggested model lists.
 
 ---
 
@@ -211,6 +220,7 @@ cask/
 ├── core/                      # Application core logic & network engine
 │   ├── __init__.py            # Core package exports
 │   ├── config.py              # Environment configuration loader & atomic env writer
+│   ├── model_config.py        # Dynamic ModelEntry dataclass, presets, JSON persistence & migration
 │   ├── command_loader.py      # Modular slash command scanner & parser
 │   ├── router.py              # Deterministic regex router & argument validator
 │   ├── math_formatter.py      # LaTeX mathematical formula to Unicode converter

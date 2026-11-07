@@ -9,8 +9,14 @@ from core.router import RouteType, route_input
 
 class TestCoreConfig(unittest.TestCase):
     def test_load_config_defaults(self):
+        """Verify repo-level config.env defaults are loaded correctly (isolated from user config)."""
+        import tempfile
+        from unittest.mock import patch
         script_dir = Path(__file__).resolve().parent.parent
-        config = load_config(script_dir=script_dir)
+        # Use an empty temp dir as config_dir to isolate from user's ~/.config/cask
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch('core.config.resolve_config_dir', return_value=Path(tmp)):
+                config = load_config(script_dir=script_dir)
         self.assertIsInstance(config, Config)
         self.assertEqual(config.groq_model, "openai/gpt-oss-120b")
         self.assertEqual(config.gemini_model, "gemini-3.5-flash-lite")

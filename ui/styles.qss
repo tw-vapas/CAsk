@@ -334,7 +334,7 @@ QToolButton#SettingsButton:hover {
     font-size: 9pt;
 }
 
-#CardArrowBtn, #EyeToggleBtn {
+#CardArrowBtn, #EyeToggleBtn, #CardDeleteBtn {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.10);
     border-radius: 5px;
@@ -344,6 +344,46 @@ QToolButton#SettingsButton:hover {
 #CardArrowBtn:hover, #EyeToggleBtn:hover {
     background: rgba(249, 226, 175, 0.20);
     border-color: rgba(249, 226, 175, 0.40);
+}
+
+#CardDeleteBtn:hover {
+    background: rgba(243, 139, 168, 0.25);
+    border-color: rgba(243, 139, 168, 0.50);
+}
+
+#CardDeleteBtn:disabled {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.04);
+}
+
+#CardNameInput {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: #cdd6f4;
+    font-size: 10pt;
+    font-weight: bold;
+}
+
+#CardNameInput:focus, #CardNameInput:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+#AddCardBtn {
+    background-color: rgba(249, 226, 175, 0.12);
+    border: 1px solid rgba(249, 226, 175, 0.35);
+    border-radius: 6px;
+    padding: 5px 14px;
+    color: #f9e2af;
+    font-weight: bold;
+    font-size: 9.5pt;
+}
+
+#AddCardBtn:hover {
+    background-color: rgba(249, 226, 175, 0.25);
+    border-color: rgba(249, 226, 175, 0.60);
 }
 
 #SettingsInput {
