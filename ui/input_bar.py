@@ -20,11 +20,13 @@ try:
         QCompleter,
         QSizePolicy,
         QTextEdit,
+        QToolButton,
     )
 except ImportError:
     pass
 
 from core.command_loader import CommandCatalog
+from ui.icons import get_gear_icon
 
 
 class CommandHighlighter(QSyntaxHighlighter):
@@ -51,6 +53,7 @@ class InputBar(QTextEdit):
     height_changed = pyqtSignal(int)
     reorder_requested = pyqtSignal(int)  # -1 for left, +1 for right
     toggle_on_top_requested = pyqtSignal()
+    settings_requested = pyqtSignal()
 
     def __init__(
         self,
@@ -80,6 +83,14 @@ class InputBar(QTextEdit):
         palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(255, 255, 255, 140))
         self.setPalette(palette)
 
+        # Settings gear button on top right
+        self.settings_btn = QToolButton(self)
+        self.settings_btn.setObjectName("SettingsButton")
+        self.settings_btn.setIcon(get_gear_icon())
+        self.settings_btn.setToolTip("Response Model Settings [Ctrl+,]")
+        self.settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.settings_btn.clicked.connect(self.settings_requested.emit)
+
         # Highlight only the leading command token
         self.highlighter = CommandHighlighter(self.document())
 
@@ -87,6 +98,18 @@ class InputBar(QTextEdit):
             self._setup_completer(catalog)
 
         self.textChanged.connect(self._handle_text_changed)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        btn_size = 24
+        margin_right = 10
+        margin_top = 13
+        self.settings_btn.setGeometry(
+            self.width() - btn_size - margin_right,
+            margin_top,
+            btn_size,
+            btn_size,
+        )
 
     def calculate_ideal_height(self, available_width: Optional[int] = None) -> int:
         """Calculate dynamic height based on committed text, IME preedit text, and line wrapping."""
@@ -243,6 +266,12 @@ class InputBar(QTextEdit):
                 self._completer.popup().hide()
                 event.accept()
                 return
+
+        # Settings shortcut: Ctrl + Comma
+        if (event.modifiers() & Qt.KeyboardModifier.ControlModifier) and event.key() == Qt.Key.Key_Comma:
+            self.settings_requested.emit()
+            event.accept()
+            return
 
         # Window reorder shortcuts: Alt + Left / Right
         if (event.modifiers() & Qt.KeyboardModifier.AltModifier) and event.key() in (Qt.Key.Key_Left, Qt.Key.Key_Right):

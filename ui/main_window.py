@@ -233,6 +233,7 @@ class MainWindow(QWidget):
         capsule.close_requested.connect(self._handle_capsule_close)
         capsule.size_changed.connect(lambda _: self._recompute_layout())
         capsule.state_changed.connect(lambda *_: self._recompute_layout())
+        capsule.config_updated.connect(self._handle_config_updated)
         capsule.reorder_requested.connect(self.swap_capsule_slot)
         capsule.toggle_on_top_requested.connect(self.toggle_always_on_top)
         capsule.drag_started.connect(self._handle_capsule_drag_start)
@@ -569,10 +570,32 @@ class MainWindow(QWidget):
 
         super().mousePressEvent(event)
 
+    def _handle_config_updated(self, new_config: Config) -> None:
+        """Propagate updated configuration across all active capsules."""
+        self.config = new_config
+        for c in self.capsules:
+            c.config = new_config
+
     def keyPressEvent(self, event) -> None:
         """Handle window reordering shortcuts (Shift+Left/Right), Esc, and Enter."""
         key = event.key()
         modifiers = event.modifiers()
+
+        # Ctrl + Comma: Toggle Model Settings HUD
+        if (modifiers & Qt.KeyboardModifier.ControlModifier) and key == Qt.Key.Key_Comma:
+            focused_capsule = None
+            for c in self.capsules:
+                if c.hasFocus() or c.isAncestorOf(self.focusWidget()):
+                    focused_capsule = c
+                    break
+            target = focused_capsule or (self.capsules[-1] if self.capsules else None)
+            if target:
+                if target.state == CAskCapsule.STATE_SETTINGS:
+                    target.switch_state(CAskCapsule.STATE_INPUT)
+                else:
+                    target.switch_state(CAskCapsule.STATE_SETTINGS)
+                event.accept()
+                return
 
         # Window reorder shortcuts: Alt + Left / Alt + Right
         if modifiers & Qt.KeyboardModifier.AltModifier:
@@ -629,6 +652,10 @@ class MainWindow(QWidget):
 
             target = focused_capsule or (self.capsules[-1] if self.capsules else None)
             if target:
+                if target.state == CAskCapsule.STATE_SETTINGS:
+                    target.switch_state(CAskCapsule.STATE_INPUT)
+                    event.accept()
+                    return
                 if target.is_pinned:
                     # Pinned capsule ignores Esc
                     event.accept()

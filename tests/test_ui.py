@@ -909,6 +909,58 @@ class TestUIComponents(unittest.TestCase):
         self.assertIs(window.focusWidget(), view.followup_input)
 
 
+    def test_settings_button_and_shortcut(self):
+        """Verify settings button exists on input bar and triggers settings_requested."""
+        bar = InputBar(catalog=self.catalog)
+        self.assertTrue(hasattr(bar, "settings_btn"))
+        self.assertIsNotNone(bar.settings_btn)
+
+        emitted = []
+        bar.settings_requested.connect(lambda: emitted.append(True))
+
+        # Test click
+        bar.settings_btn.click()
+        self.assertEqual(len(emitted), 1)
+
+        # Test Ctrl + Comma shortcut
+        ctrl_comma = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Comma, Qt.KeyboardModifier.ControlModifier)
+        bar.keyPressEvent(ctrl_comma)
+        self.assertEqual(len(emitted), 2)
+
+    def test_capsule_settings_state_transition(self):
+        """Verify capsule switches to STATE_SETTINGS and back to STATE_INPUT."""
+        window = MainWindow(config=self.config, catalog=self.catalog)
+        capsule = window.primary_capsule
+        self.assertEqual(capsule.state, CAskCapsule.STATE_INPUT)
+
+        # Trigger open settings
+        capsule.input_bar.settings_btn.click()
+        self.assertEqual(capsule.state, CAskCapsule.STATE_SETTINGS)
+        self.assertEqual(capsule.calculate_ideal_height(), 460)
+
+        # Press Esc to return to input
+        esc_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Escape, Qt.KeyboardModifier.NoModifier)
+        window.keyPressEvent(esc_event)
+        self.assertEqual(capsule.state, CAskCapsule.STATE_INPUT)
+
+    def test_settings_view_reordering_and_badges(self):
+        """Verify settings view card reordering with up/down arrow buttons."""
+        from ui.settings_view import SettingsView
+        settings = SettingsView(config=self.config)
+        self.assertEqual(len(settings.cards), 3)
+
+        initial_first = settings.cards[0].provider_id
+        initial_second = settings.cards[1].provider_id
+
+        # Click down arrow on first card
+        settings.cards[0].down_btn.click()
+        self.assertEqual(settings.cards[0].provider_id, initial_second)
+        self.assertEqual(settings.cards[1].provider_id, initial_first)
+
+        # Badges refresh
+        self.assertEqual(settings.cards[0].badge.text(), "[Primary]")
+
+
 if __name__ == "__main__":
     unittest.main()
 

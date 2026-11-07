@@ -24,6 +24,7 @@ from core.router import RouteType, route_input
 from ui.input_bar import InputBar
 from ui.loading_indicator import LoadingIndicator
 from ui.result_view import ResultView
+from ui.settings_view import SettingsView
 
 
 def is_worker_active(worker) -> bool:
@@ -43,15 +44,17 @@ def is_worker_active(worker) -> bool:
 
 
 class CAskCapsule(QWidget):
-    """Independent CAsk interactive card holding input, loading, and result states."""
+    """Independent CAsk interactive card holding input, loading, result, and settings states."""
 
     STATE_INPUT = 0
     STATE_LOADING = 1
     STATE_RESULT = 2
+    STATE_SETTINGS = 3
 
     close_requested = pyqtSignal(object)  # Emits self
     size_changed = pyqtSignal(object)    # Emits self
     state_changed = pyqtSignal(object, int)  # Emits (self, state)
+    config_updated = pyqtSignal(object)  # Emits new Config object
     reorder_requested = pyqtSignal(object, int)  # Emits (self, direction: -1 or +1)
     toggle_on_top_requested = pyqtSignal()
     drag_started = pyqtSignal(object, object)  # Emits (self, QPoint global pos)
@@ -117,6 +120,7 @@ class CAskCapsule(QWidget):
         self.input_bar.height_changed.connect(lambda _: self.size_changed.emit(self))
         self.input_bar.reorder_requested.connect(lambda direction: self.reorder_requested.emit(self, direction))
         self.input_bar.toggle_on_top_requested.connect(self.toggle_on_top_requested)
+        self.input_bar.settings_requested.connect(self._handle_open_settings)
         self.stack.addWidget(self.input_bar)
 
         # 1. Loading View
@@ -134,6 +138,12 @@ class CAskCapsule(QWidget):
         self.result_view.drag_ended.connect(lambda pt: self.drag_ended.emit(self, pt))
         self.result_view.followup_submitted.connect(self._handle_followup_submit)
         self.stack.addWidget(self.result_view)
+
+        # 3. Settings View
+        self.settings_view = SettingsView(config=self.config, parent=self)
+        self.settings_view.closed.connect(self._handle_close_settings)
+        self.settings_view.saved.connect(self._handle_settings_saved)
+        self.stack.addWidget(self.settings_view)
 
         layout.addWidget(self.container)
 
@@ -200,6 +210,10 @@ class CAskCapsule(QWidget):
         elif state == self.STATE_RESULT:
             self.loading_widget.stop()
             self.result_view.text_browser.setFocus()
+        elif state == self.STATE_SETTINGS:
+            self.loading_widget.stop()
+            self.settings_view.load_from_config(self.config)
+            self.settings_view.setFocus()
 
         self.state_changed.emit(self, state)
         self.size_changed.emit(self)
@@ -215,7 +229,20 @@ class CAskCapsule(QWidget):
             min_h = 190
             max_h = min(840, max(300, max_available_height))
             return max(min_h, min(max_h, ideal_h))
+        elif self._state == self.STATE_SETTINGS:
+            return min(max_available_height, 460)
         return 50
+
+    def _handle_open_settings(self) -> None:
+        self.switch_state(self.STATE_SETTINGS)
+
+    def _handle_close_settings(self) -> None:
+        self.switch_state(self.STATE_INPUT)
+
+    def _handle_settings_saved(self, new_config: Config) -> None:
+        self.config = new_config
+        self.config_updated.emit(new_config)
+        self.switch_state(self.STATE_INPUT)
 
     def _handle_submit(self, text: str) -> None:
         """Process entered text via router and trigger API or immediate modal."""
