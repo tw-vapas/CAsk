@@ -239,6 +239,7 @@ stateDiagram-v2
 - **Latest Input Layout:** `provider-quick-switch-mockup.png` supersedes the earlier quick-switch layouts: a 32px-radius dark capsule contains query input above and a lower toolbar with provider left, model and gear right. The gear now follows the reference toolbar placement. No send, microphone, attachment, or other Gemini features are included.
 - **Menu States:** `provider-quick-switch-provider-menu.png` and `provider-quick-switch-model-menu.png` illustrate pill-shaped expanded selectors and 24px-radius menus with secondary labels and selection checkmarks. Menus contain placeholder CAsk connections and saved configurations, not live catalog data.
 - **Verification:** The renderer produces five mockups; all outer corner alpha checks pass. The default input and both menu states were visually inspected. These changes remain confined to mockup assets and documentation; runtime UI is unchanged.
+- **Color/Opacity Correction:** The user accepted the layout but requested the existing CAsk colors and transparency. Quick-switch mockups now use the current `#InputBar` background `rgba(27, 31, 38, 0.75)`, the completer popup background `rgba(27, 31, 38, 0.95)` for menus, translucent white borders, existing foreground colors, and yellow interaction accents. Gemini-inspired geometry is retained. The renderer asserts input alpha approximately 191/255, menu alpha approximately 242/255, and zero alpha outside rounded corners. Runtime styling remains unchanged.
 
 ## 5. Project Directory Layout
 

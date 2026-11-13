@@ -19,7 +19,10 @@ to fit available screen space.
 
 The latest input styling follows the user-supplied `gemini_1.png`, `gemini_2.png`, and
 `gemini_3.png` references: borderless resting buttons, pill-shaped expanded buttons,
-a rounded dark capsule, and rounded menus with secondary labels and checkmarks.
+a rounded capsule, and rounded menus with secondary labels and checkmarks.
+Colors and opacity retain the current CAsk theme: input background
+`rgba(27, 31, 38, 0.75)`, menu background `rgba(27, 31, 38, 0.95)`, translucent
+white borders, `#e6ebf5` text, and the existing yellow hover/selection accents.
 Only provider/model/settings controls are represented; Gemini-specific features are excluded.
 Open-menu views are static compositions, not functional popup implementations.
 
@@ -31,5 +34,5 @@ QT_QPA_PLATFORM=offscreen python3 resources/references/generate-provider-mockups
 
 The renderer uses PyQt6, placeholder data, and transparent window hosts. It checks that
 all four outer corners have zero alpha before saving each PNG beside this file.
-The quick-switch renderer also verifies that the lower controls share the opaque capsule
-background while the outer rounded corners remain transparent.
+The quick-switch renderer also verifies 75% capsule background opacity and 95% menu
+background opacity while the outer rounded corners remain transparent.
