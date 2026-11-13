@@ -945,8 +945,11 @@ class TestUIComponents(unittest.TestCase):
 
     def test_settings_view_reordering_and_badges(self):
         """Verify settings view card reordering with up/down arrow buttons."""
+        from core.config import Config
+        from core.model_config import create_entry_from_preset
         from ui.settings_view import SettingsView
-        settings = SettingsView(config=self.config)
+        entries = tuple(create_entry_from_preset(key) for key in ("groq", "gemini", "9router"))
+        settings = SettingsView(config=Config(models=entries))
         self.assertEqual(len(settings.cards), 3)
 
         initial_first = settings.cards[0].provider_id

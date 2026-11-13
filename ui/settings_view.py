@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 try:
-    from PyQt6.QtCore import QTimer, Qt, pyqtSignal
-    from PyQt6.QtGui import QCursor, QFont
+    from PyQt6.QtCore import QCoreApplication, QEvent, QTimer, Qt, pyqtSignal
+    from PyQt6.QtGui import QCursor, QFont, QWheelEvent
     from PyQt6.QtWidgets import (
         QCheckBox,
         QComboBox,
@@ -48,12 +48,44 @@ from ui.icons import (
 )
 
 
+class WheelSafeComboBox(QComboBox):
+    """Let the containing panel scroll without changing a closed dropdown."""
+
+    def setEditable(self, editable: bool) -> None:
+        super().setEditable(editable)
+        if editable:
+            self.lineEdit().installEventFilter(self)
+
+    def eventFilter(self, watched, event) -> bool:
+        if watched is self.lineEdit() and event.type() == QEvent.Type.Wheel:
+            self.wheelEvent(event)
+            return True
+        return super().eventFilter(watched, event)
+
+    def wheelEvent(self, event) -> None:
+        parent = self.parentWidget()
+        while parent is not None:
+            if isinstance(parent, QScrollArea):
+                viewport = parent.viewport()
+                forwarded = QWheelEvent(
+                    viewport.mapFromGlobal(event.globalPosition()),
+                    event.globalPosition(), event.pixelDelta(), event.angleDelta(),
+                    event.buttons(), event.modifiers(), event.phase(), event.inverted(),
+                )
+                QCoreApplication.sendEvent(viewport, forwarded)
+                event.setAccepted(forwarded.isAccepted())
+                return
+            parent = parent.parentWidget()
+        event.ignore()
+
+
 class ModelCardWidget(QFrame):
     """Dynamic visual card for an AI model endpoint with credentials, priority, and actions."""
 
     reorder_requested = pyqtSignal(object, int)  # Emits (self, direction: -1 for up, +1 for down)
     delete_requested = pyqtSignal(object)       # Emits (self)
     status_changed = pyqtSignal()
+    connection_test_finished = pyqtSignal(bool, float, str)
 
     def __init__(self, entry: ModelEntry, parent=None) -> None:
         super().__init__(parent)
@@ -61,6 +93,9 @@ class ModelCardWidget(QFrame):
         self.initial_entry = entry
         self._is_key_visible = False
         self._test_thread: Optional[threading.Thread] = None
+        self.connection_test_finished.connect(
+            self._apply_test_result, Qt.ConnectionType.QueuedConnection
+        )
 
         self.setObjectName("ModelCard")
         self._setup_ui(entry)
@@ -69,22 +104,6 @@ class ModelCardWidget(QFrame):
     def provider_id(self) -> str:
         """Expose the model entry identifier for external use (e.g., tests)."""
         return self.entry_id
-
-    """Dynamic visual card for an AI model endpoint with credentials, priority, and actions."""
-
-    reorder_requested = pyqtSignal(object, int)  # Emits (self, direction: -1 for up, +1 for down)
-    delete_requested = pyqtSignal(object)       # Emits (self)
-    status_changed = pyqtSignal()
-
-    def __init__(self, entry: ModelEntry, parent=None) -> None:
-        super().__init__(parent)
-        self.entry_id = entry.id
-        self.initial_entry = entry
-        self._is_key_visible = False
-        self._test_thread: Optional[threading.Thread] = None
-
-        self.setObjectName("ModelCard")
-        self._setup_ui(entry)
 
     def _setup_ui(self, entry: ModelEntry) -> None:
         layout = QVBoxLayout(self)
@@ -153,7 +172,7 @@ class ModelCardWidget(QFrame):
         lbl_proto.setObjectName("CardFieldLabel")
         self.form.addWidget(lbl_proto, 0, 0)
 
-        self.proto_combo = QComboBox(self)
+        self.proto_combo = WheelSafeComboBox(self)
         self.proto_combo.setObjectName("ModelComboBox")
         self.proto_combo.addItem("OpenAI-Compatible", "openai_compatible")
         self.proto_combo.addItem("Google Gemini", "gemini")
@@ -180,7 +199,7 @@ class ModelCardWidget(QFrame):
         lbl_model.setObjectName("CardFieldLabel")
         self.form.addWidget(lbl_model, 2, 0)
 
-        self.model_combo = QComboBox(self)
+        self.model_combo = WheelSafeComboBox(self)
         self.model_combo.setObjectName("ModelComboBox")
         self.model_combo.setEditable(True)
         self._populate_model_presets(entry.protocol, entry.model)
@@ -272,6 +291,7 @@ class ModelCardWidget(QFrame):
 
         self.test_btn.setEnabled(False)
         self.test_result.setText("Testing...")
+        self.test_result.setToolTip("")
         self.test_result.setStyleSheet("color: #f9e2af;")
 
         protocol = self.proto_combo.currentData()
@@ -280,31 +300,38 @@ class ModelCardWidget(QFrame):
         base_url = self.base_url_input.text().strip() if protocol != "gemini" else ""
 
         def _worker():
-            success, latency, msg = APIClient.test_provider_connection(
-                provider_type=protocol,
-                model=model,
-                api_key=api_key,
-                base_url=base_url,
-                timeout=8,
-            )
-
-            def _apply():
-                self.test_btn.setEnabled(True)
-                if success:
-                    self.test_result.setText(f"✓ {latency}s ({msg})")
-                    self.test_result.setStyleSheet("color: #a6e3a1; font-weight: bold;")
-                else:
-                    snippet = msg[:40] + "..." if len(msg) > 40 else msg
-                    self.test_result.setText(f"✗ {snippet}")
-                    self.test_result.setStyleSheet("color: #f38ba8;")
+            try:
+                success, latency, msg = APIClient.test_provider_connection(
+                    provider_type=protocol,
+                    model=model,
+                    api_key=api_key,
+                    base_url=base_url,
+                    timeout=8,
+                )
+            except Exception as exc:
+                success, latency, msg = False, 0.0, str(exc)
 
             try:
-                QTimer.singleShot(0, _apply)
-            except Exception:
+                self.connection_test_finished.emit(success, latency, msg)
+            except RuntimeError:
+                # The card may have been deleted while the request was running.
                 pass
 
         self._test_thread = threading.Thread(target=_worker, daemon=True)
         self._test_thread.start()
+
+    def _apply_test_result(self, success: bool, latency: float, msg: str) -> None:
+        """Display the worker result on the GUI thread and allow another test."""
+        self._test_thread = None
+        self.test_btn.setEnabled(True)
+        self.test_result.setToolTip(msg)
+        if success:
+            self.test_result.setText(f"✓ {latency}s ({msg})")
+            self.test_result.setStyleSheet("color: #a6e3a1; font-weight: bold;")
+        else:
+            snippet = msg[:40] + "..." if len(msg) > 40 else msg
+            self.test_result.setText(f"✗ {snippet}")
+            self.test_result.setStyleSheet("color: #f38ba8;")
 
     def to_model_entry(self) -> ModelEntry:
         """Convert current form inputs into a ModelEntry object."""
@@ -412,7 +439,7 @@ class SettingsView(QFrame):
         lbl_preset.setObjectName("CardFieldLabel")
         add_bar.addWidget(lbl_preset)
 
-        self.preset_combo = QComboBox(self)
+        self.preset_combo = WheelSafeComboBox(self)
         self.preset_combo.setObjectName("ModelComboBox")
         self.preset_combo.addItem("Groq Cloud (LPU Instant)", "groq")
         self.preset_combo.addItem("9Router (Local Gateway)", "9router")
@@ -422,7 +449,7 @@ class SettingsView(QFrame):
         self.preset_combo.addItem("Custom Endpoint", "custom")
         add_bar.addWidget(self.preset_combo, 1)
 
-        self.add_card_btn = QPushButton("+ Add Model Card", self)
+        self.add_card_btn = QPushButton("Add Model Card", self)
         self.add_card_btn.setObjectName("AddCardBtn")
         self.add_card_btn.setIcon(get_plus_icon())
         self.add_card_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -445,7 +472,7 @@ class SettingsView(QFrame):
         self.cancel_btn.clicked.connect(self.closed.emit)
         footer.addWidget(self.cancel_btn)
 
-        self.save_btn = QPushButton("Save & Apply", self)
+        self.save_btn = QPushButton("Apply", self)
         self.save_btn.setObjectName("SettingsSaveBtn")
         self.save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.save_btn.clicked.connect(self._handle_save)
