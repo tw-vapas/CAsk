@@ -281,7 +281,9 @@ QToolButton#SettingsButton:hover {
 
 /* Settings View HUD */
 #SettingsView {
-    background: transparent;
+    background-color: #1b1f26;
+    border: 1px solid #454b56;
+    border-radius: 14px;
 }
 
 #SettingsHeaderTitle {
@@ -291,7 +293,7 @@ QToolButton#SettingsButton:hover {
 }
 
 #SettingsHeaderSubtitle {
-    color: #a6adc8;
+    color: #bbc4d6;
     font-size: 9pt;
 }
 
@@ -307,8 +309,8 @@ QToolButton#SettingsButton:hover {
 }
 
 #ModelCard {
-    background-color: rgba(30, 35, 45, 0.70);
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    background-color: #262d38;
+    border: 1px solid #454b56;
     border-radius: 10px;
 }
 
@@ -330,7 +332,7 @@ QToolButton#SettingsButton:hover {
 }
 
 #CardFieldLabel {
-    color: #a6adc8;
+    color: #bbc4d6;
     font-size: 9pt;
 }
 

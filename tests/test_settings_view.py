@@ -13,7 +13,11 @@ from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QApplication
 
 from core.config import Config
+from core.command_loader import CommandCatalog
 from core.model_config import ModelEntry
+from ui.app import load_stylesheet
+from ui.capsule import CAskCapsule
+from ui.main_window import MainWindow
 from ui.settings_view import ModelCardWidget, SettingsView
 
 
@@ -153,6 +157,39 @@ class TestSettingsView(unittest.TestCase):
             self.assertFalse(worker.is_alive())
             self.app.processEvents()
         self.assertEqual(thread_errors, [])
+
+    def test_settings_surface_keeps_transparent_corners_in_application(self):
+        previous_stylesheet = self.app.styleSheet()
+        self.app.setStyleSheet(load_stylesheet())
+        self.addCleanup(self.app.setStyleSheet, previous_stylesheet)
+        window = MainWindow(Config(models=self.entries), CommandCatalog({}))
+        self.addCleanup(window.close)
+        with patch.object(MainWindow, "_apply_initial_layer"):
+            window.show()
+            capsule = window.primary_capsule
+            for cycle in range(2):
+                capsule.switch_state(CAskCapsule.STATE_SETTINGS)
+                self.app.processEvents()
+                panel = capsule.settings_view
+                image = window.grab().toImage()
+                scale = image.devicePixelRatio()
+                origin = panel.mapTo(window, QPoint())
+                x, y = round(origin.x() * scale), round(origin.y() * scale)
+                width, height = round(panel.width() * scale), round(panel.height() * scale)
+                corners = (
+                    (x, y), (x + width - 1, y),
+                    (x, y + height - 1), (x + width - 1, y + height - 1),
+                )
+                for corner in corners:
+                    with self.subTest(cycle=cycle, corner=corner):
+                        self.assertEqual(image.pixelColor(*corner).alpha(), 0)
+                # Header and footer share the same opaque panel behind their controls.
+                for offset_y in (8, panel.height() - 8):
+                    color = image.pixelColor(x + width // 2, y + round(offset_y * scale))
+                    self.assertEqual(color.name(), "#1b1f26")
+                    self.assertEqual(color.alpha(), 255)
+                capsule.switch_state(CAskCapsule.STATE_INPUT)
+                self.app.processEvents()
 
 
 if __name__ == "__main__":

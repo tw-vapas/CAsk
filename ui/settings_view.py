@@ -376,6 +376,9 @@ class SettingsView(QFrame):
         super().__init__(parent)
         self.config = config
         self.setObjectName("SettingsView")
+        # Paint the rounded QSS surface over the translucent capsule host.
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setAutoFillBackground(False)
         self.cards: List[ModelCardWidget] = []
         self._setup_ui()
         self.load_from_config(self.config)
