@@ -21,8 +21,7 @@ __pycache__/
 scratch/
 
 # Bug reports and screenshots
-bug_screenshots/
-/bug_screenshots/
+/resources/bug_screenshots/
 
 # Knowledge graph artifacts
 graphify-out/
