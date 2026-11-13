@@ -234,6 +234,12 @@ stateDiagram-v2
 - **Reproducibility:** Run `QT_QPA_PLATFORM=offscreen python3 resources/references/generate-provider-mockups.py`. The renderer uses only placeholder data, does not load credentials, and checks transparent outer corner pixels. All three views were rendered and visually inspected.
 - **Implementation Boundary:** These are presentation-only references; the application's model-entry schema, settings controls, routing, and discovery behavior have not changed. Provider fallback order is illustrated as a proposal. Catalog integrations, parameter compatibility, persistence, and final HUD scrolling still require implementation and review.
 
+### Solution 15: Gemini-Inspired Input Mockups (2026-11-13)
+- **Reference Inputs:** The user supplied `resources/references/gemini_1.png`, `gemini_2.png`, and `gemini_3.png` and requested visual styling for provider/model/settings controls only.
+- **Latest Input Layout:** `provider-quick-switch-mockup.png` supersedes the earlier quick-switch layouts: a 32px-radius dark capsule contains query input above and a lower toolbar with provider left, model and gear right. The gear now follows the reference toolbar placement. No send, microphone, attachment, or other Gemini features are included.
+- **Menu States:** `provider-quick-switch-provider-menu.png` and `provider-quick-switch-model-menu.png` illustrate pill-shaped expanded selectors and 24px-radius menus with secondary labels and selection checkmarks. Menus contain placeholder CAsk connections and saved configurations, not live catalog data.
+- **Verification:** The renderer produces five mockups; all outer corner alpha checks pass. The default input and both menu states were visually inspected. These changes remain confined to mockup assets and documentation; runtime UI is unchanged.
+
 ## 5. Project Directory Layout
 
 ```
