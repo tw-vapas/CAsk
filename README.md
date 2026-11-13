@@ -166,6 +166,8 @@ Click the gear icon `⚙` on the input bar or press <kbd>Ctrl</kbd> + <kbd>,</kb
 - **Apply & Hot-Reloading:** Click **Apply** to atomically save the pipeline to `~/.config/cask/models.json`, sync legacy settings to `config.env`, and update active capsules without restarting CAsk. Paths follow `XDG_CONFIG_HOME` when set.
 - **Connection Test Results:** Background tests report success or failure on the GUI thread and re-enable **Test** for retries. Hover over the result to read the full message when an error is truncated.
 
+UI design reference: [Proposed Model Settings panel](resources/references/model-settings-proposed.png). This preview illustrates a proposed background treatment; it is not the current application styling.
+
 ---
 
 ## 🎨 Customizing the Default Assistant

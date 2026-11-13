@@ -218,6 +218,7 @@ stateDiagram-v2
   - Removed the duplicate `ModelCardWidget` constructor and signal declarations.
 - **Verification:** All 58 core/UI tests passed headlessly with a temporary `XDG_RUNTIME_DIR`. `tests/test_settings_view.py` covers focused/unfocused wheel input, editable fields, panel scrolling, popup/keyboard selection, queued results, success/failure/timeout/retry, and deletion during a request. The existing reorder test now supplies its own three-model fixture instead of depending on personal configuration. Connection responses were mocked; live provider credentials were not exercised.
 - **UI Review:** The current stylesheet keeps `#SettingsView` transparent while cards have their own backgrounds, leaving outer text dependent on the desktop behind it. Proposed styling uses a continuous dark panel (`#1b1f26`), lighter cards (`#262d38`), darker inputs, and brighter secondary labels. This styling was previewed separately and has not been applied to the repository; UI redesign remains a user decision.
+- **Resource Organization (2026-11-13):** Bug screenshots were moved from `bug_screenshots/` to `resources/bug_screenshots/` and remain ignored by Git. The proposed UI preview is tracked at `resources/references/model-settings-proposed.png` and linked from `README.md`, replacing reliance on a temporary preview path.
 
 ---
 
@@ -227,6 +228,10 @@ stateDiagram-v2
 cask/
 ├── assets/                    # Project visual assets & branding
 │   └── logo.png               # Official CAsk application logo
+├── resources/                 # Bug screenshots and design references
+│   ├── bug_screenshots/       # Local bug screenshots (ignored by Git)
+│   └── references/            # Tracked UI design references
+│       └── model-settings-proposed.png
 ├── cask.py                    # Main executable entrypoint (CLI & PyQt6 HUD)
 ├── core/                      # Application core logic & network engine
 │   ├── __init__.py            # Core package exports
