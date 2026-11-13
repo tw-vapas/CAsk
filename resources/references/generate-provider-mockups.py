@@ -10,7 +10,7 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QPoint, QSize, Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QApplication, QButtonGroup, QComboBox, QFrame, QHBoxLayout, QLabel,
@@ -36,15 +36,19 @@ QLineEdit, QComboBox { background: #171b23; border: 1px solid #454b56;
     border-radius: 6px; padding: 8px 10px; min-height: 18px; }
 QComboBox QAbstractItemView { background: #202630; selection-background-color: #484336; }
 QLineEdit#QuickQuery { background: transparent; border: none; padding: 0; font-size: 16px; }
-QFrame#QuickCapsule { background: #1e1f20; border: none; border-radius: 32px; }
-QFrame#QuickMenu { background: #202122; border: none; border-radius: 24px; }
-QPushButton#QuickChoice { background: transparent; color: #e3e3e3; border: none;
+QFrame#QuickCapsule { background: rgba(27, 31, 38, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-top: 1px solid rgba(255, 255, 255, 0.32); border-radius: 32px; }
+QFrame#QuickMenu { background: rgba(27, 31, 38, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-top: 1px solid rgba(255, 255, 255, 0.35); border-radius: 24px; }
+QPushButton#QuickChoice { background: transparent; color: #e6ebf5; border: none;
     border-radius: 18px; padding: 9px 16px; font-size: 15px; }
-QPushButton#QuickChoice[expanded="true"], QPushButton#QuickChoice:hover { background: #333537; }
+QPushButton#QuickChoice[expanded="true"], QPushButton#QuickChoice:hover { background: rgba(249, 226, 175, 0.22); }
 QToolButton#QuickSettings { background: transparent; border: none; padding: 8px; border-radius: 20px; }
-QToolButton#QuickSettings:hover { background: #333537; }
-QLabel#MenuName { color: #e3e3e3; font-size: 15px; }
-QLabel#MenuDetail { color: #a6a8aa; font-size: 13px; }
+QToolButton#QuickSettings:hover { background: rgba(249, 226, 175, 0.20); }
+QLabel#MenuName { color: #e6ebf5; font-size: 15px; }
+QLabel#MenuDetail { color: #a6adc8; font-size: 13px; }
 QPushButton { background: #303743; border: 1px solid #505968; border-radius: 6px;
     padding: 8px 12px; min-height: 16px; }
 QPushButton#Primary { background: #f9e2af; color: #171b23; border: none; font-weight: bold; }
@@ -182,7 +186,7 @@ def quick_switch(open_menu=None):
 
     settings = QToolButton()
     settings.setObjectName("QuickSettings")
-    settings.setIcon(get_gear_icon("#e3e3e3", size=20))
+    settings.setIcon(get_gear_icon("#cdd6f4", size=20))
     settings.setIconSize(QSize(20, 20))
     settings.setFixedSize(40, 40)
     settings.setAccessibleName("Settings")
@@ -245,8 +249,15 @@ def render(app, panel, width, height, filename):
     for x, y in ((0, 0), (image.width()-1, 0), (0, image.height()-1), (image.width()-1, image.height()-1)):
         assert image.pixelColor(x, y).alpha() == 0
     if filename == "provider-quick-switch-mockup.png":
-        # The lower controls now share the continuous input capsule background.
-        assert image.pixelColor(image.width() * 3 // 4, image.height() - 15).alpha() == 255
+        # Match the existing InputBar's 75% background opacity, including below controls.
+        alpha = image.pixelColor(image.width() * 3 // 4, image.height() - 15).alpha()
+        assert 190 <= alpha <= 192, alpha
+    menu = panel.findChild(QFrame, "QuickMenu")
+    if menu is not None:
+        position = menu.mapTo(host, QPoint(menu.width() // 2, menu.height() - 10))
+        scale = image.devicePixelRatio()
+        alpha = image.pixelColor(round(position.x() * scale), round(position.y() * scale)).alpha()
+        assert 241 <= alpha <= 243, alpha
     destination = Path(__file__).resolve().parent / filename
     assert image.save(str(destination))
     print(f"{destination.name}: {image.width()}x{image.height()}, transparent corners verified")
