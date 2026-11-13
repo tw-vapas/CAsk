@@ -12,9 +12,10 @@ This document details the software architecture, design principles, technical so
 - **UI Framework:** Native PyQt6 (Qt6 Widgets)
 - **Target OS:** Linux (Fedora, Arch, Ubuntu/Debian)
 - **Display Server:** Wayland (Compositor: KDE Plasma 6 / KWin, Hyprland, Sway, GNOME) & X11 fallback
-- **AI Backend (Hybrid Failover):**
-  - **Primary:** Groq Cloud API (default model: `openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) for sub-second responses (~0.5s - 0.8s).
-  - **Fallback:** Google Gemini API (`gemini-3.5-flash-lite`), automatically triggered if Groq fails, times out, or lacks an API key.
+- **AI Backend (Provider Pipeline):**
+  - Provider connections own credentials and multiple saved model profiles; exactly one profile is active per provider.
+  - Quick selection chooses the primary provider. Remaining enabled providers are tried in saved order, using their active profiles. Result badges identify the actual responder.
+  - `core/provider_api.py` supports OpenAI Responses, OpenAI Chat Completions, and Gemini Native. Presets include OpenAI, Groq, Gemini, 9Router, DeepSeek, Ollama, and Custom.
 - **Network Layer:** Python standard library `urllib.request` with forced IPv4 resolution (avoiding Wayland/systemd IPv6 DNS lookup latency).
 - **Execution Concurrency:** Non-blocking asynchronous Qt worker (`APIWorker` in `QObject` with daemon `threading.Thread`) emitting signals (`finished`, `error`) to preserve 60fps UI responsiveness.
 - **Multi-Turn Conversation Engine:**
@@ -27,9 +28,9 @@ This document details the software architecture, design principles, technical so
   - `execution/DEFAULT.md` configures the default behavior when no slash command is used.
   - Modular slash commands (`ask.md`, `eva.md`, `trans.md`) dynamically populate `/help` and autocomplete dropdowns.
 - **Configuration & Security:**
-  - Lookup order: `~/.config/cask/config.env` -> `config.env` -> `.env`.
-  - Permissions: strictly `chmod 600` (read/write by owner only).
-  - Excluded from version control via `.gitignore`.
+  - `providers.json` under the resolved CAsk config directory is authoritative. It is atomically written with permissions `0600`.
+  - If absent, migrate `models.json` or legacy settings in memory. Env resolution: process environment > user `config.env` > repo `config.env` > repo `.env`. Original files remain unchanged.
+  - Credentials are stored locally in provider records and are never sent to a metadata catalog. Discovery rejects HTTP redirects to avoid forwarding keys to a different endpoint.
 
 ---
 
@@ -241,6 +242,19 @@ stateDiagram-v2
 - **Verification:** The renderer produces five mockups; all outer corner alpha checks pass. The default input and both menu states were visually inspected. These changes remain confined to mockup assets and documentation; runtime UI is unchanged.
 - **Color/Opacity Correction:** The user accepted the layout but requested the existing CAsk colors and transparency. Quick-switch mockups now use the current `#InputBar` background `rgba(27, 31, 38, 0.75)`, the completer popup background `rgba(27, 31, 38, 0.95)` for menus, translucent white borders, existing foreground colors, and yellow interaction accents. Gemini-inspired geometry is retained. The renderer asserts input alpha approximately 191/255, menu alpha approximately 242/255, and zero alpha outside rounded corners. Runtime styling remains unchanged.
 
+### Solution 16: Provider-First Runtime Implementation (2026-11-13)
+- **Status:** The provider-first flow and embedded quick selectors are now implemented in the application. Solutions 14/15 describe design history; their presentation-only boundary no longer applies to the runtime feature.
+- **Data (`core/provider_config.py`):** Version 1 `providers.json` stores `selected_provider_id` and ordered provider records. A provider has `id`, `name`, `kind`, `protocol`, `base_url`, `api_key`, `enabled`, `models`, `active_model_id`, `catalog`, and `catalog_updated_at`. A `ModelProfile` has `id`, `name`, `model`, optional `reasoning`, `temperature`, `max_tokens`, and a Chat Completions `token_parameter`. Missing optional values mean provider defaults, not guessed sampling settings.
+- **Migration/Persistence:** Group legacy entries by protocol, endpoint, and credentials; keep variants and select the first enabled variant. Preserve explicit model-file order or legacy provider priority. Migration is in memory until Apply/quick selection, which writes a private atomic provider file. Empty/disabled provider lists never fall through to old keys. Corrupt authoritative files fail explicitly; `cask.py` reports a configuration error without a traceback. There is no save-back to legacy env/model files.
+- **Discovery (`core/provider_api.py`):** Fetch `/models` relative to the configured API root, or Gemini `/v1beta/models`, including pagination and cursor-loop detection. Deduplicate model IDs and enrich from provider methods plus a bundled verified GPT-6.1 Sol capability entry. Unknown models remain selectable with unverified capabilities; known non-text Gemini models are disabled in the picker. No models.dev download or subscription/OAuth connector is implemented. API root paths are preserved, including custom version prefixes.
+- **Requests:** Responses uses instructions/input, reasoning effort, optional `max_output_tokens`, and `store: false`. Chat Completions uses messages, optional reasoning effort, and the configured token parameter; GPT-6.1 Sol uses `max_completion_tokens`. Reasoning requests omit temperature. Gemini uses native system instruction/contents/generation config. Responses incomplete/failed states are errors, not successful answers. Provider requests use a 60-second socket timeout, discovery 15 seconds, and model tests 30 seconds. Redirects are rejected and errors redact the provider key.
+- **Settings (`ui/provider_settings.py`):** Provider cards edit shared credentials/protocol/root, connect/refresh, collapse, enable/remove/reorder, and manage saved profiles with radio selection, Add/Settings/Duplicate/Remove/Test. The searchable model dialog accepts manual IDs and optional parameters. Apply saves a deep-copied draft; Cancel discards it. Applying waits for background work and rejects stale drafts after another capsule updates configuration. Removing an active profile while alternatives exist requires explicitly selecting another profile first.
+- **Cache/Concurrency:** Only Apply persists successful discovery results/timestamps. Failed refresh keeps the old catalog; successful refresh never deletes saved profiles or changes selection. Credential/root/protocol edits invalidate the draft cache and increment a generation counter so stale network results are discarded. Daemon threads signal the Qt thread; deleted cards safely ignore late results.
+- **Input/Results:** `InputBar` remains a `QTextEdit` for IME, completion, and Enter/Shift+Enter behavior. A reserved lower viewport margin prevents typing from overlapping provider/model/gear buttons. Quick menus change primary/profile immediately, persist the selection, retain typed text, and synchronize capsules. No send button is added. Input background remains 75%/85% on focus; selector menus use 95% opacity. Result badges wrap and show source names/IDs, including fallback sources.
+- **Geometry/Theme:** Settings has a translucent 75% outer panel, scrollable cards, and a 620px target height clamped to available space. A single Settings capsule expands to at most 860px within screen margins. Dialogs use translucent hosts and rounded child surfaces. Former model-card widgets remain in `ui/legacy_settings_view.py` for the old reference renderer and regression coverage; `ui/settings_view.py` exports the current provider editor plus compatibility aliases.
+- **Verification:** The suite covers migration, private persistence, authoritative empty config, malformed files, pagination, unknown/non-text models, compatible Sol requests, fallback/source attribution, stale discovery, model dialogs, Apply/reload, quick selection, stale drafts, viewport bounds, Enter handling, and an end-to-end connect/add/apply/query flow. Real HTTP discovery/generation was exercised against a local fake provider; no paid API or personal key was used. Runtime input/settings/dialog renders were visually inspected offscreen. Native compositor behavior and live provider entitlement remain unverified.
+- **Final Checks:** All 79 tests passed with a temporary `XDG_RUNTIME_DIR`; the provider test subset also passed at `QT_SCALE_FACTOR=2`. `git diff --check` and the CLI version command passed. No personal provider file was written during verification.
+
 ## 5. Project Directory Layout
 
 The latest reference-only transparency update makes `provider-settings-mockup.png`,
@@ -264,6 +278,8 @@ cask/
 │   ├── __init__.py            # Core package exports
 │   ├── config.py              # Environment configuration loader & atomic env writer
 │   ├── model_config.py        # Dynamic ModelEntry dataclass, presets, JSON persistence & migration
+│   ├── provider_config.py     # Provider/profile schema, legacy migration, private atomic persistence
+│   ├── provider_api.py        # Live catalog discovery and protocol-specific request serialization
 │   ├── command_loader.py      # Modular slash command scanner & parser
 │   ├── router.py              # Deterministic regex router & argument validator
 │   ├── math_formatter.py      # LaTeX mathematical formula to Unicode converter
@@ -278,7 +294,9 @@ cask/
 │   ├── input_bar.py           # Auto-expanding dynamic input bar with settings button & token highlighting
 │   ├── loading_indicator.py   # Animated request indicator
 │   ├── result_view.py         # Markdown browser with action buttons & keyboard shortcuts
-│   ├── settings_view.py       # Model pipeline settings HUD with live ping test & reordering
+│   ├── settings_view.py       # Current settings exports and compatibility aliases
+│   ├── provider_settings.py   # Provider cards, background discovery/tests, model editor
+│   ├── legacy_settings_view.py # Former model-card UI retained for reference rendering
 │   └── styles.qss             # Glassmorphism dark stylesheet
 ├── execution/                 # Prompt definitions & command templates
 │   ├── DEFAULT.md             # Customizable default prompt (used when no slash command is given)
@@ -290,6 +308,8 @@ cask/
 │       └── trans.md           # /trans English/Vietnamese translation prompt
 ├── tests/                     # Automated test suite
 │   ├── test_core.py           # Unit tests for core router, loader, config
+│   ├── test_providers.py      # Migration, discovery, request adapters, local HTTP, Qt workflow
+│   ├── test_settings_view.py  # Legacy widget regressions and runtime alpha verification
 │   └── test_ui.py             # Headless offscreen PyQt6 UI tests
 ├── install.sh                 # System installer & desktop entry setup
 └── README.md                  # User documentation

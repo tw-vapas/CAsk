@@ -6,7 +6,7 @@
 [![Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-orange?logo=google&logoColor=white)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A minimalist, ultra-fast, and aesthetic **Glassmorphism Universal Quick AI Assistant** built with **native PyQt6 (Qt6)** and powered by **Groq Cloud API** (`openai/gpt-oss-120b` or `qwen/qwen3.8-27b`) with automatic failover to **Google Gemini API** (`gemini-3.5-flash-lite`).
+A **Glassmorphism Universal Quick AI Assistant** built with **native PyQt6 (Qt6)**. Connect OpenAI, Groq, Google Gemini, DeepSeek, Ollama, or a custom API, save multiple model configurations per provider, and switch models inside the input bar.
 
 Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, GNOME) with multi-window concurrent layouts (up to 3 concurrent capsules), auto-expanding multiline input, interactive keyboard shortcuts, card pinning, token-based command syntax highlighting, Vietnamese IME support, native Markdown rendering, command autocomplete, and deep customization. Users can configure both the default assistant behavior (`execution/DEFAULT.md`) and any number of modular slash commands (`execution/commands/*.md`).
 
@@ -14,14 +14,14 @@ Specially engineered for **Wayland compositors** (KDE Plasma 6, Hyprland, Sway, 
 
 ## ✨ Features
 
-- ⚡ **Ultra-Fast Hybrid Backend:** Primary requests via **Groq Cloud API** (~0.6s sub-second response) with automatic failover to **Google Gemini API**.
+- ⚡ **Provider Pipeline:** Select a primary provider and one active model per provider. Failed requests fall back to the active model of the next enabled provider. The result identifies the provider/model that actually answered.
 - 🪟 **Multi-Window Concurrent HUD (Up to 3 Windows):**
   - **1 Window:** Centered on screen.
   - **2 Windows:** Horizontal side-by-side, occupying **80% of screen width** with equal widths ($W_1$ left, $W_2$ right).
   - **3 Windows:** Horizontal side-by-side, occupying **100% full screen width** with ratio **30 : 40 : 30** ($W_3$ left 30%, $W_1$ center 40%, $W_2$ right 30%).
   - **Interactive Window Reordering:** Reorder windows on the fly using <kbd>Alt</kbd> + <kbd>←</kbd> / <kbd>Alt</kbd> + <kbd>→</kbd> (supported in both Input Bar and Result Box) or by dragging the header grip handle (`⋮⋮`) with real-time drop target ghost preview while strictly maintaining predefined slot ratios.
   - Smoothly re-centers and rebalances as cards are opened or closed.
-- 📏 **Auto-Expanding Dynamic Input Bar:** Height dynamically scales from 50px up to 220px to fit multiple lines and wrapped text naturally. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert newlines without submitting.
+- 📏 **Auto-Expanding Dynamic Input Bar:** The input capsule includes provider/model selectors and a gear button below the typing area. Height scales from 96px up to 264px. Press <kbd>Enter</kbd> to submit or <kbd>Shift</kbd>+<kbd>Enter</kbd> for a newline. No send button is added.
 - 📌 **Response Card Pinning:** Pin any response card with the **Pin** button or shortcut <kbd>Shift</kbd> + <kbd>P</kbd>. Pinned cards stay permanently visible and cannot be dismissed by outside clicks, <kbd>Esc</kbd>, or <kbd>Enter</kbd>.
 - ⌨️ **Interactive Keyboard Shortcuts:**
   - <kbd>Shift</kbd> + <kbd>A</kbd>: **Ask** — Return to input bar to refine or type a new query.
@@ -84,7 +84,9 @@ This script will:
 - Register `cask.desktop` for system-wide shortcut binding.
 
 ### 3. Add your API Keys
-Get your API keys:
+Configure providers through **Settings → Add Provider**. The OpenAI preset uses the Responses API. Enter your API key, connect to load the model catalog, add a saved model configuration, then click **Apply**. Legacy environment configuration below remains available for initial migration.
+
+Legacy provider key links:
 - **Groq API Key (Recommended for ~0.6s speed):** Free at [console.groq.com](https://console.groq.com/keys)
 - **Gemini API Key (Fallback):** Free at [Google AI Studio](https://aistudio.google.com/)
 
@@ -92,7 +94,7 @@ Edit your configuration:
 ```bash
 nano ~/.config/cask/config.env
 ```
-Paste your keys:
+Legacy configuration example (used before `providers.json` is saved):
 ```bash
 # Groq API Key (Fast ~0.6s)
 GROQ_API_KEY="your_groq_api_key_here"
@@ -152,21 +154,24 @@ Each result capsule features a built-in follow-up input bar and turn counter bad
 
 ---
 
-### ⚙️ In-HUD Model Settings & Provider Pipeline (<kbd>Ctrl</kbd> + <kbd>,</kbd>)
+### ⚙️ Providers & Models (<kbd>Ctrl</kbd> + <kbd>,</kbd>)
 
-Click the gear icon `⚙` on the input bar or press <kbd>Ctrl</kbd> + <kbd>,</kbd> to open the interactive **Response Model Pipeline** settings:
-- **Priority Pipeline Reordering:** Use arrow buttons (`▲` / `▼`) to arrange providers into your preferred primary and fallback order.
-- **Toggle Providers:** Check or uncheck providers to include or exclude them from the active fallback chain (`PROVIDER_ORDER`).
-- **Built-in Presets:** Pre-configured with recommended models:
-  - **Groq Cloud:** `qwen/qwen3.8-27b` (Instant ~0.6s), `openai/gpt-oss-120b`, `openai/gpt-oss-20b`.
-  - **Google Gemini:** `gemini-flash-lite-latest`, `gemini-3.5-flash-lite`, `gemini-3.5-flash`, `gemini-3.8-flash`.
-  - **9Router / Custom OpenAI:** `http://localhost:20128/v1` for `claude-3-5-sonnet`, `gpt-4o`, `deepseek-chat`, or local Ollama.
-- **Live Latency & Ping Test (`⚡ Test`):** Real-time connectivity test button measuring roundtrip latency (e.g. `✓ 0.62s`) before saving.
-- **Explicit Dropdown Selection:** Scrolling over a closed dropdown keeps its selection unchanged and scrolls the containing card list. Open the dropdown or use arrow keys to select an option.
-- **Apply & Hot-Reloading:** Click **Apply** to atomically save the pipeline to `~/.config/cask/models.json`, sync legacy settings to `config.env`, and update active capsules without restarting CAsk. Paths follow `XDG_CONFIG_HOME` when set.
-- **Connection Test Results:** Background tests report success or failure on the GUI thread and re-enable **Test** for retries. Hover over the result to read the full message when an error is truncated.
+1. Open the gear button or press **Ctrl+,**. Choose a preset and click **Add Provider**.
+2. Set the connection name, API root URL, protocol, and API key. Localhost connections may omit a key. A connection owns the key once; its saved models reuse it.
+3. Click **Connect / Refresh Models**. CAsk calls that provider's model-list API in a background thread. OpenAI-compatible providers use `/models`; Gemini Native uses `/v1beta/models`. Supply the full API root, including version prefixes for custom endpoints.
+4. Click **Add Model**, search the cached catalog, select an ID, and set a display name and optional parameters. Manual IDs are supported when listing is unavailable. Known non-text Gemini entries are disabled; unknown capabilities are labeled instead of guessed.
+5. Use **Duplicate** to create variants such as Sol Medium/Sol High. Radio buttons select exactly one active model per provider. **Test** sends a real short generation request using that profile, reports latency/errors, and can consume provider usage.
+6. Click **Apply** to persist the draft and update all capsules. **Cancel** discards draft edits. Applying is blocked during network work or if another capsule changed the configuration while this draft was open.
 
-UI appearance reference: [Model Settings panel](resources/references/model-settings-proposed.png). The approved theme uses a dark panel, lighter model cards, and transparent outer corners. The reference uses placeholder endpoints and no credentials.
+The input capsule keeps the current CAsk colors and transparency, with provider left and model/gear right below the typing area. Quick selections apply immediately to subsequent questions and are persisted without clearing typed text. The selected provider is primary; provider-card arrows determine the remaining fallback order. Requests use only one active profile per provider, never all saved models in parallel.
+
+**Catalog behavior:** Refresh failure keeps the previous cached list. A successful refresh never deletes saved models or changes the active selection; missing models are marked. Changing credentials, URL, or protocol invalidates the draft cache and ignores outstanding results from the previous connection. Catalog success does not prove every listed model can generate text. Catalogs/timestamps are saved with **Apply**; there is no background refresh on launch.
+
+**Model compatibility:** Separate adapters handle OpenAI Responses, Chat Completions, and Gemini Native. GPT-6.1 Sol has bundled capability metadata: choose `gpt-6.1-sol`, reasoning `Medium`, and provider-default temperature. Reasoning requests omit temperature. Chat Completions maps its output limit to `max_completion_tokens`; Responses uses `max_output_tokens`. Unknown models omit optional parameters by default; manual overrides and a Chat Completions token-parameter selector remain available. The bundled metadata catalog is deliberately small; this release does not download models.dev or implement ChatGPT/Codex subscription authentication.
+
+**Persistence:** `~/.config/cask/providers.json` (or `$XDG_CONFIG_HOME/cask/providers.json`) is the versioned source of truth, atomically saved with mode `0600`. It contains provider connections, catalogs, saved profiles, and selected IDs. Without this file, CAsk migrates `models.json` or resolved legacy environment settings in memory. Old files are left unchanged. After saving providers, legacy files cannot silently reactivate disabled providers; an empty provider list stays empty, and invalid provider files produce an explicit configuration error.
+
+[Design references](resources/references/README.md) illustrate the agreed layout. The older model-card reference remains available for comparison; it is not the current settings editor.
 
 ---
 
@@ -232,11 +237,13 @@ cask/
 ├── cask.py                    # Main executable entrypoint (PyQt6 HUD / CLI)
 ├── core/                      # Application core engine
 │   ├── __init__.py            # Core exports
-│   ├── config.py              # Configuration loader (config.env / .env)
+│   ├── config.py              # Provider config loader and legacy env resolution
+│   ├── provider_config.py     # Connections, model profiles, migration, private persistence
+│   ├── provider_api.py        # Catalog discovery and request adapters
 │   ├── router.py              # Slash command parser & deterministic router
 │   ├── command_loader.py      # Scans commands/*.md and extracts line 1 metadata
 │   ├── math_formatter.py      # LaTeX mathematical formula to Unicode converter
-│   └── api_client.py          # Asynchronous Groq / Gemini hybrid client
+│   └── api_client.py          # Provider fallback pipeline and asynchronous worker
 ├── ui/                        # PyQt6 Glassmorphism user interface
 │   ├── __init__.py            # UI exports
 │   ├── app.py                 # QApplication lifecycle & font setup
@@ -246,7 +253,9 @@ cask/
 │   ├── main_window.py         # Multi-capsule orchestrator, slot layout, setMask
 │   ├── input_bar.py           # Auto-expanding dynamic input bar with token highlighting
 │   ├── result_view.py         # QTextBrowser with action buttons & keyboard shortcuts
-│   ├── settings_view.py       # Model pipeline settings HUD with live ping test
+│   ├── settings_view.py       # Current provider settings exports
+│   ├── provider_settings.py   # Provider cards and model configuration dialogs
+│   ├── legacy_settings_view.py # Former UI retained for historical reference rendering
 │   ├── loading_indicator.py   # Subtle animated request indicator
 │   └── styles.qss             # Translucent Glassmorphism QSS stylesheet
 ├── execution/                 # Prompt definitions & command templates
@@ -259,6 +268,8 @@ cask/
 │       └── trans.md           # /trans bilingual translation prompt
 ├── tests/                     # Automated test suite
 │   ├── test_core.py           # Core router and loader unit tests
+│   ├── test_providers.py      # Provider migration, fake HTTP integration, Qt workflows
+│   ├── test_settings_view.py  # Scrolling, queued results, and transparent rendering
 │   └── test_ui.py             # Headless PyQt6 UI tests
 ├── install.sh                 # System installer & desktop entry setup
 └── README.md                  # Documentation
