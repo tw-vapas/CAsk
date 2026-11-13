@@ -11,10 +11,10 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtGui import QColor, QFont, QIcon, QPainter, QPen, QPixmap
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QApplication, QButtonGroup, QComboBox, QFrame, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QRadioButton, QVBoxLayout, QWidget,
+    QLineEdit, QPushButton, QRadioButton, QToolButton, QVBoxLayout, QWidget,
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -35,6 +35,8 @@ QLabel#PrimaryBadge { color: #f9e2af; background: #484336; border-radius: 5px; p
 QLineEdit, QComboBox { background: #171b23; border: 1px solid #454b56;
     border-radius: 6px; padding: 8px 10px; min-height: 18px; }
 QComboBox QAbstractItemView { background: #202630; selection-background-color: #484336; }
+QLineEdit#QuickQuery { background: transparent; border: none; padding: 0; font-size: 16px; }
+QToolButton#QuickSettings { background: transparent; border: none; padding: 0; }
 QPushButton { background: #303743; border: 1px solid #505968; border-radius: 6px;
     padding: 8px 12px; min-height: 16px; }
 QPushButton#Primary { background: #f9e2af; color: #171b23; border: none; font-weight: bold; }
@@ -157,42 +159,22 @@ def model_picker():
 
 
 def quick_switch():
-    panel = QWidget()
-    layout = QVBoxLayout(panel)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(12)
-    input_panel, input_layout = frame("Panel", 20, 0)
+    panel, layout = frame("Panel", 18, 12)
     query = QLineEdit()
+    query.setObjectName("QuickQuery")
     query.setPlaceholderText("Type what's on your mind...")
-    ask = button("", primary=True)
-    arrow = QPixmap(20, 20)
-    arrow.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(arrow)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    painter.setPen(QPen(QColor("#171b23"), 2, Qt.PenStyle.SolidLine,
-                        Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-    painter.drawLine(4, 10, 16, 10)
-    painter.drawLine(11, 5, 16, 10)
-    painter.drawLine(11, 15, 16, 10)
-    painter.end()
-    ask.setIcon(QIcon(arrow))
-    ask.setIconSize(QSize(20, 20))
-    ask.setFixedWidth(40)
-    ask.setAccessibleName("Ask")
-    ask.setToolTip("Send question")
-    input_layout.addLayout(row(query, ask))
-    layout.addWidget(input_panel)
-    settings = button("")
-    settings.setIcon(get_gear_icon(size=20))
-    settings.setIconSize(QSize(20, 20))
-    settings.setFixedWidth(40)
+    settings = QToolButton()
+    settings.setObjectName("QuickSettings")
+    settings.setIcon(get_gear_icon())
+    settings.setIconSize(QSize(16, 16))
+    settings.setFixedSize(24, 24)
     settings.setAccessibleName("Settings")
-    settings.setToolTip("Provider and model settings")
+    settings.setToolTip("Response Model Settings [Ctrl+,]")
+    layout.addLayout(row(query, settings))
     controls = row(
         button("Provider: OpenAI Personal ▾"),
-        button("Model: Sol Medium ▾"), None, settings,
+        button("Model: Sol Medium ▾"), None,
     )
-    controls.setContentsMargins(20, 0, 20, 0)
     layout.addLayout(controls)
     return panel
 
@@ -211,11 +193,8 @@ def render(app, panel, width, height, filename):
     for x, y in ((0, 0), (image.width()-1, 0), (0, image.height()-1), (image.width()-1, image.height()-1)):
         assert image.pixelColor(x, y).alpha() == 0
     if filename == "provider-quick-switch-mockup.png":
-        input_panel = panel.findChild(QFrame, "Panel")
-        scale = image.devicePixelRatio()
-        gap_y = round((input_panel.geometry().bottom() + 6) * scale)
-        assert image.pixelColor(image.width() // 2, gap_y).alpha() == 0
-        assert image.pixelColor(image.width() * 3 // 4, image.height() - 15).alpha() == 0
+        # The lower controls now share the continuous input capsule background.
+        assert image.pixelColor(image.width() * 3 // 4, image.height() - 15).alpha() == 255
     destination = Path(__file__).resolve().parent / filename
     assert image.save(str(destination))
     print(f"{destination.name}: {image.width()}x{image.height()}, transparent corners verified")
