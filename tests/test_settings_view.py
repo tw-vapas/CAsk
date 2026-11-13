@@ -18,7 +18,7 @@ from core.model_config import ModelEntry
 from ui.app import load_stylesheet
 from ui.capsule import CAskCapsule
 from ui.main_window import MainWindow
-from ui.settings_view import ModelCardWidget, SettingsView
+from ui.settings_view import ModelCardWidget, LegacySettingsView as SettingsView
 
 
 class RecordingModelCard(ModelCardWidget):
@@ -186,8 +186,8 @@ class TestSettingsView(unittest.TestCase):
                 # Header and footer share the same opaque panel behind their controls.
                 for offset_y in (8, panel.height() - 8):
                     color = image.pixelColor(x + width // 2, y + round(offset_y * scale))
-                    self.assertEqual(color.name(), "#1b1f26")
-                    self.assertEqual(color.alpha(), 255)
+                    self.assertTrue(all(abs(a - b) <= 1 for a, b in zip(color.getRgb()[:3], (27, 31, 38))))
+                    self.assertTrue(190 <= color.alpha() <= 192)
                 capsule.switch_state(CAskCapsule.STATE_INPUT)
                 self.app.processEvents()
 

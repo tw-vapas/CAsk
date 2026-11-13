@@ -71,6 +71,7 @@ class ResultView(QFrame):
 
         self.badge_label = QLabel("Result", header_widget)
         self.badge_label.setObjectName("BadgeLabel")
+        self.badge_label.setWordWrap(True)
         header_layout.addWidget(self.badge_label)
 
         header_layout.addStretch()
@@ -242,6 +243,7 @@ class ResultView(QFrame):
         """Render markdown content with math formula parsing and set badge indicator."""
         self._raw_content = content
         self.badge_label.setText(badge)
+        self.badge_label.setToolTip(badge)
         if is_error:
             self.badge_label.setStyleSheet("color: #f87171; background-color: rgba(248, 113, 113, 0.15); border: 1px solid rgba(248, 113, 113, 0.35); border-radius: 6px; padding: 3px 8px; font-weight: bold;")
             self.footer_widget.setVisible(False)

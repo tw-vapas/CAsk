@@ -18,6 +18,7 @@ try:
     from PyQt6.QtWidgets import (
         QApplication,
         QCompleter,
+        QMenu,
         QSizePolicy,
         QTextEdit,
         QToolButton,
@@ -54,6 +55,7 @@ class InputBar(QTextEdit):
     reorder_requested = pyqtSignal(int)  # -1 for left, +1 for right
     toggle_on_top_requested = pyqtSignal()
     settings_requested = pyqtSignal()
+    selection_requested = pyqtSignal(str, str)
 
     def __init__(
         self,
@@ -77,6 +79,8 @@ class InputBar(QTextEdit):
         self._completer: Optional[QCompleter] = None
         self._current_ideal_height: int = 50
         self._preedit_text: str = ""
+        self._provider_config = None
+        self._provider_controls = False
 
         # Set placeholder text color to rgba(255, 255, 255, 0.55)
         palette = self.palette()
@@ -90,6 +94,18 @@ class InputBar(QTextEdit):
         self.settings_btn.setToolTip("Response Model Settings [Ctrl+,]")
         self.settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.settings_btn.clicked.connect(self.settings_requested.emit)
+        self.provider_btn = QToolButton(self)
+        self.provider_btn.setObjectName("QuickChoice")
+        self.provider_btn.setToolTip("Choose provider")
+        self.provider_btn.setAccessibleName("Provider")
+        self.provider_btn.clicked.connect(self._open_provider_menu)
+        self.model_btn = QToolButton(self)
+        self.model_btn.setObjectName("QuickChoice")
+        self.model_btn.setToolTip("Choose saved model configuration")
+        self.model_btn.setAccessibleName("Model")
+        self.model_btn.clicked.connect(self._open_model_menu)
+        self.provider_btn.hide()
+        self.model_btn.hide()
 
         # Highlight only the leading command token
         self.highlighter = CommandHighlighter(self.document())
@@ -101,6 +117,20 @@ class InputBar(QTextEdit):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
+        self._position_controls()
+
+    def _position_controls(self):
+        if not hasattr(self, "settings_btn"):
+            return
+        if self._provider_controls:
+            y = self.height() - 46
+            self.settings_btn.setGeometry(self.width() - 44, y + 4, 28, 28)
+            available = max(110, self.width() - 74)
+            provider_width = min(self.provider_btn.sizeHint().width(), available // 2)
+            model_width = min(self.model_btn.sizeHint().width(), available // 2)
+            self.provider_btn.setGeometry(14, y, provider_width, 36)
+            self.model_btn.setGeometry(self.width() - 54 - model_width, y, model_width, 36)
+            return
         btn_size = 24
         margin_right = 10
         margin_top = 13
@@ -111,6 +141,68 @@ class InputBar(QTextEdit):
             btn_size,
         )
 
+    def set_provider_config(self, config):
+        from core.provider_config import migrate_models
+        self._provider_config = config
+        self._providers = list(config.providers) if config.providers is not None else migrate_models(list(config.models))
+        self._provider_controls = True
+        self.provider_btn.show()
+        self.model_btn.show()
+        self.setViewportMargins(0, 0, 0, 48)
+        candidates = [p for p in self._providers if p.enabled and p.active_model]
+        self._selected_provider = next((p for p in candidates if p.id == config.selected_provider_id), candidates[0] if candidates else None)
+        provider = self._selected_provider
+        self.provider_btn.setText((provider.name if provider else "Add Provider") + "  ⌄")
+        self.model_btn.setText((provider.active_model.name if provider else "Select Model") + "  ⌄")
+        self.provider_btn.setToolTip(provider.name if provider else "Open Settings to connect a provider")
+        self.model_btn.setToolTip(provider.active_model.name if provider else "Open Settings to add a model")
+        self._position_controls()
+        self.height_changed.emit(self.calculate_ideal_height())
+
+    def _selection_menu(self, button):
+        menu = QMenu(self)
+        menu.setObjectName("QuickSelectionMenu")
+        menu.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        button.setProperty("expanded", True)
+        button.style().unpolish(button)
+        button.style().polish(button)
+        menu.aboutToHide.connect(lambda: self._close_selection_menu(button))
+        self._quick_menu = menu
+        return menu
+
+    def _close_selection_menu(self, button):
+        button.setProperty("expanded", False)
+        button.style().unpolish(button)
+        button.style().polish(button)
+        self.setFocus()
+
+    def _open_provider_menu(self):
+        candidates = [p for p in self._providers if p.enabled and p.active_model]
+        if not candidates:
+            self.settings_requested.emit()
+            return
+        menu = self._selection_menu(self.provider_btn)
+        for provider in candidates:
+            item = menu.addAction(provider.name)
+            item.setCheckable(True)
+            item.setChecked(provider is self._selected_provider)
+            item.triggered.connect(lambda checked=False, p=provider: self.selection_requested.emit(p.id, p.active_model_id))
+        menu.popup(self.provider_btn.mapToGlobal(self.provider_btn.rect().bottomLeft()))
+
+    def _open_model_menu(self):
+        provider = self._selected_provider
+        if not provider:
+            self.settings_requested.emit()
+            return
+        menu = self._selection_menu(self.model_btn)
+        for model in provider.models:
+            item = menu.addAction(f"{model.name}  ·  {model.reasoning or 'Provider defaults'}")
+            item.setCheckable(True)
+            item.setChecked(model.id == provider.active_model_id)
+            item.triggered.connect(lambda checked=False, m=model: self.selection_requested.emit(provider.id, m.id))
+        menu.popup(self.model_btn.mapToGlobal(self.model_btn.rect().bottomLeft()))
+
     def calculate_ideal_height(self, available_width: Optional[int] = None) -> int:
         """Calculate dynamic height based on committed text, IME preedit text, and line wrapping."""
         width = available_width if available_width is not None else self.width()
@@ -120,7 +212,7 @@ class InputBar(QTextEdit):
         raw_text = self.toPlainText()
         preedit = getattr(self, "_preedit_text", "")
         if not raw_text.strip() and not preedit.strip():
-            return 50
+            return 96 if self._provider_controls else 50
 
         doc = self.document().clone()
         doc.setTextWidth(content_width)
@@ -132,10 +224,10 @@ class InputBar(QTextEdit):
 
         doc_height = doc.size().height()
         if doc.lineCount() <= 1 and "\n" not in raw_text and "\n" not in preedit and doc_height <= 32:
-            return 50
+            return 96 if self._provider_controls else 50
 
         computed = int(doc_height + 24)
-        return max(50, min(220, computed))
+        return max(96, min(264, computed + 44)) if self._provider_controls else max(50, min(220, computed))
 
     def sizeHint(self) -> QSize:
         return QSize(600, self.calculate_ideal_height())
@@ -219,7 +311,7 @@ class InputBar(QTextEdit):
 
         # Dynamic height check
         new_height = self.calculate_ideal_height()
-        if new_height >= 220:
+        if new_height >= (264 if self._provider_controls else 220):
             self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         else:
             self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)

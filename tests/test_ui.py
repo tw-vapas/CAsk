@@ -936,7 +936,7 @@ class TestUIComponents(unittest.TestCase):
         # Trigger open settings
         capsule.input_bar.settings_btn.click()
         self.assertEqual(capsule.state, CAskCapsule.STATE_SETTINGS)
-        self.assertEqual(capsule.calculate_ideal_height(), 460)
+        self.assertEqual(capsule.calculate_ideal_height(), 620)
 
         # Press Esc to return to input
         esc_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Escape, Qt.KeyboardModifier.NoModifier)

@@ -121,6 +121,8 @@ class CAskCapsule(QWidget):
         self.input_bar.reorder_requested.connect(lambda direction: self.reorder_requested.emit(self, direction))
         self.input_bar.toggle_on_top_requested.connect(self.toggle_on_top_requested)
         self.input_bar.settings_requested.connect(self._handle_open_settings)
+        self.input_bar.selection_requested.connect(self._handle_model_selection)
+        self.input_bar.set_provider_config(self.config)
         self.stack.addWidget(self.input_bar)
 
         # 1. Loading View
@@ -230,7 +232,7 @@ class CAskCapsule(QWidget):
             max_h = min(840, max(300, max_available_height))
             return max(min_h, min(max_h, ideal_h))
         elif self._state == self.STATE_SETTINGS:
-            return min(max_available_height, 460)
+            return min(max_available_height, 620)
         return 50
 
     def _handle_open_settings(self) -> None:
@@ -241,8 +243,27 @@ class CAskCapsule(QWidget):
 
     def _handle_settings_saved(self, new_config: Config) -> None:
         self.config = new_config
+        self.input_bar.set_provider_config(new_config)
         self.config_updated.emit(new_config)
         self.switch_state(self.STATE_INPUT)
+
+    def _handle_model_selection(self, provider_id: str, model_id: str) -> None:
+        import copy
+        from dataclasses import replace
+        from core.provider_config import migrate_models, save_providers
+        providers = copy.deepcopy(list(self.config.providers) if self.config.providers is not None else migrate_models(list(self.config.models)))
+        provider = next((p for p in providers if p.id == provider_id and p.enabled), None)
+        if not provider or not any(m.id == model_id for m in provider.models):
+            return
+        provider.active_model_id = model_id
+        try:
+            save_providers(providers, self.config.config_dir, provider_id)
+        except (ValueError, OSError) as exc:
+            self.input_bar.setToolTip(f"Selection could not be saved: {exc}")
+            return
+        self.config = replace(self.config, providers=tuple(providers), selected_provider_id=provider_id)
+        self.input_bar.set_provider_config(self.config)
+        self.config_updated.emit(self.config)
 
     def _handle_submit(self, text: str) -> None:
         """Process entered text via router and trigger API or immediate modal."""
@@ -301,7 +322,9 @@ class CAskCapsule(QWidget):
             self._worker = None
             self._chat_history.append({"role": "user", "content": route.user_prompt_content})
             self._chat_history.append({"role": "assistant", "content": res})
-            self._show_result(badge_name, res, is_error=False)
+            source = getattr(worker, "response_source", "")
+            badge = f"{badge_name} · {source}" if isinstance(source, str) and source else badge_name
+            self._show_result(badge, res, is_error=False)
 
         def _on_initial_error(err: str) -> None:
             self._worker = None
@@ -389,6 +412,10 @@ class CAskCapsule(QWidget):
                 current_turn=self._turn_count,
                 max_turns=self.config.max_followup_turns,
             )
+            source = getattr(worker, "response_source", "")
+            if isinstance(source, str) and source:
+                self.result_view.badge_label.setText(f"{self._current_badge} · {source}")
+                self.result_view.badge_label.setToolTip(f"{self._current_badge} · {source}")
             self.size_changed.emit(self)
 
         def _on_followup_error(err: str) -> None:

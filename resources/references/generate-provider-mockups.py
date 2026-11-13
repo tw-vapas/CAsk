@@ -274,7 +274,7 @@ def legacy_settings_reference(app):
     from core.config import Config
     from core.model_config import ModelEntry
     from ui.app import load_stylesheet
-    from ui.settings_view import SettingsView
+    from ui.settings_view import LegacySettingsView as SettingsView
 
     previous_style = app.styleSheet()
     app.setStyleSheet(load_stylesheet() + """

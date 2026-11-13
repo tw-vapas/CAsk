@@ -428,6 +428,8 @@ class MainWindow(QWidget):
         if n == 1:
             capsule = self.capsules[0]
             target_w = 760 if capsule.state == CAskCapsule.STATE_RESULT else max(400, int(sw * 0.35))
+            if capsule.state == CAskCapsule.STATE_SETTINGS:
+                target_w = min(860, sw - self.SCREEN_MARGIN * 2)
             ideal_h = capsule.calculate_ideal_height(
                 available_width=target_w,
                 max_available_height=sh - 80,
@@ -575,6 +577,7 @@ class MainWindow(QWidget):
         self.config = new_config
         for c in self.capsules:
             c.config = new_config
+            c.input_bar.set_provider_config(new_config)
 
     def keyPressEvent(self, event) -> None:
         """Handle window reordering shortcuts (Shift+Left/Right), Esc, and Enter."""
