@@ -36,7 +36,15 @@ QLineEdit, QComboBox { background: #171b23; border: 1px solid #454b56;
     border-radius: 6px; padding: 8px 10px; min-height: 18px; }
 QComboBox QAbstractItemView { background: #202630; selection-background-color: #484336; }
 QLineEdit#QuickQuery { background: transparent; border: none; padding: 0; font-size: 16px; }
-QToolButton#QuickSettings { background: transparent; border: none; padding: 0; }
+QFrame#QuickCapsule { background: #1e1f20; border: none; border-radius: 32px; }
+QFrame#QuickMenu { background: #202122; border: none; border-radius: 24px; }
+QPushButton#QuickChoice { background: transparent; color: #e3e3e3; border: none;
+    border-radius: 18px; padding: 9px 16px; font-size: 15px; }
+QPushButton#QuickChoice[expanded="true"], QPushButton#QuickChoice:hover { background: #333537; }
+QToolButton#QuickSettings { background: transparent; border: none; padding: 8px; border-radius: 20px; }
+QToolButton#QuickSettings:hover { background: #333537; }
+QLabel#MenuName { color: #e3e3e3; font-size: 15px; }
+QLabel#MenuDetail { color: #a6a8aa; font-size: 13px; }
 QPushButton { background: #303743; border: 1px solid #505968; border-radius: 6px;
     padding: 8px 12px; min-height: 16px; }
 QPushButton#Primary { background: #f9e2af; color: #171b23; border: none; font-weight: bold; }
@@ -158,25 +166,69 @@ def model_picker():
     return panel
 
 
-def quick_switch():
-    panel, layout = frame("Panel", 18, 12)
+def quick_switch(open_menu=None):
+    panel, layout = frame("QuickCapsule", 24, 14)
     query = QLineEdit()
     query.setObjectName("QuickQuery")
     query.setPlaceholderText("Type what's on your mind...")
+    layout.addWidget(query)
+
+    def choice(text, name):
+        widget = button(text + ("  ⌃" if open_menu == name else "  ⌄"))
+        widget.setObjectName("QuickChoice")
+        widget.setAccessibleName(name.capitalize())
+        widget.setProperty("expanded", open_menu == name)
+        return widget
+
     settings = QToolButton()
     settings.setObjectName("QuickSettings")
-    settings.setIcon(get_gear_icon())
-    settings.setIconSize(QSize(16, 16))
-    settings.setFixedSize(24, 24)
+    settings.setIcon(get_gear_icon("#e3e3e3", size=20))
+    settings.setIconSize(QSize(20, 20))
+    settings.setFixedSize(40, 40)
     settings.setAccessibleName("Settings")
     settings.setToolTip("Response Model Settings [Ctrl+,]")
-    layout.addLayout(row(query, settings))
     controls = row(
-        button("Provider: OpenAI Personal ▾"),
-        button("Model: Sol Medium ▾"), None,
+        choice("OpenAI Personal", "provider"), None,
+        choice("Sol Medium", "model"), settings,
     )
     layout.addLayout(controls)
-    return panel
+    if not open_menu:
+        return panel
+
+    # Compose static open-menu states for review, without adding runtime behavior.
+    host = QWidget()
+    outer = QVBoxLayout(host)
+    outer.setContentsMargins(0, 0, 0, 0)
+    outer.setSpacing(8)
+    panel.setFixedHeight(150)
+    outer.addWidget(panel)
+    menu, menu_layout = frame("QuickMenu", 20, 18)
+    menu.setFixedWidth(300)
+    options = (
+        (("OpenAI Personal", "OpenAI · Connected"), ("Groq Cloud", "Groq · Connected"))
+        if open_menu == "provider" else
+        (("Sol Medium", "GPT-6.1 Sol · Medium reasoning"), ("Sol High", "GPT-6.1 Sol · High reasoning"))
+    )
+    for index, (name, detail) in enumerate(options):
+        item = QHBoxLayout()
+        item.setSpacing(12)
+        item.addWidget(label("✓" if index == 0 else "  ", "MenuName"))
+        text = QVBoxLayout()
+        text.setSpacing(5)
+        text.addWidget(label(name, "MenuName"))
+        text.addWidget(label(detail, "MenuDetail"))
+        item.addLayout(text, 1)
+        menu_layout.addLayout(item)
+    menu_row = QHBoxLayout()
+    menu_row.setContentsMargins(24, 0, 64, 0)
+    if open_menu == "model":
+        menu_row.addStretch()
+    menu_row.addWidget(menu)
+    if open_menu == "provider":
+        menu_row.addStretch()
+    outer.addLayout(menu_row)
+    outer.addStretch()
+    return host
 
 
 def render(app, panel, width, height, filename):
@@ -208,3 +260,5 @@ if __name__ == "__main__":
     render(app, provider_settings(), 860, 870, "provider-settings-mockup.png")
     render(app, model_picker(), 760, 650, "provider-model-picker-mockup.png")
     render(app, quick_switch(), 860, 150, "provider-quick-switch-mockup.png")
+    render(app, quick_switch("provider"), 860, 330, "provider-quick-switch-provider-menu.png")
+    render(app, quick_switch("model"), 860, 330, "provider-quick-switch-model-menu.png")
