@@ -228,6 +228,12 @@ stateDiagram-v2
 
 ---
 
+### Solution 14: Provider-First UI Mockups (2026-11-13)
+- **Accepted Design Direction:** Provider cards own connection details and multiple saved model configurations. Exactly one model configuration is active per provider, with quick switching between saved configurations. The user requested mockups before implementation.
+- **Artifacts (`resources/references/`):** `provider-settings-mockup.png` shows an expanded OpenAI provider with Sol Medium/Sol High configurations and a collapsed Groq provider. `provider-model-picker-mockup.png` shows catalog search and configuration fields. `provider-quick-switch-mockup.png` shows provider/model selectors above query input. `README.md` links and explains all references.
+- **Reproducibility:** Run `QT_QPA_PLATFORM=offscreen python3 resources/references/generate-provider-mockups.py`. The renderer uses only placeholder data, does not load credentials, and checks transparent outer corner pixels. All three views were rendered and visually inspected.
+- **Implementation Boundary:** These are presentation-only references; the application's model-entry schema, settings controls, routing, and discovery behavior have not changed. Provider fallback order is illustrated as a proposal. Catalog integrations, parameter compatibility, persistence, and final HUD scrolling still require implementation and review.
+
 ## 5. Project Directory Layout
 
 ```
