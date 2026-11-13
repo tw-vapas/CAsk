@@ -5,16 +5,20 @@ These views do not load credentials, contact providers, or modify application se
 """
 
 import os
+import sys
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QColor, QFont, QIcon, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QApplication, QButtonGroup, QComboBox, QFrame, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QRadioButton, QVBoxLayout, QWidget,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from ui.icons import get_gear_icon
 
 
 STYLE = """
@@ -154,10 +158,35 @@ def model_picker():
 
 def quick_switch():
     panel, layout = frame("Panel", 20, 14)
-    layout.addLayout(row(combo(["OpenAI Personal", "Groq Cloud"]), combo(["Sol Medium", "Sol High"]), None, button("Settings")))
     query = QLineEdit()
     query.setPlaceholderText("Type what's on your mind...")
-    layout.addLayout(row(query, button("Ask", primary=True)))
+    ask = button("", primary=True)
+    arrow = QPixmap(20, 20)
+    arrow.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(arrow)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(QPen(QColor("#171b23"), 2, Qt.PenStyle.SolidLine,
+                        Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+    painter.drawLine(4, 10, 16, 10)
+    painter.drawLine(11, 5, 16, 10)
+    painter.drawLine(11, 15, 16, 10)
+    painter.end()
+    ask.setIcon(QIcon(arrow))
+    ask.setIconSize(QSize(20, 20))
+    ask.setFixedWidth(40)
+    ask.setAccessibleName("Ask")
+    ask.setToolTip("Send question")
+    layout.addLayout(row(query, ask))
+    settings = button("")
+    settings.setIcon(get_gear_icon(size=20))
+    settings.setIconSize(QSize(20, 20))
+    settings.setFixedWidth(40)
+    settings.setAccessibleName("Settings")
+    settings.setToolTip("Provider and model settings")
+    layout.addLayout(row(
+        button("Provider: OpenAI Personal ▾"),
+        button("Model: Sol Medium ▾"), None, settings,
+    ))
     return panel
 
 
