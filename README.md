@@ -162,7 +162,9 @@ Click the gear icon `⚙` on the input bar or press <kbd>Ctrl</kbd> + <kbd>,</kb
   - **Google Gemini:** `gemini-flash-lite-latest`, `gemini-3.5-flash-lite`, `gemini-3.5-flash`, `gemini-3.8-flash`.
   - **9Router / Custom OpenAI:** `http://localhost:20128/v1` for `claude-3-5-sonnet`, `gpt-4o`, `deepseek-chat`, or local Ollama.
 - **Live Latency & Ping Test (`⚡ Test`):** Real-time connectivity test button measuring roundtrip latency (e.g. `✓ 0.62s`) before saving.
-- **Hot-Reloading:** Saving writes atomically to `~/.config/cask/config.env` and immediately updates active capsules without restarting CAsk.
+- **Explicit Dropdown Selection:** Scrolling over a closed dropdown keeps its selection unchanged and scrolls the containing card list. Open the dropdown or use arrow keys to select an option.
+- **Apply & Hot-Reloading:** Click **Apply** to atomically save the pipeline to `~/.config/cask/models.json`, sync legacy settings to `config.env`, and update active capsules without restarting CAsk. Paths follow `XDG_CONFIG_HOME` when set.
+- **Connection Test Results:** Background tests report success or failure on the GUI thread and re-enable **Test** for retries. Hover over the result to read the full message when an error is truncated.
 
 ---
 

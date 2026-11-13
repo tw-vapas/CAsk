@@ -70,7 +70,7 @@ stateDiagram-v2
     [*] --> InputState: Launch capsule
     InputState --> LoadingState: Submit query / command
     InputState --> SettingsState: Settings button ⚙ / [Ctrl + ,]
-    SettingsState --> InputState: Save & Apply / Close / Esc
+    SettingsState --> InputState: Apply / Close / Esc
     InputState --> ResultState: /help, invalid cmd, missing arg (0ms token-free)
     InputState --> [*]: Escape / Empty input
     LoadingState --> ResultState: API response (Groq / Gemini)
@@ -195,8 +195,8 @@ stateDiagram-v2
 - **Requirement:** Allow users to interactively configure, test, enable/disable, reorder, create, and delete response models via GUI without manually editing `config.env`.
 - **Implementation:**
   - **In-Capsule State Transition (`STATE_SETTINGS`):** Flipped active capsule to settings mode upon clicking the input bar gear icon `⚙` or pressing <kbd>Ctrl</kbd> + <kbd>,</kbd>. Preserves single-window geometry and Wayland `setMask` bounds without secondary popup dialog issues.
-  - **Dynamic Model Cards (`ui/settings_view.py`):** Each `ModelCardWidget` encapsulates a complete AI endpoint configuration: display name, protocol (`openai_compatible` / `gemini`), base URL, model ID, API key, enabled toggle, and temperature/max_tokens settings. Cards support:
-    - **Add:** `+ Add Model Card` button creates new cards from preset templates (Groq, 9Router, Gemini, DeepSeek, Ollama, Custom Endpoint).
+  - **Dynamic Model Cards (`ui/settings_view.py`):** Each `ModelCardWidget` exposes display name, protocol (`openai_compatible` / `gemini`), base URL, model ID, API key, and enabled toggle. Existing `temperature` and `max_tokens` metadata is preserved on save without GUI editors; request temperature remains fixed at `0.2`. Cards support:
+    - **Add:** `Add Model Card` button with a single plus icon creates new cards from preset templates (Groq, 9Router, Gemini, DeepSeek, Ollama, Custom Endpoint).
     - **Delete:** Trash button removes cards (disabled when only 1 card remains).
     - **Reorder:** Up/Down arrow buttons (`▲` `▼`) configure primary and fallback ranking with live priority badge refresh (`[Primary]`, `[Fallback N]`, `[Inactive]`).
     - **Edit:** Inline name editing, protocol selector, editable model combo with preset suggestions, and password reveal toggle (`👁`).
@@ -207,6 +207,17 @@ stateDiagram-v2
     - **Backward Compatibility Sync:** On save, primary keys (`GROQ_MODEL`, `GEMINI_MODEL`, `PROVIDER_ORDER`, etc.) are written back to `config.env` for legacy compatibility.
   - **Hot-Reloading (`core/config.py`):** `save_config_file()` atomically writes key updates to `~/.config/cask/config.env` while preserving comments, immediately hot-reloading runtime `Config` across all active capsules.
   - **Built-in Presets (`core/model_config.py` → `PRESETS`):** Catalog of provider templates (Groq Cloud, 9Router, Google Gemini, DeepSeek API, Ollama Local, Custom) with default URLs, model IDs, and suggested model lists.
+
+### Solution 12: Model Settings Interaction Fixes (2026-11-13)
+- **Scope:** Prevent accidental dropdown changes, simplify action labels, and resolve connection tests remaining at `Testing...`.
+- **Implementation (`ui/settings_view.py`):**
+  - `WheelSafeComboBox` handles protocol, model ID, and preset dropdowns. Wheel events over closed controls, including the editable model field, are forwarded to the nearest `QScrollArea`; selection requires explicit keyboard or popup interaction.
+  - The apply button reads `Apply`. `Add Model Card` retains its plus icon and omits the redundant plus in its text.
+  - Connection tests retain the background daemon thread and the existing eight-second network timeout. `connection_test_finished` uses a queued Qt signal to deliver results to `_apply_test_result` on the GUI thread, replacing the worker-thread `QTimer.singleShot` callback that could remain undelivered.
+  - Provider failures and unexpected exceptions update the result label and re-enable testing. Tooltips expose full error text. Results emitted after card deletion are safely discarded.
+  - Removed the duplicate `ModelCardWidget` constructor and signal declarations.
+- **Verification:** All 58 core/UI tests passed headlessly with a temporary `XDG_RUNTIME_DIR`. `tests/test_settings_view.py` covers focused/unfocused wheel input, editable fields, panel scrolling, popup/keyboard selection, queued results, success/failure/timeout/retry, and deletion during a request. The existing reorder test now supplies its own three-model fixture instead of depending on personal configuration. Connection responses were mocked; live provider credentials were not exercised.
+- **UI Review:** The current stylesheet keeps `#SettingsView` transparent while cards have their own backgrounds, leaving outer text dependent on the desktop behind it. Proposed styling uses a continuous dark panel (`#1b1f26`), lighter cards (`#262d38`), darker inputs, and brighter secondary labels. This styling was previewed separately and has not been applied to the repository; UI redesign remains a user decision.
 
 ---
 
