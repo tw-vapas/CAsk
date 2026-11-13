@@ -23,10 +23,12 @@ from ui.icons import get_gear_icon
 
 STYLE = """
 QWidget { color: #e6ebf5; background: transparent; font-size: 13px; }
-QFrame#Panel { background: #1b1f26; border: 1px solid #454b56; border-radius: 14px; }
-QFrame#Card { background: #262d38; border: 1px solid #454b56; border-radius: 10px; }
-QFrame#Selected { background: #313640; border: 1px solid #bca779; border-radius: 8px; }
-QFrame#Row { background: #202630; border: 1px solid #3a424f; border-radius: 8px; }
+QFrame#Panel { background: rgba(27, 31, 38, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-top: 1px solid rgba(255, 255, 255, 0.32); border-radius: 14px; }
+QFrame#Card { background: rgba(38, 45, 56, 0.70); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 10px; }
+QFrame#Selected { background: rgba(249, 226, 175, 0.12); border: 1px solid rgba(249, 226, 175, 0.35); border-radius: 8px; }
+QFrame#Row { background: rgba(32, 38, 48, 0.65); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; }
 QLabel#Title { font-size: 21px; font-weight: bold; color: #f9e2af; }
 QLabel#Heading { font-size: 15px; font-weight: bold; }
 QLabel#Muted { color: #bbc4d6; font-size: 12px; }
@@ -248,6 +250,9 @@ def render(app, panel, width, height, filename):
     image = host.grab().toImage()
     for x, y in ((0, 0), (image.width()-1, 0), (0, image.height()-1), (image.width()-1, image.height()-1)):
         assert image.pixelColor(x, y).alpha() == 0
+    if filename in ("provider-settings-mockup.png", "provider-model-picker-mockup.png", "model-settings-proposed.png"):
+        alpha = image.pixelColor(image.width() // 2, round(8 * image.devicePixelRatio())).alpha()
+        assert 190 <= alpha <= 192, alpha
     if filename == "provider-quick-switch-mockup.png":
         # Match the existing InputBar's 75% background opacity, including below controls.
         alpha = image.pixelColor(image.width() * 3 // 4, image.height() - 15).alpha()
@@ -264,6 +269,31 @@ def render(app, panel, width, height, filename):
     host.close()
 
 
+def legacy_settings_reference(app):
+    """Render the earlier settings proposal with translucent preview-only styling."""
+    from core.config import Config
+    from core.model_config import ModelEntry
+    from ui.app import load_stylesheet
+    from ui.settings_view import SettingsView
+
+    previous_style = app.styleSheet()
+    app.setStyleSheet(load_stylesheet() + """
+        #SettingsView { background-color: rgba(27, 31, 38, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-top: 1px solid rgba(255, 255, 255, 0.32); }
+        #ModelCard { background-color: rgba(38, 45, 56, 0.70);
+            border: 1px solid rgba(255, 255, 255, 0.16); }
+    """)
+    try:
+        entries = (
+            ModelEntry("groq_preview", "Groq Cloud", "openai_compatible", "openai/gpt-oss-120b", "https://api.groq.com/openai/v1"),
+            ModelEntry("ollama_preview", "Ollama Local", "openai_compatible", "llama3.2:3b", "http://localhost:11434/v1"),
+        )
+        render(app, SettingsView(Config(models=entries)), 800, 620, "model-settings-proposed.png")
+    finally:
+        app.setStyleSheet(previous_style)
+
+
 if __name__ == "__main__":
     app = QApplication([])
     app.setFont(QFont("DejaVu Sans", 10))
@@ -273,3 +303,4 @@ if __name__ == "__main__":
     render(app, quick_switch(), 860, 150, "provider-quick-switch-mockup.png")
     render(app, quick_switch("provider"), 860, 330, "provider-quick-switch-provider-menu.png")
     render(app, quick_switch("model"), 860, 330, "provider-quick-switch-model-menu.png")
+    legacy_settings_reference(app)
