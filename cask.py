@@ -73,7 +73,11 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    config = load_config(script_dir=PROJECT_ROOT)
+    try:
+        config = load_config(script_dir=PROJECT_ROOT)
+    except (ValueError, OSError) as exc:
+        print(f"Error loading configuration: {exc}", file=sys.stderr)
+        return 1
     catalog = load_commands(config)
 
     if args.version:

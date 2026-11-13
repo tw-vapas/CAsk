@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from .model_config import ModelEntry, load_models_config, save_models_config
+from .provider_config import Provider, load_providers
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,8 @@ class Config:
     custom_openai_model: str = "claude-3-5-sonnet"
     provider_order: tuple[str, ...] = ("groq", "gemini")
     models: tuple[ModelEntry, ...] = ()
+    providers: Optional[tuple[Provider, ...]] = None
+    selected_provider_id: str = ""
     max_tokens: int = 4096
     max_followup_turns: int = 3
     prompt_file: Optional[Path] = None
@@ -40,6 +43,8 @@ class Config:
     @property
     def has_any_api_key(self) -> bool:
         """Return True if at least one AI provider has valid configuration in the active pipeline."""
+        if self.providers is not None:
+            return any(p.enabled and p.active_model and p.authenticated for p in self.providers)
         if self.models:
             for m in self.models:
                 if m.enabled:
@@ -232,7 +237,19 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
                 prompt_file = candidate
                 break
 
-    models = tuple(load_models_config(config_dir, env_vars=file_vars))
+    legacy_env = dict(file_vars)
+    legacy_env.update({
+        "GROQ_API_KEY": groq_api_key, "GROQ_MODEL": groq_model, "GROQ_BASE_URL": groq_base_url,
+        "GEMINI_API_KEY": gemini_api_key, "GEMINI_MODEL": gemini_model,
+        "CUSTOM_OPENAI_API_KEY": custom_openai_api_key, "CUSTOM_OPENAI_BASE_URL": custom_openai_base_url,
+        "CUSTOM_OPENAI_MODEL": custom_openai_model, "PROVIDER_ORDER": ",".join(provider_order),
+    })
+    models = tuple(load_models_config(config_dir, env_vars=legacy_env))
+    if not (config_dir / "models.json").is_file():
+        legacy_ids = {"groq_default": "groq", "gemini_default": "gemini", "9router_default": "custom_openai"}
+        ranks = {name: index for index, name in enumerate(provider_order)}
+        models = tuple(sorted(models, key=lambda m: ranks.get(legacy_ids.get(m.id, ""), len(ranks))))
+    providers, selected_provider_id = load_providers(config_dir, list(models))
 
     return Config(
         groq_api_key=groq_api_key,
@@ -245,6 +262,8 @@ def load_config(script_dir: Optional[Path] = None) -> Config:
         custom_openai_model=custom_openai_model,
         provider_order=provider_order,
         models=models,
+        providers=tuple(providers),
+        selected_provider_id=selected_provider_id,
         max_tokens=max_tokens,
         max_followup_turns=max_followup_turns,
         prompt_file=prompt_file,

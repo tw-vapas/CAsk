@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import socket
 import time
+import threading
 import urllib.error
 import urllib.request
 from typing import Dict, List, Optional, Tuple
@@ -28,6 +29,8 @@ socket.getaddrinfo = _ipv4_getaddrinfo
 
 class APIClient:
     """Synchronous hybrid API client."""
+
+    response_context = threading.local()
 
     @staticmethod
     def call_openai_compatible(
@@ -241,6 +244,29 @@ class APIClient:
         history: Optional[List[Dict[str, str]]] = None,
     ) -> Tuple[str, Optional[str]]:
         """Perform request across configured provider pipeline with automatic fallback."""
+        cls.response_context.source = ""
+        if config.providers is not None:
+            from .provider_api import generate_text
+            providers = list(config.providers)
+            providers.sort(key=lambda p: p.id != config.selected_provider_id)
+            errors = []
+            for provider in providers:
+                profile = provider.active_model
+                if not provider.enabled or not profile:
+                    continue
+                if not provider.authenticated:
+                    errors.append(f"{provider.name}: Missing API key.")
+                    continue
+                try:
+                    content = generate_text(provider, profile, system_prompt, user_prompt_content, history)
+                    cls.response_context.source = f"{provider.name} / {profile.name} ({profile.model})"
+                    return content, None
+                except Exception as exc:
+                    message = str(exc)
+                    if provider.api_key:
+                        message = message.replace(provider.api_key, "[redacted]")
+                    errors.append(f"{provider.name} / {profile.name}: {message}")
+            return "", " | ".join(errors) or "No enabled provider has an active model. Open Settings [Ctrl+,]."
         if not config.has_any_api_key:
             return "", (
                 "API Key not configured!\n\n"
@@ -394,6 +420,7 @@ try:
             self.history = history
             self._is_cancelled: bool = False
             self._thread: Optional[threading.Thread] = None
+            self.response_source = ""
 
         def start(self) -> None:
             """Start background API request on a daemon thread."""
@@ -427,6 +454,7 @@ try:
                 self.config,
                 history=self.history,
             )
+            self.response_source = getattr(APIClient.response_context, "source", "")
             if self._is_cancelled:
                 return
 
