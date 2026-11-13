@@ -7,7 +7,7 @@ and test controls are illustrative; no account was queried and no settings were 
 | --- | --- |
 | [Provider settings](provider-settings-mockup.png) | Shared provider connection, saved model configurations, and one active model per provider. |
 | [Model picker](provider-model-picker-mockup.png) | Search a provider catalog, choose a model, and configure its display name and reasoning effort. |
-| [Quick switch](provider-quick-switch-mockup.png) | Input with a right-arrow send icon; provider/model selection buttons and a gear settings button sit underneath. |
+| [Quick switch](provider-quick-switch-mockup.png) | A rounded container encloses only input and the right-arrow send button. Provider/model selection buttons and a gear settings button sit separately below, with transparent space around them. |
 | [Original settings reference](model-settings-proposed.png) | Approved dark panel styling used by the current application. |
 
 The provider fallback order and interaction details are proposals for review. These mockups
@@ -23,3 +23,5 @@ QT_QPA_PLATFORM=offscreen python3 resources/references/generate-provider-mockups
 
 The renderer uses PyQt6, placeholder data, and transparent window hosts. It checks that
 all four outer corners have zero alpha before saving each PNG beside this file.
+The quick-switch renderer also verifies transparency between the input container and
+the detached controls, and in the empty area beside those controls.
