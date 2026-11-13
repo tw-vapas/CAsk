@@ -157,7 +157,11 @@ def model_picker():
 
 
 def quick_switch():
-    panel, layout = frame("Panel", 20, 14)
+    panel = QWidget()
+    layout = QVBoxLayout(panel)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(12)
+    input_panel, input_layout = frame("Panel", 20, 0)
     query = QLineEdit()
     query.setPlaceholderText("Type what's on your mind...")
     ask = button("", primary=True)
@@ -176,17 +180,20 @@ def quick_switch():
     ask.setFixedWidth(40)
     ask.setAccessibleName("Ask")
     ask.setToolTip("Send question")
-    layout.addLayout(row(query, ask))
+    input_layout.addLayout(row(query, ask))
+    layout.addWidget(input_panel)
     settings = button("")
     settings.setIcon(get_gear_icon(size=20))
     settings.setIconSize(QSize(20, 20))
     settings.setFixedWidth(40)
     settings.setAccessibleName("Settings")
     settings.setToolTip("Provider and model settings")
-    layout.addLayout(row(
+    controls = row(
         button("Provider: OpenAI Personal ▾"),
         button("Model: Sol Medium ▾"), None, settings,
-    ))
+    )
+    controls.setContentsMargins(20, 0, 20, 0)
+    layout.addLayout(controls)
     return panel
 
 
@@ -203,6 +210,12 @@ def render(app, panel, width, height, filename):
     image = host.grab().toImage()
     for x, y in ((0, 0), (image.width()-1, 0), (0, image.height()-1), (image.width()-1, image.height()-1)):
         assert image.pixelColor(x, y).alpha() == 0
+    if filename == "provider-quick-switch-mockup.png":
+        input_panel = panel.findChild(QFrame, "Panel")
+        scale = image.devicePixelRatio()
+        gap_y = round((input_panel.geometry().bottom() + 6) * scale)
+        assert image.pixelColor(image.width() // 2, gap_y).alpha() == 0
+        assert image.pixelColor(image.width() * 3 // 4, image.height() - 15).alpha() == 0
     destination = Path(__file__).resolve().parent / filename
     assert image.save(str(destination))
     print(f"{destination.name}: {image.width()}x{image.height()}, transparent corners verified")
