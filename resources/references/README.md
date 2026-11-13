@@ -1,5 +1,36 @@
 # UI References
 
+## Settings Revision 2
+
+The newest proposal addresses typography, provider accordions, bounded model scrolling,
+inline deletion confirmation, and Add/Edit navigation inside one Settings window.
+These six images share an 800x760 viewport. They are proposals, not runtime changes.
+
+| Image | State |
+| --- | --- |
+| [Overview](settings-v2-overview.png) | One expanded provider, compact model rows in a separate scroll container, collapsed connection details, and a fixed footer. |
+| [Add Model](settings-v2-add-model.png) | Step 1: searchable provider catalog within the same window. |
+| [Configure Model](settings-v2-configure-model.png) | Step 2: display name, reasoning, and collapsed Advanced options. |
+| [Edit Model](settings-v2-edit-model.png) | Edit a saved configuration; Back returns to the provider page. |
+| [Remove Model](settings-v2-remove-model.png) | Inline confirmation inside the model list. |
+| [Remove Provider](settings-v2-remove-provider.png) | Inline confirmation showing the affected model count. |
+
+Typography uses the current CAsk font family with 14pt page titles, 11pt provider names,
+10pt controls/model names, and 9pt secondary text. Panel opacity remains 75%, with
+translucent nested surfaces and transparent rounded corners.
+
+```bash
+python3 resources/references/generate-settings-v2-mockups.py
+```
+
+For a local navigation/accordion/scrolling preview, run with `--preview` in a graphical
+session. This is an illustrative prototype: model data is fixed, some controls are
+presentation-only, and no credentials, network calls, or configuration files are used.
+The renderer verifies that only one top-level window is visible, the model list can
+scroll, and all exported images preserve the expected alpha values.
+
+## Earlier References
+
 These images are design mockups. Provider status, saved credentials, model availability,
 and test controls are illustrative; no account was queried and no settings were changed.
 

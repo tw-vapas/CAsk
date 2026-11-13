@@ -257,6 +257,13 @@ stateDiagram-v2
 
 ## 5. Project Directory Layout
 
+### Settings Revision 2 Design References (2026-11-14)
+- The user requested visual proposals before changing the runtime UI. The single-window scope applies to Settings navigation only; CAsk's multi-capsule feature is retained.
+- `resources/references/generate-settings-v2-mockups.py` renders six `settings-v2-*.png` files: overview, Add Model catalog, Configure Model, Edit Model, inline model removal, and inline provider removal. All states use one 800x760 translucent window and stacked content pages; no overlay dialog is created.
+- Proposed hierarchy: current CAsk font family, 14pt title, 11pt provider name, 10pt content/controls, 9pt secondary text. One provider is expanded at a time, connection fields are collapsed, and saved model rows sit in a bounded scroll area with Add Model outside that area. Confirmation is inline, with Cancel and an explicit removal action.
+- All six states were rendered and inspected. Renderer checks cover one visible top-level window, actual model-list scrolling, 75% panel opacity, and zero-alpha outer corners. `--preview` offers illustrative navigation/accordion interactions with fixed placeholder data; it is not a complete functional Settings replacement.
+- Runtime implementation remains unchanged by this design task. `resources/references/README.md` indexes the newest proposal separately from historical references.
+
 The latest reference-only transparency update makes `provider-settings-mockup.png`,
 `provider-model-picker-mockup.png`, and `model-settings-proposed.png` use 75% opaque
 outer backgrounds with translucent nested cards/rows and zero-alpha rounded corners.
