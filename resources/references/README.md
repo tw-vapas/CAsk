@@ -10,7 +10,7 @@ and test controls are illustrative; no account was queried and no settings were 
 | [Quick switch](provider-quick-switch-mockup.png) | Gemini-inspired capsule: query above, provider selector at the lower left, model selector and gear at the lower right. No send button. |
 | [Provider menu](provider-quick-switch-provider-menu.png) | Expanded provider pill and rounded menu with connection labels and a selected-item checkmark. |
 | [Model menu](provider-quick-switch-model-menu.png) | Expanded model pill and rounded menu with saved model configurations and reasoning descriptions. |
-| [Original settings reference](model-settings-proposed.png) | Approved dark panel styling used by the current application. |
+| [Original settings reference](model-settings-proposed.png) | Earlier settings layout, updated with a proposed translucent panel and card backgrounds. |
 
 The provider fallback order and interaction details are proposals for review. These mockups
 do not implement catalog discovery, request compatibility, or persistent selection.
@@ -26,7 +26,12 @@ white borders, `#e6ebf5` text, and the existing yellow hover/selection accents.
 Only provider/model/settings controls are represented; Gemini-specific features are excluded.
 Open-menu views are static compositions, not functional popup implementations.
 
-Regenerate all provider mockups from the project root:
+Provider Settings, Model Picker, and the original settings reference now also use 75%
+opacity on the outer panel, with translucent card and selection surfaces. Stacked surfaces
+combine their opacity; text and primary action buttons retain contrast. These are preview
+changes only; the application's current settings stylesheet is unchanged.
+
+Regenerate all six reference images from the project root:
 
 ```bash
 QT_QPA_PLATFORM=offscreen python3 resources/references/generate-provider-mockups.py
@@ -36,3 +41,4 @@ The renderer uses PyQt6, placeholder data, and transparent window hosts. It chec
 all four outer corners have zero alpha before saving each PNG beside this file.
 The quick-switch renderer also verifies 75% capsule background opacity and 95% menu
 background opacity while the outer rounded corners remain transparent.
+The three settings/picker references also have 75% outer panel alpha checks.

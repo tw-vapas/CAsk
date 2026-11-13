@@ -243,6 +243,14 @@ stateDiagram-v2
 
 ## 5. Project Directory Layout
 
+The latest reference-only transparency update makes `provider-settings-mockup.png`,
+`provider-model-picker-mockup.png`, and `model-settings-proposed.png` use 75% opaque
+outer backgrounds with translucent nested cards/rows and zero-alpha rounded corners.
+`generate-provider-mockups.py` now regenerates all six references, including the original
+settings layout with preview-only stylesheet overrides. Header background alpha checks
+passed for all three updated panels, and each image was visually inspected. Runtime QSS,
+provider behavior, and personal configuration remain unchanged.
+
 ```
 cask/
 ├── assets/                    # Project visual assets & branding
