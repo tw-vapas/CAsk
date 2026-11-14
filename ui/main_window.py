@@ -10,7 +10,7 @@ from typing import List, Optional
 
 try:
     from PyQt6.QtCore import QEvent, QPoint, QRect, QSize, Qt, QTimer
-    from PyQt6.QtGui import QCursor, QGuiApplication, QIcon, QKeyEvent, QMouseEvent, QRegion
+    from PyQt6.QtGui import QCursor, QGuiApplication, QIcon, QKeyEvent, QMouseEvent, QPlatformSurfaceEvent, QRegion
     from PyQt6.QtWidgets import QFrame, QLineEdit, QTextEdit, QWidget
 except ImportError:
     pass
@@ -18,6 +18,8 @@ except ImportError:
 from core.command_loader import CommandCatalog
 from core.config import Config
 from ui.capsule import CAskCapsule
+from ui.backdrop import as_region, rounded_rectangles
+from ui.wayland_blur import WaylandBlur
 
 
 class DropGhostIndicator(QFrame):
@@ -53,6 +55,8 @@ class MainWindow(QWidget):
         self.catalog = catalog
         self.initial_input = initial_input
         self.capsules: List[CAskCapsule] = []
+        self._backdrop_blur = None
+        self._blur_rectangles = []
 
         self._dragging_capsule: Optional[CAskCapsule] = None
         self._target_drop_slot: Optional[int] = None
@@ -110,7 +114,6 @@ class MainWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self.setAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled, True)
-        self.setProperty("kwin_blur", True)
         self._is_always_on_top: bool = True
 
     def _set_kwin_layer(self, keep_above: bool) -> bool:
@@ -176,6 +179,53 @@ class MainWindow(QWidget):
         """Handle window display event and enforce compositor layer policies."""
         super().showEvent(event)
         self._apply_initial_layer()
+        if self._backdrop_blur is None:
+            self._backdrop_blur = WaylandBlur(self)
+            handle = self.windowHandle()
+            if handle:
+                handle.installEventFilter(self)
+                handle.screenChanged.connect(lambda *_: self._recompute_layout())
+            app = QGuiApplication.instance()
+            app.aboutToQuit.connect(self._backdrop_blur.close)
+            for screen in app.screens():
+                self._watch_screen(screen)
+            app.screenAdded.connect(self._watch_screen)
+        self._update_backdrop()
+
+    def _watch_screen(self, screen):
+        screen.availableGeometryChanged.connect(lambda *_: self._recompute_layout())
+        screen.logicalDotsPerInchChanged.connect(lambda *_: self._recompute_layout())
+
+    def _update_backdrop(self):
+        if self._backdrop_blur:
+            self._backdrop_blur.update(self.windowHandle(), self._blur_rectangles if self.isVisible() else [])
+            self.update()  # Let Qt commit the associated surface state.
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.PlatformSurface and self._backdrop_blur:
+            if event.surfaceEventType() == QPlatformSurfaceEvent.SurfaceEventType.SurfaceAboutToBeDestroyed:
+                self._backdrop_blur.detach()
+            else:
+                QTimer.singleShot(0, self._update_backdrop)
+        elif event.type() == QEvent.Type.Expose and self._backdrop_blur:
+            self._update_backdrop()
+        return super().eventFilter(watched, event)
+
+    def event(self, event):
+        result = super().event(event)
+        if event.type() == QEvent.Type.DevicePixelRatioChange and getattr(self, "capsules", None):
+            self._recompute_layout()
+        return result
+
+    def hideEvent(self, event):
+        if self._backdrop_blur:
+            self._backdrop_blur.update(self.windowHandle(), [])
+        super().hideEvent(event)
+
+    def closeEvent(self, event):
+        if self._backdrop_blur:
+            self._backdrop_blur.close()
+        super().closeEvent(event)
 
     def toggle_always_on_top(self) -> bool:
         """Toggle window between Keep Above (on-top) and Keep Below (behind other windows)."""
@@ -498,7 +548,7 @@ class MainWindow(QWidget):
         self.setGeometry(screen_geo)
 
         slots = self._calculate_slot_geometries(screen_geo)
-        total_mask = QRegion()
+        self._blur_rectangles = []
 
         for capsule, x, y, w, h in slots:
             # Coordinates relative to MainWindow (which starts at screen_geo.topLeft())
@@ -507,13 +557,17 @@ class MainWindow(QWidget):
             capsule.setGeometry(rel_x, rel_y, w, h)
             capsule.container.setFixedSize(w, h)
             card_rect = QRect(rel_x, rel_y, w, h)
-            total_mask = total_mask.united(QRegion(card_rect))
+            if not capsule.isHidden():
+                radius = 28 if capsule.state == CAskCapsule.STATE_INPUT else 14
+                self._blur_rectangles.extend(rounded_rectangles(card_rect.intersected(self.rect()), radius))
 
         # Set transparent click-through mask
         try:
-            self.setMask(total_mask)
+            self.setMask(as_region(self._blur_rectangles))
         except Exception:
             pass
+
+        self._update_backdrop()
 
     def _switch_state(self, state: int, target_width: int = 600, target_height: int = 50) -> None:
         """Backward-compatible state switch on primary capsule."""
