@@ -88,7 +88,7 @@ Configure providers through **Settings → Add Provider**. The OpenAI preset use
 
 Settings uses one expanded provider accordion at a time. Expand **Connection settings** to edit credentials. **Add Model → Continue → Add Model** opens embedded catalog/configuration pages; **Back** preserves the unfinished model configuration. Saved models scroll within each provider, and **···** reveals model/provider actions. Removal requires an inline confirmation. **Apply** saves the provider draft; **Cancel** discards it. The existing multi-capsule workflow remains available outside Settings.
 
-On supported Wayland compositors, CAsk requests native backdrop blur only behind rounded capsule regions. Colors and opacity are preserved, with sharp foreground controls and clear corners/gaps. Missing or disabled blur support falls back to translucency. To verify on KDE/Wayland with Spectacle installed:
+On supported Wayland compositors, CAsk requests native backdrop blur only behind rounded capsule regions. Colors and opacity are preserved, with sharp foreground controls and clear corners/gaps. Missing or disabled blur support falls back to translucency. The native request controls the blur region; strength is currently managed by the compositor and cannot be tuned independently for CAsk through this protocol. To verify on KDE/Wayland with Spectacle installed:
 
 ```bash
 QT_QPA_PLATFORM=wayland python3 resources/verify-desktop-blur.py
