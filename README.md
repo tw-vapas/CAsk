@@ -86,6 +86,17 @@ This script will:
 ### 3. Add your API Keys
 Configure providers through **Settings → Add Provider**. The OpenAI preset uses the Responses API. Enter your API key, connect to load the model catalog, add a saved model configuration, then click **Apply**. Legacy environment configuration below remains available for initial migration.
 
+Settings uses one expanded provider accordion at a time. Expand **Connection settings** to edit credentials. **Add Model → Continue → Add Model** opens embedded catalog/configuration pages; **Back** preserves the unfinished model configuration. Saved models scroll within each provider, and **···** reveals model/provider actions. Removal requires an inline confirmation. **Apply** saves the provider draft; **Cancel** discards it. The existing multi-capsule workflow remains available outside Settings.
+
+On supported Wayland compositors, CAsk requests native backdrop blur only behind rounded capsule regions. Colors and opacity are preserved, with sharp foreground controls and clear corners/gaps. Missing or disabled blur support falls back to translucency. To verify on KDE/Wayland with Spectacle installed:
+
+```bash
+QT_QPA_PLATFORM=wayland python3 resources/verify-desktop-blur.py
+```
+
+The verifier uses placeholder data and a generated striped desktop background, captures blur on/off plus capsule lifecycle states, then closes its windows. PNGs and geometry JSON are saved under the ignored `resources/bug_screenshots/blur-verification/` directory.
+
+
 Legacy provider key links:
 - **Groq API Key (Recommended for ~0.6s speed):** Free at [console.groq.com](https://console.groq.com/keys)
 - **Gemini API Key (Fallback):** Free at [Google AI Studio](https://aistudio.google.com/)
@@ -254,7 +265,9 @@ cask/
 │   ├── input_bar.py           # Auto-expanding dynamic input bar with token highlighting
 │   ├── result_view.py         # QTextBrowser with action buttons & keyboard shortcuts
 │   ├── settings_view.py       # Current provider settings exports
-│   ├── provider_settings.py   # Provider cards and model configuration dialogs
+│   ├── provider_settings.py   # Provider accordions and stacked model configuration pages
+│   ├── backdrop.py            # Rounded capsule mask and blur regions
+│   ├── wayland_blur.py        # Native Wayland backdrop effect transport
 │   ├── legacy_settings_view.py # Former UI retained for historical reference rendering
 │   ├── loading_indicator.py   # Subtle animated request indicator
 │   └── styles.qss             # Translucent Glassmorphism QSS stylesheet
@@ -270,6 +283,8 @@ cask/
 │   ├── test_core.py           # Core router and loader unit tests
 │   ├── test_providers.py      # Provider migration, fake HTTP integration, Qt workflows
 │   ├── test_settings_view.py  # Scrolling, queued results, and transparent rendering
+│   ├── test_settings_v2.py    # Settings navigation, inline removal, draft isolation
+│   ├── test_backdrop.py       # Native blur geometry and lifecycle regressions
 │   └── test_ui.py             # Headless PyQt6 UI tests
 ├── install.sh                 # System installer & desktop entry setup
 └── README.md                  # Documentation

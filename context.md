@@ -113,11 +113,11 @@ stateDiagram-v2
    - **Pinning Rules:** When pinned (`is_pinned == True`), the card **cannot** be dismissed by clicking outside, pressing <kbd>Esc</kbd>, or pressing <kbd>Enter</kbd>. It can only be dismissed via the Exit button or by unpinning.
 
 4. **State 3: Settings State (`STATE_SETTINGS`)**
-   - **Dimensions:** Smooth 460px height.
-   - **Model Pipeline Cards:** Modular cards representing Groq Cloud, Google Gemini, and 9Router / Custom OpenAI.
-   - **Reordering & Priority:** Interactive Up/Down buttons (`▲` `▼`) configure primary and fallback fallback ranking.
-   - **Live Connectivity Test:** `⚡ Test` button pings the provider asynchronously and reports latency without blocking the UI.
-   - **Hot-Reloading:** Saving writes atomically to `~/.config/cask/config.env` and instantly updates runtime configuration across active capsules.
+   - **Dimensions:** 760px target height clamped to available space; one Settings capsule uses up to 860px width.
+   - **Navigation:** Provider overview, Add Model catalog, Configure Model, and Edit Model are embedded pages. Back/Escape returns through the page flow; Close exits Settings. No model dialog is opened.
+   - **Providers:** One expanded accordion, collapsed connection details, inline overflow actions for enabling, reordering, and removing connections.
+   - **Models:** Bounded scrolling saved-model rows, one active profile per provider, inline actions and removal confirmation. Add Model remains outside the model scroll area.
+   - **Persistence:** Apply atomically writes private `providers.json` and updates all capsules. Cancel discards the Settings draft. Network and stale-draft protections remain active.
 
 ---
 
@@ -255,7 +255,9 @@ stateDiagram-v2
 - **Verification:** The suite covers migration, private persistence, authoritative empty config, malformed files, pagination, unknown/non-text models, compatible Sol requests, fallback/source attribution, stale discovery, model dialogs, Apply/reload, quick selection, stale drafts, viewport bounds, Enter handling, and an end-to-end connect/add/apply/query flow. Real HTTP discovery/generation was exercised against a local fake provider; no paid API or personal key was used. Runtime input/settings/dialog renders were visually inspected offscreen. Native compositor behavior and live provider entitlement remain unverified.
 - **Final Checks:** All 79 tests passed with a temporary `XDG_RUNTIME_DIR`; the provider test subset also passed at `QT_SCALE_FACTOR=2`. `git diff --check` and the CLI version command passed. No personal provider file was written during verification.
 
-### Next Session Handoff: Approved Settings Revision and Blur (2026-11-14)
+### Archived Handoff: Approved Settings Revision and Blur (2026-11-14)
+
+This pre-implementation handoff is superseded by the completed handoff below.
 - **Approved:** The user accepted the six `settings-v2-*.png` references and now wants implementation planning plus real backdrop blur. The runtime still uses the earlier provider editor; revision 2 remains reference-only.
 - **Settings Scope:** Apply the revision 2 typography hierarchy, one-open-provider accordion, compact saved-model rows in bounded scrolling containers, collapsed connection details, inline model/provider removal confirmation, and stacked Add/Edit pages with Back. Preserve drafts, provider expansion, and scroll position. Only Settings must avoid overlapping windows; retain the existing multi-capsule application behavior.
 - **Visual Requirement:** Preserve CAsk colors and opacity while adding compositor-driven blur behind the translucent window surfaces. Keep text and controls sharp. PNG alpha transparency is not proof of live backdrop blur.
@@ -264,6 +266,32 @@ stateDiagram-v2
 - **Region/Lifecycle:** `MainWindow` spans the screen and masks capsule areas. Never request blur for the entire surface by passing an empty region. Derive blur regions from the visible rounded capsule shapes; update when geometry, state, capsule count, or display scaling changes. Transparent corners and gaps must remain unaffected. If unsupported/disabled, keep the existing translucent rendering as a fallback.
 - **Suggested Work Order:** Implement the approved Settings navigation/layout first, then isolate native blur integration and verify it on the real KDE/Wayland desktop. Existing offscreen tests can cover geometry/alpha but cannot prove the compositor blurs other applications.
 
+### Solution 17: Settings Revision 2 Runtime (2026-11-14)
+- **Implementation:** `ui/provider_settings.py` uses `SettingsView.pages` for the persistent overview and an embedded `ModelEditor(QWidget)`. The editor contains catalog/configuration pages; Edit starts at configuration. Back from Configure preserves model name, optional parameters, search, and catalog selection. Returning to overview retains provider drafts, expansion, and scroll position because those widgets are kept alive.
+- **Hierarchy/Geometry:** Current font family, 14pt title, 11pt provider names, 10pt controls, 9pt secondary labels. Settings retains its 75% `#1b1f26` outer surface, translucent cards, yellow interaction accents, and transparent 14px corners. Target height is 760px, clamped by available screen height. The existing single-capsule width limit is 860px. Multi-capsule slot ratios and routing remain in effect.
+- **Accordion/Connections:** Initially expand the first provider. Opening another collapses the previous provider; clicking an open header closes it. Connection fields start collapsed. Provider overflow reveals enabled/reorder/remove actions inline. New providers open their connection fields. Existing presets, credential masking, discovery cache invalidation, daemon workers, and stale network result handling are retained.
+- **Saved Models:** Compact rows use a 214px scrolling viewport; removal confirmation expands it to 258px. Add Model is outside that viewport. Row overflow reveals Test, Settings, Duplicate, and Remove inline. Remove opens a confirmation without changing the draft until explicitly confirmed. The active profile cannot be removed while alternatives exist until another profile is selected. Provider removal also requires an inline confirmation.
+- **Persistence:** Editor Save changes only the provider draft. Apply remains the persistence boundary; network-in-progress and stale-config checks remain intact. Catalog/manual IDs, non-text model restrictions, provider-default optional parameters, and reasoning/temperature compatibility are retained. Close exits Settings; editor Cancel returns to overview; Escape follows Back before closing Settings.
+- **Evidence:** All six runtime states were rendered and visually inspected using placeholder data. Added `tests/test_settings_v2.py` for embedded navigation, draft isolation, accordion/scroll behavior, removal cancellation/active-profile guards, and alpha checks. Existing provider workflow tests now drive the embedded editor instead of a modal dialog.
+
+### Solution 18: Native Wayland Backdrop Blur (2026-11-14)
+- **Transport (`ui/wayland_blur.py`):** Prefer the compositor-advertised `ext_background_effect_manager_v1` and its blur capability. Support `org_kde_kwin_blur_manager` v1 as a legacy fallback. These requests affect background content; no `QGraphicsBlurEffect` is used. The previous inert `kwin_blur` dynamic property was removed.
+- **Qt Integration:** Use `ctypes` and `PyQt6.sip` to resolve the display/surface native-resource functions from the running PyQt Qt library directory. Only the native-resource lookup uses Qt private ABI. Symbol/library/platform/protocol absence leaves ordinary translucency. Do not load system KF/Qt into the wheel: the installed `libKF6WindowSystem.so.6` probe failed with missing `Qt_6.11_PRIVATE_API` even though both installations report Qt 6.11.2.
+- **Ownership:** Qt owns display reads, dispatch, and the surface. The bridge owns a separate registry event queue, manager/compositor proxies, and effect objects. It dispatches pending events only on that queue via a Qt timer, without reading or disconnecting Qt's display. Native calls and callbacks run on the GUI thread. Standard effect state is applied through Qt's next surface commit.
+- **Regions (`ui/backdrop.py`, `ui/main_window.py`):** Conservative rounded scanlines in surface-local logical pixels are shared by the input mask and blur requests. Input radius is 28px; Loading/Result/Settings radius is 14px. Coordinates are not multiplied by device pixel ratio. Gaps and rounded corners are excluded. Empty visible regions destroy/unset the effect instead of requesting whole-surface blur. Geometry/state/count changes, show/hide, exposure, surface recreation, screen changes, DPI changes, and device-pixel-ratio changes refresh or detach regions.
+- **Fallback/Limits:** The live environment advertised the standard protocol and blur capability with KWin's blur effect loaded. That path was verified on the desktop. Legacy KDE protocol handling and disabled/missing-backend behavior have regression coverage; the legacy path was not exercised against an older compositor. The private native-resource lookup is an explicit compatibility boundary; keep its failure path nonfatal.
+- **Reproducible Desktop Check:** `QT_QPA_PLATFORM=wayland python3 resources/verify-desktop-blur.py`. Requires Spectacle. Generates a controlled striped background and placeholder providers in a temporary config directory, captures Settings blur on/off, three capsules, and a restored capsule after close/hide/show, then closes its windows. No personal configuration or paid API is used. Output defaults to ignored `resources/bug_screenshots/blur-verification/` with PNGs and geometry JSON.
+- **Observed Result:** Settings background stripes visibly soften while foreground text stays sharp. Three-capsule gaps and rounded corners remain sharp, and the restored single capsule still blurs. In the initial paired capture, image differences were bounded to `(530, 255, 1390, 1015)`, the Settings surface. An empty interior sample's RGB standard deviation fell from approximately `21.28/20.75/20.10` with blur off to `0.95/0.87/0.82` with blur on. Sampled outside pixels and a transparent 4x4 corner were identical. Captures remain local and ignored by Git.
+- **Protocol References:** [Standard background effects](https://wayland.app/protocols/ext-background-effect-v1), [KDE blur protocol](https://invent.kde.org/libraries/plasma-wayland-protocols/-/blob/master/src/protocols/blur.xml), [Wayland client queue API](https://wayland.freedesktop.org/docs/html/apb.html).
+
+### Latest Session Handoff: Settings Revision 2 and Blur Completed (2026-11-14)
+- **Completed:** Approved six-reference Settings revision 2, retained CAsk theme/opacity, retained multi-capsule behavior, and integrated native region-limited Wayland blur with actual desktop verification.
+- **Validation:** All 90 tests passed normally and at `QT_SCALE_FACTOR=2`. The provider subset passed after the final active-count refresh. `python3 -m compileall -q core ui tests`, `git diff --check`, and `python3 cask.py --version` passed. The tracked desktop verifier completed all four captures successfully. Local logs and early exploratory renders are under ignored `scratch/`.
+- **Files:** Main runtime changes are `ui/provider_settings.py`, `ui/styles.qss`, `ui/capsule.py`, `ui/main_window.py`, `ui/backdrop.py`, and `ui/wayland_blur.py`. New regression suites are `tests/test_settings_v2.py` and `tests/test_backdrop.py`. Desktop verification is reproducible using `resources/verify-desktop-blur.py`.
+- **Configuration:** No provider schema or migration change; no new user configuration switch. Blur activates when the native protocol/capability is available. Existing credentials, primary/fallback selection, and Apply semantics remain unchanged.
+- **Repository:** Changes are split into Conventional Commits for the Settings layout, Settings refinements, native blur integration, and documentation. Push the completed session to the configured `origin/main`. Existing untracked `resources/references/gemini_1.png`, `gemini_2.png`, and `gemini_3.png` are user reference inputs and must remain untouched.
+- **Next Session:** Start from this handoff. The previous reference-only Settings handoff is archived; do not reimplement it. No required implementation remains. Optional future coverage: live older-KDE protocol and multi-monitor hotplug/fractional scaling on additional desktops.
+
 ## 5. Project Directory Layout
 
 ### Settings Revision 2 Design References (2026-11-14)
@@ -271,7 +299,7 @@ stateDiagram-v2
 - `resources/references/generate-settings-v2-mockups.py` renders six `settings-v2-*.png` files: overview, Add Model catalog, Configure Model, Edit Model, inline model removal, and inline provider removal. All states use one 800x760 translucent window and stacked content pages; no overlay dialog is created.
 - Proposed hierarchy: current CAsk font family, 14pt title, 11pt provider name, 10pt content/controls, 9pt secondary text. One provider is expanded at a time, connection fields are collapsed, and saved model rows sit in a bounded scroll area with Add Model outside that area. Confirmation is inline, with Cancel and an explicit removal action.
 - All six states were rendered and inspected. Renderer checks cover one visible top-level window, actual model-list scrolling, 75% panel opacity, and zero-alpha outer corners. `--preview` offers illustrative navigation/accordion interactions with fixed placeholder data; it is not a complete functional Settings replacement.
-- Runtime implementation remains unchanged by this design task. `resources/references/README.md` indexes the newest proposal separately from historical references.
+- The original design task changed references only; Solution 17 now implements that approved direction in runtime. `resources/references/README.md` indexes the proposal separately from historical references.
 
 The latest reference-only transparency update makes `provider-settings-mockup.png`,
 `provider-model-picker-mockup.png`, and `model-settings-proposed.png` use 75% opaque
@@ -311,7 +339,9 @@ cask/
 │   ├── loading_indicator.py   # Animated request indicator
 │   ├── result_view.py         # Markdown browser with action buttons & keyboard shortcuts
 │   ├── settings_view.py       # Current settings exports and compatibility aliases
-│   ├── provider_settings.py   # Provider cards, background discovery/tests, model editor
+│   ├── provider_settings.py   # Stacked Settings pages, inline actions, discovery/tests
+│   ├── backdrop.py            # Rounded logical-pixel mask and blur geometry
+│   ├── wayland_blur.py        # Native standard/KDE Wayland blur transport
 │   ├── legacy_settings_view.py # Former model-card UI retained for reference rendering
 │   └── styles.qss             # Glassmorphism dark stylesheet
 ├── execution/                 # Prompt definitions & command templates
@@ -326,6 +356,8 @@ cask/
 │   ├── test_core.py           # Unit tests for core router, loader, config
 │   ├── test_providers.py      # Migration, discovery, request adapters, local HTTP, Qt workflow
 │   ├── test_settings_view.py  # Legacy widget regressions and runtime alpha verification
+│   ├── test_settings_v2.py    # Stacked navigation, inline removal, draft/alpha regressions
+│   ├── test_backdrop.py       # Blur geometry, transport safety, and lifecycle
 │   └── test_ui.py             # Headless offscreen PyQt6 UI tests
 ├── install.sh                 # System installer & desktop entry setup
 └── README.md                  # User documentation
