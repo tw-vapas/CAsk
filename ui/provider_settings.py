@@ -565,15 +565,18 @@ class ProviderCard(QFrame):
     def _model_actions(self, profile):
         self._actions_model_id = None if self._actions_model_id == profile.id else profile.id
         self._confirm_model_id = None
+        self.models_scroll.setFixedHeight(214)
         self._render_models()
 
     def _confirm_model(self, profile):
         self._confirm_model_id = profile.id
+        self.models_scroll.setFixedHeight(258)
         self._actions_model_id = None
         self._render_models()
 
     def _cancel_model_removal(self):
         self._confirm_model_id = None
+        self.models_scroll.setFixedHeight(214)
         self._render_models()
 
     def _render_models(self):

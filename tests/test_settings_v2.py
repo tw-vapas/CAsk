@@ -89,10 +89,12 @@ class SettingsRevisionTests(unittest.TestCase):
         card = self.view.cards[0]
         profile = card.provider.models[1]
         card._confirm_model(profile)
+        self.assertEqual(card.models_scroll.height(), 258)
         prompt = card.findChild(QPushButton, 'SettingsDanger')
         self.assertIsNotNone(prompt)
         self.assertEqual(len(card.provider.models), 12)
         card._cancel_model_removal()
+        self.assertEqual(card.models_scroll.height(), 214)
         self.assertEqual(len(card.provider.models), 12)
         card._confirm_model(card.provider.active_model)
         self.app.sendPostedEvents()
