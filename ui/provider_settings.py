@@ -71,6 +71,7 @@ class ModelEditor(QWidget):
 
     saved = pyqtSignal(object)
     cancelled = pyqtSignal()
+    close_requested = pyqtSignal()
 
     def __init__(self, provider, profile=None, parent=None):
         super().__init__(parent)
@@ -86,7 +87,7 @@ class ModelEditor(QWidget):
         header.addWidget(self.back_btn)
         self.title = label("", "SettingsHeaderTitle")
         header.addWidget(self.title, 1)
-        header.addWidget(action("×", self.cancelled.emit))
+        header.addWidget(action("×", self.close_requested.emit))
         body.addLayout(header)
         self.subtitle = label("")
         body.addWidget(self.subtitle)
@@ -551,6 +552,8 @@ class ProviderCard(QFrame):
         if profile.id == self.provider.active_model_id and len(self.provider.models) > 1:
             self.test_result.setText("Select another active model before removing this configuration.")
             return
+        self._confirm_model_id = None
+        self.models_scroll.setFixedHeight(214)
         self.provider.models = [m for m in self.provider.models if m.id != profile.id]
         if not self.provider.models:
             self.provider.active_model_id = ""
@@ -745,6 +748,7 @@ class SettingsView(QFrame):
         self.editor = ModelEditor(card.provider, profile, self)
         self.editor.saved.connect(lambda result: (card.save_model(result), self._close_editor()))
         self.editor.cancelled.connect(self._close_editor)
+        self.editor.close_requested.connect(self.closed.emit)
         self.pages.addWidget(self.editor)
         self.pages.setCurrentWidget(self.editor)
 

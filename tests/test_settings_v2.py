@@ -105,6 +105,7 @@ class SettingsRevisionTests(unittest.TestCase):
         card._confirm_model(profile)
         prompts = card.models_container.findChildren(QPushButton, 'SettingsDanger')
         prompts[-1].click()
+        self.assertEqual(card.models_scroll.height(), 214)
         self.assertEqual(len(card.provider.models), 11)
         self.assertEqual(card.provider.active_model_id, self.config.providers[0].active_model_id)
 
