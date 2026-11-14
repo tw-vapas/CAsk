@@ -536,3 +536,48 @@ QMenu#QuickSelectionMenu::item:selected { background: rgba(249, 226, 175, 0.22);
 #ProviderDialog QListWidget::item { padding: 10px; border-radius: 8px; }
 #ProviderDialog QListWidget::item:selected { background: rgba(249, 226, 175, 0.22); }
 #ProviderError { color: #f38ba8; }
+
+/* Settings revision 2: a single surface with embedded navigation. */
+#SettingsView { font-size: 10pt; }
+#SettingsView #SettingsHeaderTitle { font-size: 14pt; }
+#SettingsView #ProviderName { font-size: 11pt; font-weight: 600; }
+#SettingsView #SettingsDescription { font-size: 9pt; color: #bbc4d6; }
+#SettingsView #SettingsHeading { font-size: 10pt; font-weight: 600; }
+#SettingsView #SettingsPrimaryBadge { font-size: 9pt; color: #f9e2af; }
+#SettingsView #SettingsGhost, #SettingsView #ProviderName {
+    background: transparent; border: none; padding: 4px 6px;
+}
+#SettingsView #SettingsGhost:hover, #SettingsView #ProviderName:hover {
+    background: rgba(249, 226, 175, 0.10);
+}
+#SettingsView #ModelList, #SettingsView #ModelIdentity {
+    background: rgba(17, 17, 27, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.10); border-radius: 8px;
+}
+#SettingsView #ModelIdentity { padding: 14px; }
+#SettingsView #SavedModel { background: transparent; border: none; border-radius: 6px; }
+#SettingsView #ActiveModel { background: rgba(249, 226, 175, 0.10); border: none; border-radius: 6px; }
+#SettingsView #InlineConfirmation {
+    background: rgba(243, 139, 168, 0.08);
+    border: 1px solid rgba(243, 139, 168, 0.32); border-radius: 8px;
+}
+#SettingsView QPushButton#SettingsDanger {
+    background: rgba(243, 139, 168, 0.15); color: #f3a9bb;
+    border: 1px solid rgba(243, 139, 168, 0.45);
+}
+#SettingsView QLineEdit, #SettingsView QComboBox,
+#SettingsView QSpinBox, #SettingsView QDoubleSpinBox {
+    background: rgba(17, 17, 27, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 6px;
+    padding: 8px 10px;
+}
+#SettingsView QListWidget { background: transparent; border: none; font-size: 10pt; }
+#SettingsView QListWidget::item { padding: 14px; border-radius: 6px; }
+#SettingsView QListWidget::item:selected { background: rgba(249, 226, 175, 0.10); }
+#SettingsView QRadioButton { font-size: 10pt; spacing: 10px; }
+#SettingsView #ProviderName { text-align: left; }
+#SettingsView QRadioButton::indicator {
+    width: 16px; height: 16px; border: 1px solid #a6adc8; border-radius: 8px;
+    background: transparent;
+}
+#SettingsView QRadioButton::indicator:checked { background: #f9e2af; border-color: #f9e2af; }

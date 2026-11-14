@@ -288,7 +288,7 @@ class ProviderUITests(unittest.TestCase):
         self.assertFalse(dialog.temperature.isEnabled())
         dialog.name.setText("Sol Medium")
         dialog.accept()
-        self.assertEqual(dialog.result(), QDialog.DialogCode.Accepted)
+        self.assertIsNotNone(dialog.result_profile)
         self.assertEqual(dialog.result_profile.reasoning, "medium")
         manual = ModelEditor(provider)
         self.addCleanup(manual.deleteLater)
@@ -353,15 +353,13 @@ class ProviderUITests(unittest.TestCase):
                 self.wait_until(lambda: not card._busy)
             self.assertIn("Connected", card.connection_status.text())
 
-            def finish_model_dialog():
-                dialog = self.app.activeModalWidget()
-                self.assertIsInstance(dialog, ModelEditor)
-                dialog.catalog_list.setCurrentRow(0)
-                dialog.name.setText("Sol Medium")
-                dialog.accept()
-
-            QTimer.singleShot(0, finish_model_dialog)
             card.add_model()
+            editor = settings.editor
+            self.assertIsNone(self.app.activeModalWidget())
+            editor.catalog_list.setCurrentRow(0)
+            editor.continue_btn.click()
+            editor.name.setText("Sol Medium")
+            editor.save_btn.click()
             self.assertEqual(len(card.provider.models), 1)
             saved = []
             settings.saved.connect(saved.append)

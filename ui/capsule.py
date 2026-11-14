@@ -232,7 +232,7 @@ class CAskCapsule(QWidget):
             max_h = min(840, max(300, max_available_height))
             return max(min_h, min(max_h, ideal_h))
         elif self._state == self.STATE_SETTINGS:
-            return min(max_available_height, 620)
+            return min(max_available_height, 760)
         return 50
 
     def _handle_open_settings(self) -> None:

@@ -5,18 +5,18 @@ from __future__ import annotations
 import copy
 import threading
 import time
-from dataclasses import asdict, replace
+from dataclasses import replace
 from datetime import datetime, timezone
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QButtonGroup, QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
+    QButtonGroup, QCheckBox, QDoubleSpinBox, QFormLayout,
     QFrame, QHBoxLayout, QLabel, QLayout, QLineEdit, QListWidget, QListWidgetItem, QPushButton,
-    QRadioButton, QScrollArea, QSpinBox, QToolButton, QVBoxLayout, QWidget,
+    QRadioButton, QScrollArea, QSpinBox, QStackedWidget, QToolButton, QVBoxLayout, QWidget,
 )
 
 from core.config import Config
-from core.provider_api import CAPABILITIES, default_profile, discover_models, generate_text
+from core.provider_api import CAPABILITIES, discover_models, generate_text
 from core.provider_config import (
     PROVIDER_PRESETS, ModelProfile, Provider, create_provider, migrate_models, new_id,
     save_providers, validate_provider,
@@ -43,52 +43,65 @@ def action(text, callback, parent=None):
     return button
 
 
-class SurfaceDialog(QDialog):
-    """Draw rounded dialog content over a transparent top-level window."""
-
-    def __init__(self, title, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(title)
-        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        surface = QFrame(self)
-        surface.setObjectName("ProviderDialog")
-        outer.addWidget(surface)
-        self.body = QVBoxLayout(surface)
-        self.body.setContentsMargins(22, 20, 22, 20)
-        self.body.setSpacing(14)
-        self.body.addWidget(QLabel(title))
-        self.error_label = QLabel()
-        self.error_label.setWordWrap(True)
-        self.error_label.setObjectName("ProviderError")
-
-    def footer(self, accept_text="Apply"):
-        self.body.addWidget(self.error_label)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Ok)
-        buttons.button(QDialogButtonBox.StandardButton.Ok).setText(accept_text)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        self.body.addWidget(buttons)
+def label(text, role="SettingsDescription"):
+    widget = QLabel(text)
+    widget.setObjectName(role)
+    widget.setWordWrap(True)
+    return widget
 
 
-class ModelEditor(SurfaceDialog):
-    """Search cached provider models or enter an ID manually, then save a profile."""
+def confirmation(title, description, callback, cancel, removal):
+    frame = QFrame()
+    frame.setObjectName("InlineConfirmation")
+    body = QVBoxLayout(frame)
+    body.addWidget(label(title, "SettingsHeading"))
+    body.addWidget(label(description))
+    buttons = QHBoxLayout()
+    buttons.addStretch()
+    buttons.addWidget(action("Cancel", cancel))
+    remove = action(removal, callback)
+    remove.setObjectName("SettingsDanger")
+    buttons.addWidget(remove)
+    body.addLayout(buttons)
+    return frame
+
+
+class ModelEditor(QWidget):
+    """Embedded catalog/configuration pages; never creates a native dialog."""
+
+    saved = pyqtSignal(object)
+    cancelled = pyqtSignal()
 
     def __init__(self, provider, profile=None, parent=None):
-        super().__init__("Model Settings" if profile else "Add Model", parent)
+        super().__init__(parent)
         self.provider = provider
         self.original = profile
         self.result_profile = None
-        self.resize(620, 630)
-        self.body.addWidget(QLabel(provider.name))
+        body = QVBoxLayout(self)
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(14)
+        header = QHBoxLayout()
+        self.back_btn = action("← Back", self.back)
+        self.back_btn.setObjectName("SettingsGhost")
+        header.addWidget(self.back_btn)
+        self.title = label("", "SettingsHeaderTitle")
+        header.addWidget(self.title, 1)
+        header.addWidget(action("×", self.cancelled.emit))
+        body.addLayout(header)
+        self.subtitle = label("")
+        body.addWidget(self.subtitle)
+        self.pages = QStackedWidget()
+        body.addWidget(self.pages, 1)
+        self.picker = QWidget()
+        picker = QVBoxLayout(self.picker)
+        picker.setContentsMargins(0, 0, 0, 0)
+        picker.setSpacing(14)
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search provider models...")
-        self.body.addWidget(self.search)
+        self.search.setPlaceholderText("Search available models...")
+        picker.addWidget(self.search)
+        picker.addWidget(label(f"Provider catalog · {len(provider.catalog)} models · Updated: {provider.catalog_updated_at or 'never'}"))
         self.catalog_list = QListWidget()
-        self.catalog_list.setMinimumHeight(120)
-        self.body.addWidget(self.catalog_list)
+        picker.addWidget(self.catalog_list, 1)
         for entry in provider.catalog:
             info = entry.get("metadata", {})
             suffix = "Text generation not supported" if info.get("text_output") is False else "Capabilities unverified" if not info else "Text model"
@@ -99,13 +112,35 @@ class ModelEditor(SurfaceDialog):
             self.catalog_list.addItem(item)
         self.search.textChanged.connect(self._filter)
         self.catalog_list.currentItemChanged.connect(self._selected)
-        if not provider.catalog:
-            self.body.addWidget(QLabel("No cached catalog. Connect/Refresh in the provider card, or enter a model ID."))
-        form = QFormLayout()
+        picker.addWidget(label("Enter model ID manually"))
         self.model_id = QLineEdit(profile.model if profile else "")
         self.model_id.setPlaceholderText("Select above or enter model ID manually")
+        picker.addWidget(self.model_id)
+        self.pages.addWidget(self.picker)
+        self.configuration_scroll = QScrollArea()
+        self.configuration_scroll.setWidgetResizable(True)
+        self.configuration_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.configuration_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        configuration = QWidget()
+        form_body = QVBoxLayout(configuration)
+        form_body.setContentsMargins(0, 0, 0, 0)
+        form_body.setSpacing(14)
+        self.identity = label("", "ModelIdentity")
+        form_body.addWidget(self.identity)
         self.name = QLineEdit(profile.name if profile else "")
         self.reasoning = WheelSafeComboBox()
+        form_body.addWidget(label("Display name"))
+        form_body.addWidget(self.name)
+        form_body.addWidget(label("Reasoning effort"))
+        form_body.addWidget(self.reasoning)
+        form_body.addWidget(label("Choose how much reasoning this model uses."))
+        self.advanced_btn = action("▸ Advanced", self._toggle_advanced)
+        self.advanced_btn.setObjectName("SettingsGhost")
+        form_body.addWidget(self.advanced_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        self.advanced = QWidget()
+        form = QFormLayout(self.advanced)
+        form.setContentsMargins(0, 0, 0, 0)
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.temperature = QDoubleSpinBox()
         self.temperature.setRange(-0.01, 2)
         self.temperature.setSpecialValueText("Provider default")
@@ -115,18 +150,32 @@ class ModelEditor(SurfaceDialog):
         self.output_limit.setSpecialValueText("Provider default")
         self.token_parameter = WheelSafeComboBox()
         self.token_parameter.addItems(["max_tokens", "max_completion_tokens"])
-        self.token_parameter.setToolTip("Advanced: parameter used by this Chat Completions endpoint")
-        self.capability_label = QLabel()
-        self.capability_label.setWordWrap(True)
-        form.addRow("Model ID", self.model_id)
-        form.addRow("Display name", self.name)
-        form.addRow("Reasoning effort", self.reasoning)
-        form.addRow("Temperature", self.temperature)
+        self.token_parameter.setToolTip("Parameter used by this Chat Completions endpoint")
         form.addRow("Output limit", self.output_limit)
+        form.addRow("Temperature", self.temperature)
         if provider.protocol == "openai_compatible":
-            form.addRow("Advanced token parameter", self.token_parameter)
-        self.body.addLayout(form)
-        self.body.addWidget(self.capability_label)
+            form.addRow("Token parameter", self.token_parameter)
+        self.capability_label = label("")
+        form.addRow(self.capability_label)
+        form_body.addWidget(self.advanced)
+        self.advanced.hide()
+        form_body.addStretch()
+        self.configuration_scroll.setWidget(configuration)
+        self.pages.addWidget(self.configuration_scroll)
+        self.error_label = label("", "ProviderError")
+        body.addWidget(self.error_label)
+        self.hint = label("Return here at any time. Changes are saved after Apply on the provider page.")
+        body.addWidget(self.hint)
+        footer = QHBoxLayout()
+        footer.addStretch()
+        footer.addWidget(action("Cancel", self.cancelled.emit))
+        self.continue_btn = action("Continue →", self.continue_to_configuration)
+        self.continue_btn.setObjectName("SettingsSaveBtn")
+        footer.addWidget(self.continue_btn)
+        self.save_btn = action("Save Model" if profile else "Add Model", self.accept)
+        self.save_btn.setObjectName("SettingsSaveBtn")
+        footer.addWidget(self.save_btn)
+        body.addLayout(footer)
         self.model_id.textChanged.connect(self._capabilities)
         self.reasoning.currentIndexChanged.connect(self._temperature_state)
         self._capabilities(self.model_id.text())
@@ -137,7 +186,37 @@ class ModelEditor(SurfaceDialog):
             self.token_parameter.setCurrentText(profile.token_parameter)
         else:
             self.temperature.setValue(-0.01)
-        self.footer("Save Model" if profile else "Add Model")
+        self._show_page(1 if profile else 0)
+
+    def _toggle_advanced(self):
+        expanded = self.advanced.isHidden()
+        self.advanced.setVisible(expanded)
+        self.advanced_btn.setText("▾ Advanced" if expanded else "▸ Advanced")
+
+    def _show_page(self, index):
+        self.pages.setCurrentIndex(index)
+        self.title.setText("Edit Model" if self.original else "Configure Model" if index else "Add Model")
+        self.subtitle.setText(self.provider.name + (f" · {self.original.name}" if self.original else f" · Step {index + 1} of 2 — " + ("Configure model" if index else "Choose a model")))
+        self.continue_btn.setVisible(not index)
+        self.save_btn.setVisible(bool(index))
+        self.hint.setVisible(bool(index))
+        self.error_label.clear()
+
+    def continue_to_configuration(self):
+        if not self.model_id.text().strip():
+            self.error_label.setText("Select a model or enter a model ID.")
+            return
+        entry = next((e for e in self.provider.catalog if e["id"] == self.model_id.text().strip()), {})
+        if entry.get("metadata", {}).get("text_output") is False:
+            self.error_label.setText("This model does not support text generation.")
+            return
+        self._show_page(1)
+
+    def back(self):
+        if self.pages.currentIndex() and not self.original:
+            self._show_page(0)
+        else:
+            self.cancelled.emit()
 
     def _filter(self, text):
         for index in range(self.catalog_list.count()):
@@ -149,6 +228,7 @@ class ModelEditor(SurfaceDialog):
             self.model_id.setText(item.data(Qt.ItemDataRole.UserRole))
 
     def _capabilities(self, model_id):
+        self.identity.setText(CAPABILITIES.get(model_id, {}).get("name", model_id) + "\n" + model_id if model_id else "Choose a model")
         info = CAPABILITIES.get(model_id, {})
         self.reasoning.blockSignals(True)
         self.reasoning.clear()
@@ -184,7 +264,7 @@ class ModelEditor(SurfaceDialog):
         except ValueError as exc:
             self.error_label.setText(str(exc))
             return
-        super().accept()
+        self.saved.emit(self.result_profile)
 
 
 class ProviderCard(QFrame):
@@ -193,6 +273,8 @@ class ProviderCard(QFrame):
     changed = pyqtSignal()
     reorder_requested = pyqtSignal(object, int)
     delete_requested = pyqtSignal(object)
+    expansion_requested = pyqtSignal(object)
+    editor_requested = pyqtSignal(object, object)
     network_finished = pyqtSignal(int, object, str)
 
     def __init__(self, provider, parent=None):
@@ -202,44 +284,73 @@ class ProviderCard(QFrame):
         self.setObjectName("ProviderCard")
         self._generation = 0
         self._busy = False
+        self._expanded = False
+        self._confirm_model_id = None
+        self._actions_model_id = None
         self.network_finished.connect(self._network_result, Qt.ConnectionType.QueuedConnection)
         body = QVBoxLayout(self)
         body.setContentsMargins(16, 14, 16, 14)
         header = QHBoxLayout()
-        self.checkbox = QCheckBox()
+        self.collapse_btn = action("▸  " + provider.name, lambda: self.expansion_requested.emit(self))
+        self.collapse_btn.setObjectName("ProviderName")
+        header.addWidget(self.collapse_btn, 1)
+        self.badge = label("", "SettingsPrimaryBadge")
+        header.addWidget(self.badge)
+        self.connection_badge = label("Cached" if provider.catalog_updated_at else "Not verified", "SettingsDescription")
+        header.addWidget(self.connection_badge)
+        self.menu_btn = action("···", lambda: self.provider_actions.setVisible(self.provider_actions.isHidden()))
+        self.menu_btn.setObjectName("SettingsGhost")
+        header.addWidget(self.menu_btn)
+        body.addLayout(header)
+        self.summary = label("")
+        body.addWidget(self.summary)
+        self.provider_actions = QWidget()
+        actions = QHBoxLayout(self.provider_actions)
+        actions.setContentsMargins(0, 0, 0, 0)
+        self.checkbox = QCheckBox("Enabled")
         self.checkbox.setChecked(provider.enabled)
         self.checkbox.toggled.connect(self._enabled)
-        self.name_input = QLineEdit(provider.name)
-        self.name_input.setObjectName("CardNameInput")
-        self.name_input.textEdited.connect(self._rename)
-        self.badge = QLabel()
-        header.addWidget(self.checkbox)
-        header.addWidget(self.name_input, 1)
-        header.addWidget(self.badge)
-        body.addLayout(header)
-        actions = QHBoxLayout()
+        actions.addWidget(self.checkbox)
         self.up_btn = QToolButton()
         self.up_btn.setIcon(get_arrow_up_icon())
-        self.up_btn.setToolTip("Move provider up in fallback order; choose primary in the input bar")
+        self.up_btn.setToolTip("Move provider up in fallback order")
         self.up_btn.clicked.connect(lambda: self.reorder_requested.emit(self, -1))
         self.down_btn = QToolButton()
         self.down_btn.setIcon(get_arrow_down_icon())
-        self.down_btn.setToolTip("Move provider down in fallback order; choose primary in the input bar")
+        self.down_btn.setToolTip("Move provider down in fallback order")
         self.down_btn.clicked.connect(lambda: self.reorder_requested.emit(self, 1))
-        self.collapse_btn = action("Collapse", self._collapse)
         actions.addWidget(self.up_btn)
         actions.addWidget(self.down_btn)
-        actions.addWidget(self.collapse_btn)
         actions.addStretch()
-        actions.addWidget(action("Remove Provider", lambda: self.delete_requested.emit(self)))
-        body.addLayout(actions)
-        self.summary = QLabel()
-        body.addWidget(self.summary)
+        actions.addWidget(action("Remove Provider", self._confirm_provider))
+        body.addWidget(self.provider_actions)
+        self.provider_actions.hide()
+        self.provider_confirmation = confirmation(
+            f"Remove {provider.name}?", f"This removes the connection and its {len(provider.models)} saved models.",
+            lambda: self.delete_requested.emit(self), self._cancel_provider_removal, "Remove Provider")
+        body.addWidget(self.provider_confirmation)
+        self.provider_confirmation.hide()
         self.details = QWidget()
         details = QVBoxLayout(self.details)
         details.setContentsMargins(0, 6, 0, 0)
+        details.setSpacing(12)
+        connection_actions = QHBoxLayout()
+        self.connection_toggle = action("Connection settings  ▸", self._toggle_connection)
+        self.connection_toggle.setObjectName("SettingsGhost")
+        connection_actions.addWidget(self.connection_toggle)
+        connection_actions.addStretch()
+        self.connect_btn = action("Refresh models", self.refresh_catalog)
+        self.connect_btn.setObjectName("SettingsGhost")
+        connection_actions.addWidget(self.connect_btn)
+        details.addLayout(connection_actions)
+        self.connection_fields = QWidget()
+        connection_body = QVBoxLayout(self.connection_fields)
+        connection_body.setContentsMargins(0, 0, 0, 0)
         form = QFormLayout()
         form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        self.name_input = QLineEdit(provider.name)
+        self.name_input.textEdited.connect(self._rename)
+        form.addRow("Connection name", self.name_input)
         self.proto_combo = WheelSafeComboBox()
         for name, value in (("OpenAI Chat Completions", "openai_compatible"), ("OpenAI Responses", "openai_responses"), ("Google Gemini Native", "gemini")):
             self.proto_combo.addItem(name, value)
@@ -255,28 +366,38 @@ class ProviderCard(QFrame):
         form.addRow("Protocol", self.proto_combo)
         form.addRow("API root URL", self.base_url_input)
         form.addRow("API key", key_row)
-        details.addLayout(form)
+        connection_body.addLayout(form)
         self.proto_combo.currentIndexChanged.connect(self._connection_changed)
         self.base_url_input.textEdited.connect(self._connection_changed)
         self.key_input.textEdited.connect(self._connection_changed)
-        connection_actions = QHBoxLayout()
-        self.connect_btn = action("Connect / Refresh Models", self.refresh_catalog)
-        connection_actions.addWidget(self.connect_btn)
-        self.connection_status = QLabel("Not verified")
-        self.connection_status.setWordWrap(True)
-        details.addLayout(connection_actions)
-        details.addWidget(self.connection_status)
-        self.catalog_status = QLabel()
-        self.catalog_status.setWordWrap(True)
-        details.addWidget(self.catalog_status)
-        details.addWidget(QLabel("My Models — select one active configuration"))
-        self.models_layout = QVBoxLayout()
-        details.addLayout(self.models_layout)
-        details.addWidget(action("+ Add Model", self.add_model))
-        self.test_result = QLabel()
-        self.test_result.setWordWrap(True)
+        self.connection_status = label("Not verified")
+        connection_body.addWidget(self.connection_status)
+        self.catalog_status = label("")
+        connection_body.addWidget(self.catalog_status)
+        details.addWidget(self.connection_fields)
+        self.connection_fields.hide()
+        models_header = QHBoxLayout()
+        models_header.addWidget(label("My Models", "SettingsHeading"))
+        models_header.addWidget(label("1 active" if provider.active_model else "No active model"))
+        models_header.addStretch()
+        self.add_model_btn = action("+ Add Model", self.add_model)
+        models_header.addWidget(self.add_model_btn)
+        details.addLayout(models_header)
+        self.models_scroll = QScrollArea()
+        self.models_scroll.setObjectName("ModelList")
+        self.models_scroll.setWidgetResizable(True)
+        self.models_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.models_scroll.setFixedHeight(214)
+        self.models_container = QWidget()
+        self.models_layout = QVBoxLayout(self.models_container)
+        self.models_layout.setContentsMargins(6, 6, 6, 6)
+        self.models_layout.setSpacing(2)
+        self.models_scroll.setWidget(self.models_container)
+        details.addWidget(self.models_scroll)
+        self.test_result = label("")
         details.addWidget(self.test_result)
         body.addWidget(self.details)
+        self.details.hide()
         self._render_models()
 
     def _enabled(self, value):
@@ -285,6 +406,7 @@ class ProviderCard(QFrame):
 
     def _rename(self, value):
         self.provider.name = value.strip()
+        self.set_expanded(self._expanded)
         self.changed.emit()
 
     def _reveal(self):
@@ -292,9 +414,37 @@ class ProviderCard(QFrame):
         self.key_input.setEchoMode(QLineEdit.EchoMode.Normal if hidden else QLineEdit.EchoMode.Password)
         self.reveal_btn.setText("Hide" if hidden else "Show")
 
+    def set_expanded(self, expanded):
+        self._expanded = expanded
+        self.details.setVisible(expanded and self.provider_confirmation.isHidden())
+        self.collapse_btn.setText(("▾  " if expanded else "▸  ") + self.provider.name)
+
     def _collapse(self):
-        self.details.setVisible(not self.details.isVisible())
-        self.collapse_btn.setText("Collapse" if self.details.isVisible() else "Expand")
+        self.expansion_requested.emit(self)
+
+    def _toggle_connection(self):
+        expanded = self.connection_fields.isHidden()
+        self.connection_fields.setVisible(expanded)
+        self.connection_toggle.setText("Connection settings  ▾" if expanded else "Connection settings  ▸")
+
+    def _confirm_provider(self):
+        # Regenerate the description after additions or renaming in this draft.
+        old = self.provider_confirmation
+        index = self.layout().indexOf(old)
+        self.layout().removeWidget(old)
+        old.deleteLater()
+        self.provider_confirmation = confirmation(
+            f"Remove {self.provider.name}?",
+            f"This removes the connection and its {len(self.provider.models)} saved models.",
+            lambda: self.delete_requested.emit(self), self._cancel_provider_removal, "Remove Provider")
+        self.layout().insertWidget(index, self.provider_confirmation)
+        self.provider_actions.hide()
+        self.details.hide()
+        self.provider_confirmation.show()
+
+    def _cancel_provider_removal(self):
+        self.provider_confirmation.hide()
+        self.set_expanded(self._expanded)
 
     def _connection_changed(self, *args):
         self._generation += 1
@@ -306,6 +456,7 @@ class ProviderCard(QFrame):
         self.provider.catalog = []
         self.provider.catalog_updated_at = ""
         self.connection_status.setText("Connection changed — reconnect")
+        self.connection_badge.setText("Reconnect")
         self.test_result.clear()
         self._catalog_label()
 
@@ -361,6 +512,7 @@ class ProviderCard(QFrame):
         self.connect_btn.setEnabled(True)
         if error:
             self.connection_status.setText("Request failed; previous catalog retained.")
+            self.connection_badge.setText("Request failed")
             self.connection_status.setToolTip(error)
             self.test_result.setText(error)
             return
@@ -368,26 +520,27 @@ class ProviderCard(QFrame):
             self.provider.catalog = result["catalog"]
             self.provider.catalog_updated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
             self.connection_status.setText("Connected · Catalog loaded (models not individually tested)")
+            self.connection_badge.setText("Connected")
             self._catalog_label()
             self._render_models()
         else:
             self.test_result.setText(result["test"])
 
     def add_model(self):
-        dialog = ModelEditor(self.provider, parent=self.window())
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.provider.models.append(dialog.result_profile)
-            if not self.provider.active_model_id:
-                self.provider.active_model_id = dialog.result_profile.id
-            self._render_models()
-            self.changed.emit()
+        self.editor_requested.emit(self, None)
 
     def _edit_model(self, profile):
-        dialog = ModelEditor(self.provider, profile, self.window())
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.provider.models = [dialog.result_profile if m.id == profile.id else m for m in self.provider.models]
-            self._render_models()
-            self.changed.emit()
+        self.editor_requested.emit(self, profile)
+
+    def save_model(self, profile):
+        if any(m.id == profile.id for m in self.provider.models):
+            self.provider.models = [profile if m.id == profile.id else m for m in self.provider.models]
+        else:
+            self.provider.models.append(profile)
+        if not self.provider.active_model_id:
+            self.provider.active_model_id = profile.id
+        self._render_models()
+        self.changed.emit()
 
     def _duplicate(self, profile):
         self.provider.models.append(replace(profile, id=new_id(), name=profile.name + " Copy"))
@@ -409,35 +562,73 @@ class ProviderCard(QFrame):
         self._render_models()
         self.changed.emit()
 
+    def _model_actions(self, profile):
+        self._actions_model_id = None if self._actions_model_id == profile.id else profile.id
+        self._confirm_model_id = None
+        self._render_models()
+
+    def _confirm_model(self, profile):
+        self._confirm_model_id = profile.id
+        self._actions_model_id = None
+        self._render_models()
+
+    def _cancel_model_removal(self):
+        self._confirm_model_id = None
+        self._render_models()
+
     def _render_models(self):
+        position = self.models_scroll.verticalScrollBar().value()
         clear_layout(self.models_layout)
         if hasattr(self, "radio_group"):
             self.radio_group.deleteLater()
         self.radio_group = QButtonGroup(self)
         for profile in self.provider.models:
+            active = profile.id == self.provider.active_model_id
             model_frame = QFrame()
-            model_frame.setObjectName("SavedModel")
+            model_frame.setObjectName("ActiveModel" if active else "SavedModel")
             layout = QVBoxLayout(model_frame)
+            layout.setContentsMargins(10, 8, 10, 8)
+            layout.setSpacing(4)
+            top = QHBoxLayout()
             radio = QRadioButton(profile.name)
-            radio.setChecked(profile.id == self.provider.active_model_id)
+            radio.setChecked(active)
             self.radio_group.addButton(radio)
             radio.clicked.connect(lambda checked, m=profile: self._activate(m))
-            layout.addWidget(radio)
+            top.addWidget(radio, 1)
+            if active:
+                top.addWidget(label("Active", "SettingsPrimaryBadge"))
+            more = action("···", lambda checked=False, m=profile: self._model_actions(m))
+            more.setObjectName("SettingsGhost")
+            top.addWidget(more)
+            layout.addLayout(top)
             available = {item["id"] for item in self.provider.catalog}
             status = " · Not in latest catalog" if self.provider.catalog_updated_at and profile.model not in available else ""
-            detail = QLabel(f"{profile.model} · {profile.reasoning or 'Provider defaults'}{status}")
-            detail.setWordWrap(True)
-            layout.addWidget(detail)
-            buttons = QHBoxLayout()
-            buttons.addWidget(action("Test", lambda checked=False, m=profile: self.test_model(m)))
-            buttons.addWidget(action("Settings", lambda checked=False, m=profile: self._edit_model(m)))
-            buttons.addWidget(action("Duplicate", lambda checked=False, m=profile: self._duplicate(m)))
-            buttons.addStretch()
-            buttons.addWidget(action("Remove", lambda checked=False, m=profile: self._remove_model(m)))
-            layout.addLayout(buttons)
+            layout.addWidget(label(f"{profile.model} · {profile.reasoning or 'Provider defaults'}{status}"))
+            if self._actions_model_id == profile.id:
+                buttons = QHBoxLayout()
+                buttons.addWidget(action("Test", lambda checked=False, m=profile: self.test_model(m)))
+                buttons.addWidget(action("Settings", lambda checked=False, m=profile: self._edit_model(m)))
+                buttons.addWidget(action("Duplicate", lambda checked=False, m=profile: self._duplicate(m)))
+                buttons.addStretch()
+                buttons.addWidget(action("Remove", lambda checked=False, m=profile: self._confirm_model(m)))
+                layout.addLayout(buttons)
+            if self._confirm_model_id == profile.id:
+                blocked = active and len(self.provider.models) > 1
+                description = ("Select another active model before removing this configuration." if blocked else
+                               f"Your active model, {self.provider.active_model.name}, will stay selected." if self.provider.active_model and not active else
+                               "This provider will have no saved model until you add one.")
+                prompt = confirmation(f"Remove {profile.name}?", description,
+                                      lambda checked=False, m=profile: self._remove_model(m),
+                                      self._cancel_model_removal, "Remove Model")
+                prompt.findChild(QPushButton, "SettingsDanger").setEnabled(not blocked)
+                layout.addWidget(prompt)
             self.models_layout.addWidget(model_frame)
-        self.summary.setText("Active: " + (self.provider.active_model.name if self.provider.active_model else "No model selected"))
+        self.models_layout.addStretch()
+        self.summary.setText(f"{self.provider.active_model.name if self.provider.active_model else 'No model selected'} · {len(self.provider.models)} models")
         self._catalog_label()
+        self.models_layout.activate()
+        self.models_container.adjustSize()
+        self.models_scroll.verticalScrollBar().setValue(position)
 
     def test_model(self, profile):
         if not self._busy:
@@ -458,23 +649,31 @@ class SettingsView(QFrame):
         self.setAutoFillBackground(False)
         self.cards = []
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(18, 14, 18, 14)
+        outer.setContentsMargins(24, 24, 24, 24)
+        self.pages = QStackedWidget()
+        outer.addWidget(self.pages)
+        self.overview = QWidget()
+        self.pages.addWidget(self.overview)
+        outer = QVBoxLayout(self.overview)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(14)
         header = QHBoxLayout()
         title = QLabel("Providers & Models")
         title.setObjectName("SettingsHeaderTitle")
         header.addWidget(title, 1)
         close = QToolButton()
         close.setIcon(get_exit_icon())
+        close.setObjectName("SettingsCloseBtn")
         close.clicked.connect(self.closed.emit)
         header.addWidget(close)
         outer.addLayout(header)
-        subtitle = QLabel("Connect once. Save models. Select one active configuration per provider.")
+        subtitle = label("Manage connections and choose one active model per provider.")
         subtitle.setWordWrap(True)
         outer.addWidget(subtitle)
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.cards_container = QWidget()
         self.cards_layout = QVBoxLayout(self.cards_container)
         self.cards_layout.setContentsMargins(0, 0, 0, 0)
@@ -491,7 +690,7 @@ class SettingsView(QFrame):
         add.addWidget(self.add_card_btn)
         outer.addLayout(add)
         footer = QHBoxLayout()
-        self.footer_status = QLabel()
+        self.footer_status = label("Changes are saved after Apply.")
         self.footer_status.setWordWrap(True)
         footer.addWidget(self.footer_status, 1)
         self.cancel_btn = action("Cancel", self.closed.emit)
@@ -503,6 +702,7 @@ class SettingsView(QFrame):
         self.load_from_config(config)
 
     def load_from_config(self, config):
+        self._close_editor()
         self.config = config
         self.selected_provider_id = config.selected_provider_id
         clear_layout(self.cards_layout)
@@ -511,20 +711,53 @@ class SettingsView(QFrame):
         for provider in providers:
             self._append(provider)
         self._rebuild()
-        self.footer_status.clear()
+        if self.cards:
+            self.cards[0].set_expanded(True)
+        self.footer_status.setText("Changes are saved after Apply.")
 
     def _append(self, provider):
         card = ProviderCard(provider, self.cards_container)
         card.changed.connect(self._refresh_priority_badges)
         card.reorder_requested.connect(self._reorder)
         card.delete_requested.connect(self._delete)
+        card.expansion_requested.connect(self._expand)
+        card.editor_requested.connect(self._open_editor)
         self.cards.append(card)
         return card
 
     def _handle_add_card(self):
         card = self._append(create_provider(self.preset_combo.currentData()))
         self._rebuild()
+        self._expand(card)
+        card._toggle_connection()
         self.scroll_area.ensureWidgetVisible(card)
+
+    def _expand(self, target):
+        expanded = not target._expanded
+        for card in self.cards:
+            card._cancel_provider_removal()
+            card.set_expanded(card is target and expanded)
+
+    def _open_editor(self, card, profile):
+        self.editor = ModelEditor(card.provider, profile, self)
+        self.editor.saved.connect(lambda result: (card.save_model(result), self._close_editor()))
+        self.editor.cancelled.connect(self._close_editor)
+        self.pages.addWidget(self.editor)
+        self.pages.setCurrentWidget(self.editor)
+
+    def _close_editor(self):
+        self.pages.setCurrentWidget(self.overview)
+        editor = getattr(self, "editor", None)
+        if editor is not None:
+            self.pages.removeWidget(editor)
+            editor.deleteLater()
+            self.editor = None
+
+    def back(self):
+        if getattr(self, "editor", None):
+            self.editor.back()
+        else:
+            self.closed.emit()
 
     def _delete(self, card):
         self.cards.remove(card)

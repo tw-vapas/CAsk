@@ -656,7 +656,7 @@ class MainWindow(QWidget):
             target = focused_capsule or (self.capsules[-1] if self.capsules else None)
             if target:
                 if target.state == CAskCapsule.STATE_SETTINGS:
-                    target.switch_state(CAskCapsule.STATE_INPUT)
+                    target.settings_view.back()
                     event.accept()
                     return
                 if target.is_pinned:
