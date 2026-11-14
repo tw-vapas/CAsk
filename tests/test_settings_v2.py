@@ -7,11 +7,12 @@ from pathlib import Path
 
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtGui import QFontInfo
+from PyQt6.QtWidgets import QApplication, QLabel, QPushButton, QVBoxLayout, QWidget
 from core.config import Config
 from core.provider_api import default_profile
 from core.provider_config import Provider
-from ui.app import load_stylesheet
+from ui.app import application_font, load_stylesheet
 from ui.provider_settings import SettingsView
 
 
@@ -19,6 +20,7 @@ class SettingsRevisionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
+        cls.app.setFont(application_font())
         cls.app.setStyleSheet(load_stylesheet())
 
     def setUp(self):
@@ -41,6 +43,37 @@ class SettingsRevisionTests(unittest.TestCase):
         self.app.processEvents()
         self.addCleanup(self.host.deleteLater)
         self.addCleanup(self.host.close)
+
+    def assert_font_size(self, widget, points):
+        widget.ensurePolished()
+        expected = application_font()
+        expected.setPointSize(points)
+        self.assertEqual(QFontInfo(widget.font()).pixelSize(), QFontInfo(expected).pixelSize(),
+                         f"{type(widget).__name__} {widget.objectName()} has the wrong font size")
+
+    def test_typography_matches_reference_with_production_app_font(self):
+        card = self.view.cards[0]
+        self.assert_font_size(self.view.findChild(QLabel, 'SettingsHeaderTitle'), 14)
+        self.assert_font_size(card.collapse_btn, 11)
+        self.assert_font_size(card.summary, 9)
+        self.assert_font_size(card.badge, 9)
+        controls = (card.add_model_btn, card.connect_btn, card.name_input, card.key_input,
+                    card.base_url_input, card.proto_combo, self.view.preset_combo,
+                    self.view.add_card_btn, self.view.save_btn, self.view.cancel_btn)
+        for widget in controls:
+            self.assert_font_size(widget, 10)
+        card.add_model()
+        editor = self.view.editor
+        self.assert_font_size(editor.title, 14)
+        self.assert_font_size(editor.subtitle, 9)
+        for widget in (editor.search, editor.model_id, editor.catalog_list, editor.name,
+                       editor.reasoning, editor.temperature, editor.output_limit,
+                       editor.back_btn, editor.continue_btn, editor.save_btn):
+            self.assert_font_size(widget, 10)
+        # Styling is scoped: input/results retain the production 12pt base.
+        outside = QWidget()
+        self.addCleanup(outside.deleteLater)
+        self.assert_font_size(outside, 12)
 
     def test_one_accordion_and_bounded_scroll(self):
         first, second = self.view.cards

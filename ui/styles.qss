@@ -538,7 +538,8 @@ QMenu#QuickSelectionMenu::item:selected { background: rgba(249, 226, 175, 0.22);
 #ProviderError { color: #f38ba8; }
 
 /* Settings revision 2: a single surface with embedded navigation. */
-#SettingsView { font-size: 10pt; }
+#SettingsView, #SettingsView QWidget { font-size: 10pt; }
+#SettingsView QPushButton#SettingsSaveBtn { font-size: 10pt; }
 #SettingsView #SettingsHeaderTitle { font-size: 14pt; }
 #SettingsView #ProviderName { font-size: 11pt; font-weight: 600; }
 #SettingsView #SettingsDescription { font-size: 9pt; color: #bbc4d6; }

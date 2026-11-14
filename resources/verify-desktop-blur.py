@@ -27,7 +27,7 @@ from core.command_loader import CommandCatalog
 from core.config import Config
 from core.provider_api import default_profile
 from core.provider_config import Provider
-from ui.app import load_stylesheet
+from ui.app import application_font, load_stylesheet
 from ui.main_window import MainWindow
 
 
@@ -151,6 +151,7 @@ if __name__ == '__main__':
     if app.platformName() != 'wayland':
         parser.error('Run with QT_QPA_PLATFORM=wayland in a Wayland desktop session')
     app.setQuitOnLastWindowClosed(False)
+    app.setFont(application_font())
     app.setStyleSheet(load_stylesheet())
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)

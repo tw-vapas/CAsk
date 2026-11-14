@@ -66,6 +66,17 @@ def load_stylesheet() -> str:
     return ""
 
 
+def application_font() -> QFont:
+    """Return the production font shared by runtime and visual verification."""
+    font = QFont("JetBrainsMono Nerd Font")
+    if not font.exactMatch():
+        font = QFont("JetBrains Mono")
+    if not font.exactMatch():
+        font = QFont("monospace")
+    font.setPointSize(12)
+    return font
+
+
 def run_gui(
     config: Config,
     catalog: CommandCatalog,
@@ -94,14 +105,7 @@ def run_gui(
     if not manager.try_acquire(initial_input=initial_input):
         return 0
 
-    # Set default typography: JetBrainsMono Nerd Font with monospace fallback
-    font = QFont("JetBrainsMono Nerd Font")
-    if not font.exactMatch():
-        font = QFont("JetBrains Mono")
-    if not font.exactMatch():
-        font = QFont("monospace")
-    font.setPointSize(12)
-    app.setFont(font)
+    app.setFont(application_font())
 
     # Load glassmorphic stylesheet
     stylesheet = load_stylesheet()
