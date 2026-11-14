@@ -361,6 +361,7 @@ class ProviderUITests(unittest.TestCase):
             editor.name.setText("Sol Medium")
             editor.save_btn.click()
             self.assertEqual(len(card.provider.models), 1)
+            self.assertEqual(card.active_count.text(), "1 active")
             saved = []
             settings.saved.connect(saved.append)
             settings.save_btn.click()
